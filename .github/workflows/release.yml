@@ -39,8 +39,19 @@ jobs:
             echo "CSC_KEY_PASSWORD=$CSC_KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
           else
             echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+            # Without a certificate the Mac app is signed ad hoc: Apple-silicon Macs call a
+            # completely unsigned app "damaged" and refuse to open it.
+            if [ "$RUNNER_OS" = "macOS" ]; then echo "EXTRA_BUILD_ARGS=-c.mac.identity=-" >> "$GITHUB_ENV"; fi
           fi
-      - run: npm run ${{ matrix.script }}
+      - run: npm run ${{ matrix.script }} -- $EXTRA_BUILD_ARGS
+        shell: bash
+      - name: Check the Mac app signature
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          app=$(ls -d release/mac*/MendKit.app | head -1)
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E "Signature|flags|Identifier"
       - uses: actions/upload-artifact@v4
         with:
           name: MendKit-${{ matrix.os }}

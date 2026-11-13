@@ -17,7 +17,7 @@ Version 0.17.1, free for everyone:
 | System | Download | Notes |
 | --- | --- | --- |
 | Windows 10 and 11 | [MendKit-Setup-0.17.1.exe](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-Setup-0.17.1.exe) (122 MB) | Installer. SmartScreen may warn: More info, then Run anyway. |
-| macOS (Apple silicon) | [MendKit-0.17.1-arm64.dmg](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-arm64.dmg) (122 MB) | Unsigned: right-click the app and choose Open the first time. |
+| macOS (Apple silicon) | [MendKit-0.17.1-arm64.dmg](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-arm64.dmg) (122 MB) | Not yet registered with Apple: open it once, then System Settings, Privacy & Security, Open Anyway. |
 | Linux, AppImage | [MendKit-0.17.1-x86_64.AppImage](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-x86_64.AppImage) (126 MB) | `chmod +x`, then run. |
 | Linux, archive | [MendKit-0.17.1-x64.tar.gz](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-x64.tar.gz) (121 MB) | Unpack and run `mendkit`. |
 
