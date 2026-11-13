@@ -1,0 +1,52 @@
+[
+  {
+    "id": "slow",
+    "label": "It is slow",
+    "recipe": "slow-computer"
+  },
+  {
+    "id": "no-internet",
+    "label": "No internet",
+    "recipe": "no-internet"
+  },
+  {
+    "id": "wifi",
+    "label": "Wi-Fi keeps dropping",
+    "recipe": "wifi-fix"
+  },
+  {
+    "id": "popups",
+    "label": "Pop-ups or strange behaviour",
+    "recipe": "popups"
+  },
+  {
+    "id": "wont-update",
+    "label": "Updates will not install",
+    "recipe": "wont-update"
+  },
+  {
+    "id": "crashing",
+    "label": "It crashes or freezes",
+    "recipe": "crashing"
+  },
+  {
+    "id": "printer",
+    "label": "Printer will not print",
+    "recipe": "printer-fix"
+  },
+  {
+    "id": "sound",
+    "label": "No sound",
+    "recipe": "sound-fix"
+  },
+  {
+    "id": "bluetooth",
+    "label": "Bluetooth will not connect",
+    "recipe": "bluetooth-fix"
+  },
+  {
+    "id": "camera",
+    "label": "Camera does not work",
+    "recipe": "camera-fix"
+  }
+]

@@ -1,0 +1,210 @@
+[
+  {
+    "id": "ads-personalised",
+    "group": "Privacy",
+    "admin": false,
+    "name": "Turn off personalised ads",
+    "description": "Apple stops using your activity to choose ads.",
+    "entries": [
+      {
+        "path": "com.apple.AdLib",
+        "name": "allowApplePersonalizedAdvertising",
+        "type": "bool",
+        "on": "false",
+        "off": "true"
+      }
+    ]
+  },
+  {
+    "id": "no-network-dsstore",
+    "group": "Privacy",
+    "admin": false,
+    "name": "No .DS_Store files on network drives",
+    "description": "Stops macOS leaving hidden files on shared folders.",
+    "entries": [
+      {
+        "path": "com.apple.desktopservices",
+        "name": "DSDontWriteNetworkStores",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "file-extensions",
+    "group": "Interface",
+    "admin": false,
+    "name": "Show file extensions",
+    "description": "Shows endings like .pdf and .app on file names.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "AppleShowAllExtensions",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "finder-path-bar",
+    "group": "Interface",
+    "admin": false,
+    "name": "Show the Finder path bar",
+    "description": "Shows where the current folder is, at the bottom of the window.",
+    "entries": [
+      {
+        "path": "com.apple.finder",
+        "name": "ShowPathbar",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "finder-status-bar",
+    "group": "Interface",
+    "admin": false,
+    "name": "Show the Finder status bar",
+    "description": "Shows item count and free space at the bottom of the window.",
+    "entries": [
+      {
+        "path": "com.apple.finder",
+        "name": "ShowStatusBar",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "dark-mode",
+    "group": "Interface",
+    "admin": false,
+    "name": "Use dark mode",
+    "description": "Dark colours for macOS and apps. Shows fully after signing out.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "AppleInterfaceStyle",
+        "type": "string",
+        "on": "Dark",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "expanded-save",
+    "group": "Interface",
+    "admin": false,
+    "name": "Always show the full Save dialog",
+    "description": "Save dialogs open expanded with the folder list.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "NSNavPanelExpandedStateForSaveMode",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "screenshot-no-shadow",
+    "group": "Interface",
+    "admin": false,
+    "name": "Window screenshots without the shadow",
+    "description": "Window screenshots are saved without the soft shadow border.",
+    "entries": [
+      {
+        "path": "com.apple.screencapture",
+        "name": "disable-shadow",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "SystemUIServer"
+    ],
+    "revertCmd": [
+      "killall",
+      "SystemUIServer"
+    ]
+  },
+  {
+    "id": "dock-no-recents",
+    "group": "Interface",
+    "admin": false,
+    "name": "Hide recent apps in the Dock",
+    "description": "Removes the recent applications section from the Dock.",
+    "entries": [
+      {
+        "path": "com.apple.dock",
+        "name": "show-recents",
+        "type": "bool",
+        "on": "false",
+        "off": "true"
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Dock"
+    ],
+    "revertCmd": [
+      "killall",
+      "Dock"
+    ]
+  },
+  {
+    "id": "dock-fast-hide",
+    "group": "Performance",
+    "admin": false,
+    "name": "Show a hidden Dock without delay",
+    "description": "Removes the pause before an auto-hidden Dock appears.",
+    "entries": [
+      {
+        "path": "com.apple.dock",
+        "name": "autohide-delay",
+        "type": "float",
+        "on": "0",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Dock"
+    ],
+    "revertCmd": [
+      "killall",
+      "Dock"
+    ]
+  }
+]

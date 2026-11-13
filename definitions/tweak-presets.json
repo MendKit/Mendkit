@@ -1,0 +1,52 @@
+[
+  {
+    "id": "standard",
+    "name": "Standard",
+    "description": "Safe changes that suit most people.",
+    "tweaks": {
+      "win32": [
+        "telemetry-minimum",
+        "advertising-id",
+        "tailored-experiences",
+        "activity-history",
+        "bing-in-search",
+        "consumer-features",
+        "file-extensions",
+        "search-highlights",
+        "no-auto-restart"
+      ],
+      "darwin": [
+        "ads-personalised",
+        "no-network-dsstore",
+        "file-extensions",
+        "finder-path-bar",
+        "expanded-save"
+      ],
+      "linux": [
+        "problem-reports",
+        "auto-empty-trash",
+        "auto-clean-temp"
+      ]
+    }
+  },
+  {
+    "id": "minimal",
+    "name": "Minimal",
+    "description": "Privacy settings only.",
+    "tweaks": {
+      "win32": [
+        "telemetry-minimum",
+        "advertising-id",
+        "tailored-experiences",
+        "activity-history"
+      ],
+      "darwin": [
+        "ads-personalised",
+        "no-network-dsstore"
+      ],
+      "linux": [
+        "problem-reports"
+      ]
+    }
+  }
+]

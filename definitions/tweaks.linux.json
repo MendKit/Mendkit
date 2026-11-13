@@ -1,0 +1,114 @@
+[
+  {
+    "id": "problem-reports",
+    "group": "Privacy",
+    "admin": false,
+    "name": "Turn off automatic problem reports",
+    "description": "Stops the desktop sending technical problem reports.",
+    "entries": [
+      {
+        "path": "org.gnome.desktop.privacy",
+        "name": "report-technical-problems",
+        "type": "gsettings",
+        "on": "false",
+        "off": "true"
+      }
+    ]
+  },
+  {
+    "id": "forget-recent-files",
+    "group": "Privacy",
+    "admin": false,
+    "name": "Do not remember recent files",
+    "description": "The desktop stops keeping a list of recently used files.",
+    "entries": [
+      {
+        "path": "org.gnome.desktop.privacy",
+        "name": "remember-recent-files",
+        "type": "gsettings",
+        "on": "false",
+        "off": "true"
+      }
+    ]
+  },
+  {
+    "id": "auto-empty-trash",
+    "group": "Privacy",
+    "admin": false,
+    "name": "Empty the trash automatically",
+    "description": "Deletes files that have been in the trash for a month.",
+    "entries": [
+      {
+        "path": "org.gnome.desktop.privacy",
+        "name": "remove-old-trash-files",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "auto-clean-temp",
+    "group": "Privacy",
+    "admin": false,
+    "name": "Delete old temporary files automatically",
+    "description": "Clears temporary files older than a month.",
+    "entries": [
+      {
+        "path": "org.gnome.desktop.privacy",
+        "name": "remove-old-temp-files",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "dark-mode",
+    "group": "Interface",
+    "admin": false,
+    "name": "Use dark mode",
+    "description": "Dark colours for the desktop and apps that support it.",
+    "entries": [
+      {
+        "path": "org.gnome.desktop.interface",
+        "name": "color-scheme",
+        "type": "gsettings",
+        "on": "'prefer-dark'",
+        "off": "'default'"
+      }
+    ]
+  },
+  {
+    "id": "battery-percentage",
+    "group": "Interface",
+    "admin": false,
+    "name": "Show battery percentage",
+    "description": "Shows the charge as a number in the top bar.",
+    "entries": [
+      {
+        "path": "org.gnome.desktop.interface",
+        "name": "show-battery-percentage",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "animations-off",
+    "group": "Performance",
+    "admin": false,
+    "name": "Turn off animations",
+    "description": "Makes the desktop feel snappier on slower computers.",
+    "entries": [
+      {
+        "path": "org.gnome.desktop.interface",
+        "name": "enable-animations",
+        "type": "gsettings",
+        "on": "false",
+        "off": "true"
+      }
+    ]
+  }
+]

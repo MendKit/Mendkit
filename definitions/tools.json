@@ -1,0 +1,705 @@
+[
+  {
+    "id": "clamav",
+    "name": "ClamAV",
+    "job": "Malware scan",
+    "description": "Open-source virus scanner.",
+    "license": "open-source",
+    "packages": {
+      "winget": "Cisco.ClamAV",
+      "brew": "clamav",
+      "apt": "clamav",
+      "dnf": "clamav",
+      "pacman": "clamav",
+      "zypper": "clamav"
+    }
+  },
+  {
+    "id": "bleachbit",
+    "name": "BleachBit",
+    "job": "Cleanup",
+    "description": "Frees disk space by removing junk files.",
+    "license": "open-source",
+    "packages": {
+      "winget": "BleachBit.BleachBit",
+      "apt": "bleachbit",
+      "dnf": "bleachbit",
+      "pacman": "bleachbit",
+      "zypper": "bleachbit"
+    }
+  },
+  {
+    "id": "bcu",
+    "name": "Bulk Crap Uninstaller",
+    "job": "Cleanup",
+    "description": "Removes programs and their leftovers in bulk.",
+    "license": "open-source",
+    "packages": {
+      "winget": "Klocman.BulkCrapUninstaller"
+    }
+  },
+  {
+    "id": "smartmontools",
+    "name": "smartmontools",
+    "job": "Drive health",
+    "description": "Reads drive SMART health data (smartctl).",
+    "license": "open-source",
+    "packages": {
+      "winget": "smartmontools.smartmontools",
+      "brew": "smartmontools",
+      "apt": "smartmontools",
+      "dnf": "smartmontools",
+      "pacman": "smartmontools",
+      "zypper": "smartmontools"
+    }
+  },
+  {
+    "id": "crystaldiskinfo",
+    "name": "CrystalDiskInfo",
+    "job": "Drive health",
+    "description": "Shows drive health and temperature in a window.",
+    "license": "open-source",
+    "packages": {
+      "winget": "CrystalDewWorld.CrystalDiskInfo"
+    }
+  },
+  {
+    "id": "windirstat",
+    "name": "WinDirStat",
+    "job": "Disk space",
+    "description": "Maps what is using disk space.",
+    "license": "open-source",
+    "packages": {
+      "winget": "WinDirStat.WinDirStat"
+    }
+  },
+  {
+    "id": "testdisk",
+    "name": "TestDisk and PhotoRec",
+    "job": "Data recovery",
+    "description": "Recovers lost partitions and deleted files.",
+    "license": "open-source",
+    "packages": {
+      "winget": "CGSecurity.TestDisk",
+      "brew": "testdisk",
+      "apt": "testdisk",
+      "dnf": "testdisk",
+      "pacman": "testdisk",
+      "zypper": "testdisk"
+    }
+  },
+  {
+    "id": "lhm",
+    "name": "LibreHardwareMonitor",
+    "job": "Sensors",
+    "description": "Shows temperatures, fan speeds and voltages.",
+    "license": "open-source",
+    "packages": {
+      "winget": "LibreHardwareMonitor.LibreHardwareMonitor"
+    }
+  },
+  {
+    "id": "unigetui",
+    "name": "UniGetUI",
+    "job": "Updates",
+    "description": "Updates apps from winget and other package managers in one window.",
+    "license": "open-source",
+    "packages": {
+      "winget": "Devolutions.UniGetUI"
+    }
+  },
+  {
+    "id": "nmap",
+    "name": "Nmap",
+    "job": "Network",
+    "description": "Network scanner for finding devices and open ports.",
+    "license": "open-source",
+    "packages": {
+      "winget": "Insecure.Nmap",
+      "brew": "nmap",
+      "apt": "nmap",
+      "dnf": "nmap",
+      "pacman": "nmap",
+      "zypper": "nmap"
+    }
+  },
+  {
+    "id": "7zip",
+    "name": "7-Zip",
+    "job": "Archives",
+    "description": "Opens and creates zip, 7z and other archives.",
+    "license": "open-source",
+    "packages": {
+      "winget": "7zip.7zip",
+      "brew": "sevenzip",
+      "apt": "p7zip-full",
+      "dnf": "p7zip",
+      "pacman": "p7zip"
+    }
+  },
+  {
+    "id": "rustdesk",
+    "name": "RustDesk",
+    "job": "Remote support",
+    "description": "Open-source remote desktop.",
+    "license": "open-source",
+    "packages": {
+      "brew": "cask:rustdesk"
+    }
+  },
+  {
+    "id": "ventoy",
+    "name": "Ventoy",
+    "job": "Boot media",
+    "description": "Makes a USB stick that boots multiple ISO files.",
+    "license": "open-source",
+    "packages": {
+      "winget": "Ventoy.Ventoy"
+    }
+  },
+  {
+    "id": "autoruns",
+    "name": "Sysinternals Autoruns",
+    "job": "Startup items",
+    "description": "Shows everything that starts with Windows.",
+    "license": "free",
+    "packages": {
+      "winget": "Microsoft.Sysinternals.Autoruns"
+    }
+  },
+  {
+    "id": "procexp",
+    "name": "Sysinternals Process Explorer",
+    "job": "Processes",
+    "description": "Detailed view of running programs.",
+    "license": "free",
+    "packages": {
+      "winget": "Microsoft.Sysinternals.ProcessExplorer"
+    }
+  },
+  {
+    "id": "malwarebytes",
+    "name": "Malwarebytes",
+    "job": "Malware scan",
+    "description": "Malware scanner and remover.",
+    "license": "free",
+    "homeUseOnly": true,
+    "packages": {
+      "winget": "Malwarebytes.Malwarebytes"
+    }
+  },
+  {
+    "id": "adwcleaner",
+    "name": "AdwCleaner",
+    "job": "Malware scan",
+    "description": "Removes adware and unwanted browser add-ons.",
+    "license": "free",
+    "homeUseOnly": true,
+    "packages": {
+      "winget": "Malwarebytes.AdwCleaner"
+    }
+  },
+  {
+    "id": "hwinfo",
+    "name": "HWiNFO",
+    "job": "Sensors",
+    "description": "Detailed hardware information and sensor readings.",
+    "license": "free",
+    "homeUseOnly": true,
+    "packages": {
+      "winget": "REALiX.HWiNFO"
+    }
+  },
+  {
+    "id": "ncdu",
+    "name": "ncdu",
+    "job": "Disk space",
+    "description": "Shows what is using disk space, in the terminal.",
+    "license": "open-source",
+    "packages": {
+      "brew": "ncdu",
+      "apt": "ncdu",
+      "dnf": "ncdu",
+      "pacman": "ncdu",
+      "zypper": "ncdu"
+    }
+  },
+  {
+    "id": "ddrescue",
+    "name": "GNU ddrescue",
+    "job": "Data recovery",
+    "description": "Copies a failing drive, working around bad areas.",
+    "license": "open-source",
+    "packages": {
+      "brew": "ddrescue",
+      "apt": "gddrescue",
+      "dnf": "ddrescue",
+      "pacman": "ddrescue",
+      "zypper": "ddrescue"
+    }
+  },
+  {
+    "id": "lm-sensors",
+    "name": "lm-sensors",
+    "job": "Sensors",
+    "description": "Reads temperature and fan sensors.",
+    "license": "open-source",
+    "packages": {
+      "apt": "lm-sensors",
+      "dnf": "lm_sensors",
+      "pacman": "lm_sensors",
+      "zypper": "sensors"
+    }
+  },
+  {
+    "id": "inxi",
+    "name": "inxi",
+    "job": "System info",
+    "description": "Prints a full hardware and system summary.",
+    "license": "open-source",
+    "packages": {
+      "apt": "inxi",
+      "dnf": "inxi",
+      "pacman": "inxi",
+      "zypper": "inxi"
+    }
+  },
+  {
+    "id": "iperf3",
+    "name": "iperf3",
+    "job": "Network",
+    "description": "Measures network speed between two computers.",
+    "license": "open-source",
+    "packages": {
+      "brew": "iperf3",
+      "apt": "iperf3",
+      "dnf": "iperf3",
+      "pacman": "iperf3",
+      "zypper": "iperf3"
+    }
+  },
+  {
+    "id": "timeshift",
+    "name": "Timeshift",
+    "job": "Snapshots",
+    "description": "Takes system snapshots you can roll back to.",
+    "license": "open-source",
+    "packages": {
+      "apt": "timeshift",
+      "dnf": "timeshift",
+      "pacman": "timeshift"
+    }
+  },
+  {
+    "id": "gparted",
+    "name": "GParted",
+    "job": "Partitions",
+    "description": "Partition editor.",
+    "license": "open-source",
+    "packages": {
+      "apt": "gparted",
+      "dnf": "gparted",
+      "pacman": "gparted",
+      "zypper": "gparted"
+    }
+  },
+  {
+    "id": "htop",
+    "name": "htop",
+    "job": "Processes",
+    "description": "Shows running programs and resource use.",
+    "license": "open-source",
+    "packages": {
+      "brew": "htop",
+      "apt": "htop",
+      "dnf": "htop",
+      "pacman": "htop",
+      "zypper": "htop"
+    }
+  },
+  {
+    "id": "topgrade",
+    "name": "topgrade",
+    "job": "Updates",
+    "description": "Updates everything on the system with one command.",
+    "license": "open-source",
+    "packages": {
+      "brew": "topgrade"
+    }
+  },
+  {
+    "id": "rufus",
+    "name": "Rufus",
+    "job": "Boot media",
+    "description": "Writes an ISO to a USB stick to make it bootable.",
+    "license": "open-source",
+    "packages": {
+      "winget": "Rufus.Rufus"
+    }
+  },
+  {
+    "id": "everything",
+    "name": "Everything",
+    "job": "File search",
+    "description": "Finds any file by name instantly.",
+    "license": "free",
+    "packages": {
+      "winget": "voidtools.Everything"
+    }
+  },
+  {
+    "id": "wiztree",
+    "name": "WizTree",
+    "job": "Disk space",
+    "description": "Very fast map of what is using disk space.",
+    "license": "free",
+    "homeUseOnly": true,
+    "packages": {
+      "winget": "AntibodySoftware.WizTree"
+    }
+  },
+  {
+    "id": "cpuz",
+    "name": "CPU-Z",
+    "job": "System info",
+    "description": "Identifies the processor, motherboard and memory exactly.",
+    "license": "free",
+    "packages": {
+      "winget": "CPUID.CPU-Z"
+    }
+  },
+  {
+    "id": "gpuz",
+    "name": "GPU-Z",
+    "job": "System info",
+    "description": "Identifies the graphics card and reads its sensors.",
+    "license": "free",
+    "packages": {
+      "winget": "TechPowerUp.GPU-Z"
+    }
+  },
+  {
+    "id": "crystaldiskmark",
+    "name": "CrystalDiskMark",
+    "job": "Drive speed",
+    "description": "Measures how fast a drive reads and writes.",
+    "license": "open-source",
+    "packages": {
+      "winget": "CrystalDewWorld.CrystalDiskMark"
+    }
+  },
+  {
+    "id": "occt",
+    "name": "OCCT",
+    "job": "Stress test",
+    "description": "Stress-tests the processor, memory, graphics and power supply.",
+    "license": "free",
+    "homeUseOnly": true,
+    "packages": {
+      "winget": "OCBase.OCCT.Personal"
+    }
+  },
+  {
+    "id": "recuva",
+    "name": "Recuva",
+    "job": "Data recovery",
+    "description": "Recovers deleted files from drives and memory cards.",
+    "license": "free",
+    "packages": {
+      "winget": "Piriform.Recuva"
+    }
+  },
+  {
+    "id": "bluescreenview",
+    "name": "BlueScreenView",
+    "job": "Crash analysis",
+    "description": "Reads Windows crash dump files and names the driver involved.",
+    "license": "free",
+    "packages": {
+      "winget": "NirSoft.BlueScreenView"
+    }
+  },
+  {
+    "id": "tcpview",
+    "name": "Sysinternals TCPView",
+    "job": "Network",
+    "description": "Shows every program with a network connection open.",
+    "license": "free",
+    "packages": {
+      "winget": "Microsoft.Sysinternals.TCPView"
+    }
+  },
+  {
+    "id": "procmon",
+    "name": "Sysinternals Process Monitor",
+    "job": "Processes",
+    "description": "Records every file, registry and process event as it happens.",
+    "license": "free",
+    "packages": {
+      "winget": "Microsoft.Sysinternals.ProcessMonitor"
+    }
+  },
+  {
+    "id": "wireshark",
+    "name": "Wireshark",
+    "job": "Network",
+    "description": "Captures and inspects network traffic.",
+    "license": "open-source",
+    "packages": {
+      "winget": "WiresharkFoundation.Wireshark",
+      "brew": "cask:wireshark",
+      "apt": "wireshark",
+      "dnf": "wireshark",
+      "pacman": "wireshark",
+      "zypper": "wireshark"
+    }
+  },
+  {
+    "id": "putty",
+    "name": "PuTTY",
+    "job": "Remote terminal",
+    "description": "Connects to other devices over SSH, Telnet or a serial cable.",
+    "license": "open-source",
+    "packages": {
+      "winget": "PuTTY.PuTTY"
+    }
+  },
+  {
+    "id": "ddu",
+    "name": "Display Driver Uninstaller",
+    "job": "Drivers",
+    "description": "Completely removes graphics drivers so a clean one can be installed.",
+    "license": "free",
+    "packages": {
+      "winget": "Wagnardsoft.DisplayDriverUninstaller"
+    }
+  },
+  {
+    "id": "sdio",
+    "name": "Snappy Driver Installer Origin",
+    "job": "Drivers",
+    "description": "Finds and installs missing or outdated drivers.",
+    "license": "open-source",
+    "packages": {
+      "winget": "GlennDelahoy.SnappyDriverInstallerOrigin"
+    }
+  },
+  {
+    "id": "revo",
+    "name": "Revo Uninstaller",
+    "job": "Cleanup",
+    "description": "Uninstalls programs and removes what they leave behind.",
+    "license": "free",
+    "packages": {
+      "winget": "RevoUninstaller.RevoUninstaller"
+    }
+  },
+  {
+    "id": "angryip",
+    "name": "Angry IP Scanner",
+    "job": "Network",
+    "description": "Lists the devices on a network.",
+    "license": "open-source",
+    "packages": {
+      "winget": "angryziber.AngryIPScanner",
+      "brew": "cask:angry-ip-scanner"
+    }
+  },
+  {
+    "id": "treesize",
+    "name": "TreeSize Free",
+    "job": "Disk space",
+    "description": "Shows folder sizes in a familiar Explorer-style tree.",
+    "license": "free",
+    "packages": {
+      "winget": "JAMSoftware.TreeSize.Free"
+    }
+  },
+  {
+    "id": "memtester",
+    "name": "memtester",
+    "job": "Hardware tests",
+    "description": "Tests memory from inside a running Linux system.",
+    "license": "open-source",
+    "packages": {
+      "apt": "memtester",
+      "dnf": "memtester",
+      "pacman": "memtester",
+      "zypper": "memtester"
+    }
+  },
+  {
+    "id": "stress-ng",
+    "name": "stress-ng",
+    "job": "Stress test",
+    "description": "Loads the processor, memory and drives to prove stability.",
+    "license": "open-source",
+    "packages": {
+      "brew": "stress-ng",
+      "apt": "stress-ng",
+      "dnf": "stress-ng",
+      "pacman": "stress-ng",
+      "zypper": "stress-ng"
+    }
+  },
+  {
+    "id": "nvme-cli",
+    "name": "nvme-cli",
+    "job": "Drive health",
+    "description": "Reads health and wear data from NVMe SSDs.",
+    "license": "open-source",
+    "packages": {
+      "apt": "nvme-cli",
+      "dnf": "nvme-cli",
+      "pacman": "nvme-cli",
+      "zypper": "nvme-cli"
+    }
+  },
+  {
+    "id": "btop",
+    "name": "btop",
+    "job": "Processes",
+    "description": "A clear, graphical-style view of processor, memory, disk and network use in the terminal.",
+    "license": "open-source",
+    "packages": {
+      "brew": "btop",
+      "apt": "btop",
+      "dnf": "btop",
+      "pacman": "btop",
+      "zypper": "btop"
+    }
+  },
+  {
+    "id": "mtr",
+    "name": "mtr",
+    "job": "Network",
+    "description": "Shows each hop between this computer and a destination, with loss and delay.",
+    "license": "open-source",
+    "packages": {
+      "brew": "mtr",
+      "apt": "mtr",
+      "dnf": "mtr",
+      "pacman": "mtr",
+      "zypper": "mtr"
+    }
+  },
+  {
+    "id": "fwupd",
+    "name": "fwupd",
+    "job": "Firmware",
+    "description": "Updates firmware for the computer and its devices on Linux.",
+    "license": "open-source",
+    "packages": {
+      "apt": "fwupd",
+      "dnf": "fwupd",
+      "pacman": "fwupd",
+      "zypper": "fwupd"
+    }
+  },
+  {
+    "id": "rkhunter",
+    "name": "rkhunter",
+    "job": "Malware scan",
+    "description": "Checks a Linux system for rootkits and suspicious changes.",
+    "license": "open-source",
+    "packages": {
+      "apt": "rkhunter",
+      "dnf": "rkhunter",
+      "pacman": "rkhunter",
+      "zypper": "rkhunter"
+    }
+  },
+  {
+    "id": "lshw",
+    "name": "lshw",
+    "job": "System info",
+    "description": "Lists the hardware in a Linux computer in detail.",
+    "license": "open-source",
+    "packages": {
+      "apt": "lshw",
+      "dnf": "lshw",
+      "pacman": "lshw",
+      "zypper": "lshw"
+    }
+  },
+  {
+    "id": "stats",
+    "name": "Stats",
+    "job": "Sensors",
+    "description": "Shows processor, memory, temperature and network readings in the Mac menu bar.",
+    "license": "open-source",
+    "packages": {
+      "brew": "cask:stats"
+    }
+  },
+  {
+    "id": "onyx",
+    "name": "OnyX",
+    "job": "Maintenance",
+    "description": "Runs macOS maintenance tasks and rebuilds caches and indexes.",
+    "license": "free",
+    "packages": {
+      "brew": "cask:onyx"
+    }
+  },
+  {
+    "id": "coconutbattery",
+    "name": "coconutBattery",
+    "job": "Battery",
+    "description": "Shows a Mac battery's health, cycle count and age.",
+    "license": "free",
+    "packages": {
+      "brew": "cask:coconutbattery"
+    }
+  },
+  {
+    "id": "grandperspective",
+    "name": "GrandPerspective",
+    "job": "Disk space",
+    "description": "Maps what is using disk space on a Mac.",
+    "license": "open-source",
+    "packages": {
+      "brew": "cask:grandperspective"
+    }
+  },
+  {
+    "id": "appcleaner",
+    "name": "AppCleaner",
+    "job": "Cleanup",
+    "description": "Removes a Mac app together with its support files.",
+    "license": "free",
+    "packages": {
+      "brew": "cask:appcleaner"
+    }
+  },
+  {
+    "id": "dell-command-update",
+    "name": "Dell Command Update",
+    "job": "Drivers",
+    "description": "Dell's own tool for BIOS, firmware and driver updates.",
+    "license": "free",
+    "packages": {
+      "winget": "Dell.CommandUpdate"
+    }
+  },
+  {
+    "id": "lenovo-system-update",
+    "name": "Lenovo System Update",
+    "job": "Drivers",
+    "description": "Lenovo's own tool for BIOS, firmware and driver updates.",
+    "license": "free",
+    "packages": {
+      "winget": "Lenovo.SystemUpdate"
+    }
+  },
+  {
+    "id": "intel-dsa",
+    "name": "Intel Driver and Support Assistant",
+    "job": "Drivers",
+    "description": "Finds and installs current drivers for Intel graphics, Wi-Fi, Bluetooth and chipsets.",
+    "license": "free",
+    "packages": {
+      "winget": "Intel.IntelDriverAndSupportAssistant"
+    }
+  }
+]

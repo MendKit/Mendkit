@@ -1,0 +1,461 @@
+[
+  {
+    "id": "anydesk",
+    "name": "AnyDesk",
+    "match": [
+      "anydesk"
+    ],
+    "exe": [
+      "anydesk*.exe"
+    ],
+    "silent": "--remove --silent"
+  },
+  {
+    "id": "teamviewer",
+    "name": "TeamViewer",
+    "match": [
+      "teamviewer"
+    ],
+    "exe": [
+      "teamviewer*.exe"
+    ],
+    "silent": "/S"
+  },
+  {
+    "id": "ultraviewer",
+    "name": "UltraViewer",
+    "match": [
+      "ultraviewer"
+    ],
+    "exe": [
+      "ultraviewer*.exe"
+    ],
+    "silent": "/VERYSILENT /NORESTART"
+  },
+  {
+    "id": "screenconnect",
+    "name": "ConnectWise ScreenConnect",
+    "match": [
+      "screenconnect",
+      "connectwise control"
+    ],
+    "exe": [
+      "screenconnect*.exe",
+      "connectwisecontrol*.exe"
+    ]
+  },
+  {
+    "id": "rustdesk",
+    "name": "RustDesk",
+    "match": [
+      "rustdesk"
+    ],
+    "exe": [
+      "rustdesk*.exe"
+    ],
+    "note": "MendKit's own \"Get help\" uses RustDesk. Keep it if you or your technician installed it."
+  },
+  {
+    "id": "logmein",
+    "name": "LogMeIn and GoTo",
+    "match": [
+      "logmein",
+      "gotoassist",
+      "goto resolve",
+      "gotomypc",
+      "goto opener"
+    ],
+    "exe": [
+      "logmein*.exe",
+      "lmi_rescue*.exe",
+      "gotoassist*.exe",
+      "g2a*.exe",
+      "support-logmeinrescue*.exe"
+    ]
+  },
+  {
+    "id": "splashtop",
+    "name": "Splashtop",
+    "match": [
+      "splashtop"
+    ],
+    "exe": [
+      "splashtop*.exe",
+      "srserver.exe",
+      "sragent.exe",
+      "srmanager.exe"
+    ]
+  },
+  {
+    "id": "zoho",
+    "name": "Zoho Assist",
+    "match": [
+      "zoho assist",
+      "zohoassist",
+      "zohomeeting"
+    ],
+    "exe": [
+      "za_connect*.exe",
+      "zaservice.exe",
+      "zohours*.exe",
+      "zohotray.exe"
+    ]
+  },
+  {
+    "id": "supremo",
+    "name": "Supremo",
+    "match": [
+      "supremo"
+    ],
+    "exe": [
+      "supremo*.exe"
+    ]
+  },
+  {
+    "id": "remotepc",
+    "name": "RemotePC",
+    "match": [
+      "remotepc"
+    ],
+    "exe": [
+      "remotepc*.exe",
+      "rpcsuite*.exe"
+    ]
+  },
+  {
+    "id": "vnc",
+    "name": "VNC (RealVNC, TightVNC, UltraVNC, TigerVNC)",
+    "match": [
+      "realvnc",
+      "tightvnc",
+      "ultravnc",
+      "tigervnc",
+      "vnc server",
+      "vnc connect"
+    ],
+    "exe": [
+      "vncserver*.exe",
+      "winvnc*.exe",
+      "tvnserver*.exe",
+      "vncviewer*.exe",
+      "ultravnc*.exe"
+    ]
+  },
+  {
+    "id": "chrome-remote",
+    "name": "Chrome Remote Desktop",
+    "match": [
+      "chrome remote desktop"
+    ],
+    "exe": [
+      "remoting_host.exe",
+      "remote_assistance_host*.exe"
+    ]
+  },
+  {
+    "id": "dwservice",
+    "name": "DWService",
+    "match": [
+      "dwagent",
+      "dwservice"
+    ],
+    "exe": [
+      "dwagent*.exe",
+      "dwagsvc.exe"
+    ]
+  },
+  {
+    "id": "hoptodesk",
+    "name": "HopToDesk",
+    "match": [
+      "hoptodesk"
+    ],
+    "exe": [
+      "hoptodesk*.exe"
+    ]
+  },
+  {
+    "id": "getscreen",
+    "name": "Getscreen",
+    "match": [
+      "getscreen"
+    ],
+    "exe": [
+      "getscreen*.exe"
+    ]
+  },
+  {
+    "id": "iperius",
+    "name": "Iperius Remote",
+    "match": [
+      "iperius remote",
+      "iperiusremote"
+    ],
+    "exe": [
+      "iperiusremote*.exe"
+    ]
+  },
+  {
+    "id": "aeroadmin",
+    "name": "AeroAdmin",
+    "match": [
+      "aeroadmin"
+    ],
+    "exe": [
+      "aeroadmin*.exe"
+    ]
+  },
+  {
+    "id": "ammyy",
+    "name": "Ammyy Admin",
+    "match": [
+      "ammyy"
+    ],
+    "exe": [
+      "aa_v*.exe",
+      "ammyy*.exe"
+    ]
+  },
+  {
+    "id": "remote-utilities",
+    "name": "Remote Utilities",
+    "match": [
+      "remote utilities",
+      "rutserv"
+    ],
+    "exe": [
+      "rutserv.exe",
+      "rfusclient.exe",
+      "rutview.exe"
+    ]
+  },
+  {
+    "id": "netsupport",
+    "name": "NetSupport Manager",
+    "match": [
+      "netsupport"
+    ],
+    "exe": [
+      "client32.exe",
+      "pcictlui.exe"
+    ]
+  },
+  {
+    "id": "radmin",
+    "name": "Radmin",
+    "match": [
+      "radmin"
+    ],
+    "exe": [
+      "radmin*.exe",
+      "rserver3.exe"
+    ]
+  },
+  {
+    "id": "anyviewer",
+    "name": "AnyViewer",
+    "match": [
+      "anyviewer"
+    ],
+    "exe": [
+      "anyviewer*.exe",
+      "rcclient.exe"
+    ]
+  },
+  {
+    "id": "todesk",
+    "name": "ToDesk",
+    "match": [
+      "todesk"
+    ],
+    "exe": [
+      "todesk*.exe"
+    ]
+  },
+  {
+    "id": "sunlogin",
+    "name": "Sunlogin (AweSun)",
+    "match": [
+      "sunlogin",
+      "awesun"
+    ],
+    "exe": [
+      "sunlogin*.exe",
+      "awesun*.exe"
+    ]
+  },
+  {
+    "id": "alpemix",
+    "name": "Alpemix",
+    "match": [
+      "alpemix"
+    ],
+    "exe": [
+      "alpemix*.exe"
+    ]
+  },
+  {
+    "id": "distant-desktop",
+    "name": "Distant Desktop",
+    "match": [
+      "distant desktop"
+    ],
+    "exe": [
+      "distant-desktop*.exe",
+      "ddsystem*.exe"
+    ]
+  },
+  {
+    "id": "isl",
+    "name": "ISL Online",
+    "match": [
+      "isl light",
+      "isl alwayson",
+      "islonline"
+    ],
+    "exe": [
+      "isl light*.exe",
+      "islalwayson*.exe",
+      "isllight*.exe"
+    ]
+  },
+  {
+    "id": "fixme",
+    "name": "FixMe.IT",
+    "match": [
+      "fixme.it",
+      "fixmeit"
+    ],
+    "exe": [
+      "fixmeit*.exe"
+    ]
+  },
+  {
+    "id": "bomgar",
+    "name": "BeyondTrust (Bomgar)",
+    "match": [
+      "bomgar",
+      "beyondtrust remote support"
+    ],
+    "exe": [
+      "bomgar-scc*.exe",
+      "bomgar-rep*.exe"
+    ]
+  },
+  {
+    "id": "simplehelp",
+    "name": "SimpleHelp",
+    "match": [
+      "simplehelp",
+      "simple-help"
+    ],
+    "exe": [
+      "remote access-windows*.exe",
+      "simplegateway*.exe",
+      "simpleservice.exe"
+    ]
+  },
+  {
+    "id": "atera",
+    "name": "Atera agent",
+    "match": [
+      "atera"
+    ],
+    "exe": [
+      "ateraagent.exe"
+    ]
+  },
+  {
+    "id": "ninja",
+    "name": "NinjaOne agent",
+    "match": [
+      "ninjarmm",
+      "ninjaone"
+    ],
+    "exe": [
+      "ninjarmmagent*.exe"
+    ]
+  },
+  {
+    "id": "action1",
+    "name": "Action1 agent",
+    "match": [
+      "action1"
+    ],
+    "exe": [
+      "action1_agent*.exe",
+      "action1_remote.exe"
+    ]
+  },
+  {
+    "id": "pdq",
+    "name": "PDQ Connect",
+    "match": [
+      "pdq connect",
+      "pdqconnect"
+    ],
+    "exe": [
+      "pdq-connect-agent.exe"
+    ]
+  },
+  {
+    "id": "mesh",
+    "name": "MeshCentral agent",
+    "match": [
+      "mesh agent",
+      "meshagent",
+      "meshcentral"
+    ],
+    "exe": [
+      "meshagent*.exe"
+    ]
+  },
+  {
+    "id": "tactical",
+    "name": "Tactical RMM agent",
+    "match": [
+      "tactical rmm",
+      "tacticalrmm",
+      "tacticalagent"
+    ],
+    "exe": [
+      "tacticalrmm.exe"
+    ]
+  },
+  {
+    "id": "syncro",
+    "name": "Syncro agent",
+    "match": [
+      "syncro"
+    ],
+    "exe": [
+      "syncro.service.exe",
+      "syncro.app.runner.exe",
+      "syncrolive*.exe"
+    ]
+  },
+  {
+    "id": "parsec",
+    "name": "Parsec",
+    "match": [
+      "parsec"
+    ],
+    "exe": [
+      "parsecd.exe",
+      "pservice.exe"
+    ]
+  },
+  {
+    "id": "quick-assist",
+    "name": "Quick Assist (built into Windows)",
+    "match": [
+      "quickassist",
+      "quick assist"
+    ],
+    "exe": [
+      "quickassist.exe"
+    ],
+    "builtin": true,
+    "note": "Part of Windows. It only connects when someone opens it and types a code, so it is listed for information."
+  }
+]

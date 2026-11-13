@@ -1,0 +1,686 @@
+[
+ {
+  "id": "snapshot",
+  "name": "Local snapshot",
+  "description": "Saves a Time Machine local snapshot so changes can be rolled back.",
+  "exec": "tmutil",
+  "args": [
+   "localsnapshot"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Safety snapshot",
+   "ok": "A local snapshot was saved, so today's changes can be undone.",
+   "problem": "A local snapshot could not be saved."
+  }
+ },
+ {
+  "id": "os-info",
+  "name": "macOS version",
+  "description": "Shows the macOS version and build.",
+  "exec": "sw_vers",
+  "args": [],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "System version",
+   "ok": "System information was collected.",
+   "problem": "System information could not be read."
+  }
+ },
+ {
+  "id": "disk-usage",
+  "name": "Disk usage",
+  "description": "Shows free and used space per volume.",
+  "exec": "df",
+  "args": [
+   "-h"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Storage space",
+   "ok": "Storage space was checked.",
+   "problem": "Storage space could not be checked."
+  }
+ },
+ {
+  "id": "smart-health",
+  "name": "Drive health (SMART)",
+  "description": "Reads the startup drive's health status.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "diskutil info disk0 | grep -i \"SMART\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Drive health",
+   "ok": "The startup drive reports that it is healthy.",
+   "problem": "Drive health could not be read.",
+   "notes": [
+    {
+     "pattern": "Failing",
+     "level": "problem",
+     "message": "The startup drive is reporting a problem. Back up your important files as soon as you can."
+    },
+    {
+     "pattern": "Not Supported",
+     "level": "info",
+     "message": "This drive does not report health status."
+    }
+   ]
+  }
+ },
+ {
+  "id": "verify-volume",
+  "name": "Verify startup volume",
+  "description": "Runs First Aid verification on the startup volume.",
+  "exec": "diskutil",
+  "args": [
+   "verifyVolume",
+   "/"
+  ],
+  "admin": false,
+  "heavy": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Disk check",
+   "ok": "The startup disk passed verification.",
+   "problem": "The startup disk reported problems. Run First Aid from Disk Utility in Recovery."
+  }
+ },
+ {
+  "id": "os-updates-list",
+  "name": "List macOS updates",
+  "description": "Lists available macOS updates. Installs nothing.",
+  "exec": "softwareupdate",
+  "args": [
+   "-l"
+  ],
+  "admin": false,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "macOS updates",
+   "ok": "macOS was checked for updates.",
+   "problem": "macOS updates could not be checked.",
+   "notes": [
+    {
+     "pattern": "No new software available",
+     "level": "good",
+     "message": "macOS is up to date."
+    },
+    {
+     "pattern": "\\* Label:",
+     "level": "attention",
+     "message": "macOS updates are available."
+    }
+   ]
+  }
+ },
+ {
+  "id": "os-updates-install",
+  "name": "Install macOS updates",
+  "description": "Downloads and installs all available macOS updates.",
+  "exec": "softwareupdate",
+  "args": [
+   "-ia"
+  ],
+  "admin": true,
+  "heavy": true,
+  "needsRestart": true,
+  "typicalMinutes": 30,
+  "friendly": {
+   "title": "macOS updates",
+   "ok": "macOS updates were installed. Restart to finish.",
+   "problem": "macOS updates could not be installed."
+  }
+ },
+ {
+  "id": "brew-update",
+  "name": "Refresh Homebrew",
+  "description": "Downloads the latest list of Homebrew packages.",
+  "exec": "brew",
+  "args": [
+   "update"
+  ],
+  "admin": false,
+  "requires": "brew",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Homebrew package list",
+   "ok": "Homebrew is up to date.",
+   "problem": "Homebrew could not be refreshed."
+  }
+ },
+ {
+  "id": "brew-outdated",
+  "name": "List Homebrew updates",
+  "description": "Lists Homebrew apps with updates. Installs nothing.",
+  "exec": "brew",
+  "args": [
+   "outdated"
+  ],
+  "admin": false,
+  "requires": "brew",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "App updates (Homebrew)",
+   "ok": "Homebrew apps are up to date.",
+   "problem": "Homebrew updates could not be checked.",
+   "notes": [
+    {
+     "pattern": "\\S",
+     "level": "attention",
+     "message": "Updates are available for some Homebrew apps."
+    }
+   ]
+  }
+ },
+ {
+  "id": "brew-upgrade",
+  "name": "Install Homebrew updates",
+  "description": "Updates every Homebrew app.",
+  "exec": "brew",
+  "args": [
+   "upgrade"
+  ],
+  "admin": false,
+  "requires": "brew",
+  "heavy": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "App updates (Homebrew)",
+   "ok": "Homebrew apps were updated.",
+   "problem": "Some Homebrew apps could not be updated."
+  }
+ },
+ {
+  "id": "brew-cleanup",
+  "name": "Clean up Homebrew",
+  "description": "Deletes old versions and downloads Homebrew no longer needs.",
+  "exec": "brew",
+  "args": [
+   "cleanup"
+  ],
+  "admin": false,
+  "requires": "brew",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Homebrew leftovers",
+   "ok": "Old Homebrew files were cleaned up.",
+   "problem": "Homebrew could not be cleaned up."
+  }
+ },
+ {
+  "id": "brew-doctor",
+  "name": "Check Homebrew",
+  "description": "Looks for problems in the Homebrew setup.",
+  "exec": "brew",
+  "args": [
+   "doctor"
+  ],
+  "admin": false,
+  "requires": "brew",
+  "typicalMinutes": 2,
+  "okExitCodes": [
+   0,
+   1
+  ],
+  "friendly": {
+   "title": "Homebrew check",
+   "ok": "Homebrew was checked.",
+   "problem": "Homebrew could not be checked."
+  }
+ },
+ {
+  "id": "flush-dns",
+  "name": "Flush DNS cache",
+  "description": "Clears saved website address lookups.",
+  "exec": "dscacheutil",
+  "args": [
+   "-flushcache"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Website address cache",
+   "ok": "The saved website address cache was cleared.",
+   "problem": "The website address cache could not be cleared."
+  }
+ },
+ {
+  "id": "restart-mdns",
+  "name": "Restart the DNS responder",
+  "description": "Restarts the service that looks up website addresses.",
+  "exec": "killall",
+  "args": [
+   "-HUP",
+   "mDNSResponder"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Address lookup service",
+   "ok": "The address lookup service was restarted.",
+   "problem": "The address lookup service could not be restarted."
+  }
+ },
+ {
+  "id": "thin-snapshots",
+  "name": "Thin local snapshots",
+  "description": "Frees space held by old Time Machine local snapshots.",
+  "exec": "tmutil",
+  "args": [
+   "thinlocalsnapshots",
+   "/",
+   "10000000000",
+   "4"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Old local snapshots",
+   "ok": "Space held by old snapshots was freed.",
+   "problem": "Old snapshots could not be thinned."
+  }
+ },
+ {
+  "id": "spotlight-rebuild",
+  "name": "Rebuild the Spotlight index",
+  "description": "Erases and rebuilds the search index. Search is slow until it finishes.",
+  "exec": "mdutil",
+  "args": [
+   "-E",
+   "/"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Search index",
+   "ok": "The search index is being rebuilt.",
+   "problem": "The search index could not be rebuilt."
+  }
+ },
+ {
+  "id": "battery",
+  "name": "Battery status",
+  "description": "Shows battery charge, cycle count and condition.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "pmset -g batt; system_profiler SPPowerDataType | grep -E \"Cycle Count|Condition|Maximum Capacity\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Battery",
+   "ok": "Battery status was read.",
+   "problem": "Battery status could not be read.",
+   "notes": [
+    {
+     "pattern": "Condition: (Service|Replace)",
+     "level": "attention",
+     "message": "The battery is worn and is due for service."
+    }
+   ]
+  }
+ },
+ {
+  "id": "printer-reset",
+  "name": "Restart the print service",
+  "description": "Restarts CUPS, the macOS print service.",
+  "exec": "launchctl",
+  "args": [
+   "kickstart",
+   "-k",
+   "system/org.cups.cupsd"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Print service",
+   "ok": "The print service was restarted. Try printing again.",
+   "problem": "The print service could not be restarted."
+  }
+ },
+ {
+  "id": "printer-list",
+  "name": "List printers",
+  "description": "Shows installed printers and their state.",
+  "exec": "lpstat",
+  "args": [
+   "-p",
+   "-d"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Installed printers",
+   "ok": "Installed printers were listed.",
+   "problem": "No printers are set up.",
+   "notes": [
+    {
+     "pattern": "disabled",
+     "level": "attention",
+     "message": "A printer is paused. Resume it in System Settings, Printers and Scanners."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sound-restart",
+  "name": "Restart the sound system",
+  "description": "Restarts Core Audio.",
+  "exec": "killall",
+  "args": [
+   "coreaudiod"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Sound system",
+   "ok": "The sound system was restarted. Try playing something again.",
+   "problem": "The sound system could not be restarted."
+  }
+ },
+ {
+  "id": "bluetooth-restart",
+  "name": "Restart Bluetooth",
+  "description": "Restarts the Bluetooth service.",
+  "exec": "pkill",
+  "args": [
+   "bluetoothd"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Bluetooth",
+   "ok": "Bluetooth was restarted. Try connecting the device again.",
+   "problem": "Bluetooth could not be restarted."
+  }
+ },
+ {
+  "id": "wifi-restart",
+  "name": "Restart Wi-Fi",
+  "description": "Turns Wi-Fi off and on again.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "d=$(networksetup -listallhardwareports | awk '/Wi-Fi|AirPort/{getline; print $2; exit}'); [ -z \"$d\" ] && { echo NO_WIFI_ADAPTER; exit 0; }; networksetup -setairportpower \"$d\" off; sleep 2; networksetup -setairportpower \"$d\" on; sleep 6; networksetup -getairportnetwork \"$d\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Wi-Fi",
+   "ok": "Wi-Fi was restarted.",
+   "problem": "Wi-Fi could not be restarted.",
+   "notes": [
+    {
+     "pattern": "NO_WIFI_ADAPTER",
+     "level": "attention",
+     "message": "This computer has no Wi-Fi adapter, or it is switched off or disabled. If it uses a network cable, run \"Check my network\" instead."
+    }
+   ]
+  }
+ },
+ {
+  "id": "net-adapters",
+  "name": "Network adapters",
+  "description": "Lists active network connections.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "ifconfig | awk '/^[a-z]/{i=$1} /status: active/{print i\" active\"; n++} END{if(!n) print \"NO_LINK\"}'"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network connection",
+   "ok": "A network adapter is connected.",
+   "problem": "Network adapters could not be read.",
+   "notes": [
+    {
+     "pattern": "NO_LINK",
+     "level": "problem",
+     "message": "No network adapter is connected. Check the cable, or that Wi-Fi is switched on and joined to a network."
+    }
+   ]
+  }
+ },
+ {
+  "id": "active-connection",
+  "name": "Active connection",
+  "description": "Works out whether this computer is online by cable or Wi-Fi and checks that connection.",
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Active connection",
+   "ok": "The active connection was checked.",
+   "problem": "The active connection could not be read.",
+   "notes": [
+    {
+     "pattern": "CONN_NONE",
+     "level": "problem",
+     "message": "This computer has no working network connection. Plug in the network cable, or join a Wi-Fi network."
+    },
+    {
+     "pattern": "CONN_WIRED (.+?) LINK 10 Mbps",
+     "level": "attention",
+     "message": "Connected by network cable ($1), but only at 10 Mbps. That points to a damaged cable or port: try another cable."
+    },
+    {
+     "pattern": "CONN_WIRED (.+?) LINK ([\\d.]+ [GM]bps)",
+     "level": "good",
+     "message": "Connected by network cable ($1) at $2."
+    },
+    {
+     "pattern": "CONN_WIRED (\\S.*)",
+     "level": "good",
+     "message": "Connected by network cable ($1)."
+    },
+    {
+     "pattern": "Signal\\s*:\\s*([1-4]?\\d)%",
+     "level": "attention",
+     "message": "Connected by Wi-Fi, but the signal is weak ($1%). Move closer to the router or remove obstacles."
+    },
+    {
+     "pattern": "Signal\\s*:\\s*(\\d+)%",
+     "level": "good",
+     "message": "Connected by Wi-Fi with a signal of $1%."
+    },
+    {
+     "pattern": "CONN_WIFI",
+     "level": "good",
+     "message": "Connected by Wi-Fi."
+    },
+    {
+     "pattern": "CONN_OTHER (\\S.*)",
+     "level": "info",
+     "message": "Connected through $1, which is not a normal cable or Wi-Fi adapter (a VPN, phone tether or virtual adapter)."
+    }
+   ]
+  },
+  "exec": "sh",
+  "args": [
+   "-c",
+   "dev=$(route -n get default 2>/dev/null | awk '/interface:/{print $2}'); [ -z \"$dev\" ] && { echo CONN_NONE; exit 0; }; w=$(networksetup -listallhardwareports | awk '/Wi-Fi|AirPort/{getline; print $2; exit}'); if [ \"$dev\" = \"$w\" ]; then echo \"CONN_WIFI $dev\"; system_profiler SPAirPortDataType 2>/dev/null | awk '/Signal \\/ Noise/{p=2*($4+100); if(p>100)p=100; if(p<0)p=0; printf \"Signal : %d%%\\n\", p; exit}'; elif networksetup -listallhardwareports | grep -q \"Device: $dev$\"; then sp=$(ifconfig \"$dev\" | sed -n 's/.*media:.*(\\([0-9]*\\)base.*/\\1/p'); if [ -n \"$sp\" ]; then echo \"CONN_WIRED $dev LINK $sp Mbps\"; else echo \"CONN_WIRED $dev\"; fi; else echo \"CONN_OTHER $dev\"; fi"
+  ]
+ },
+ {
+  "id": "ping-router",
+  "name": "Reach the router",
+  "description": "Sends four test messages to your router.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "g=$(route -n get default 2>/dev/null | awk '/gateway/{print $2}'); [ -z \"$g\" ] && { echo NO_ROUTER; exit 1; }; ping -c 4 \"$g\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Router",
+   "ok": "The router answers normally.",
+   "problem": "The router did not answer.",
+   "notes": [
+    {
+     "pattern": "NO_ROUTER",
+     "level": "problem",
+     "message": "This computer has not been given a router address. Restart the router, then try again."
+    },
+    {
+     "pattern": "100(\\.0)?% (packet )?loss",
+     "level": "problem",
+     "message": "The router did not answer."
+    },
+    {
+     "pattern": "\\b0(\\.0)?% (packet )?loss",
+     "level": "good",
+     "message": "The router answers normally."
+    },
+    {
+     "pattern": "% (packet )?loss",
+     "level": "attention",
+     "message": "Some replies from The router were lost, which points to a weak or unstable connection."
+    }
+   ]
+  }
+ },
+ {
+  "id": "ping-internet",
+  "name": "Reach the internet",
+  "description": "Sends four test messages to a well-known internet address.",
+  "exec": "ping",
+  "args": [
+   "-c",
+   "4",
+   "1.1.1.1"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Internet connection",
+   "ok": "The internet answers normally.",
+   "problem": "The internet did not answer. If the router test passed, the fault is with the router or the internet provider.",
+   "notes": [
+    {
+     "pattern": "100(\\.0)?% (packet )?loss",
+     "level": "problem",
+     "message": "The internet did not answer."
+    },
+    {
+     "pattern": "\\b0(\\.0)?% (packet )?loss",
+     "level": "good",
+     "message": "The internet answers normally."
+    },
+    {
+     "pattern": "% (packet )?loss",
+     "level": "attention",
+     "message": "Some replies from The internet were lost, which points to a weak or unstable connection."
+    }
+   ]
+  }
+ },
+ {
+  "id": "dns-test",
+  "name": "Website name lookup",
+  "description": "Checks that website names can be turned into addresses.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "dscacheutil -q host -a name example.com | grep -q ip_address && echo DNS_OK || { echo DNS_FAIL; exit 1; }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Website name lookup",
+   "ok": "Website names are being looked up correctly.",
+   "problem": "Website names cannot be looked up. Run Network fix, or change the DNS server."
+  }
+ },
+ {
+  "id": "speed-test",
+  "name": "Download speed test",
+  "description": "Downloads a 25 MB test file and times it.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "b=$(curl -s -m 120 -o /dev/null -w \"%{speed_download}\" \"https://speed.cloudflare.com/__down?bytes=25000000\") || { echo SPEED_FAIL; exit 1; }; echo \"$b\" | awk '{printf \"Download speed: %.1f Mbps\\n\", $1*8/1000000}'"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "timeoutMinutes": 4,
+  "friendly": {
+   "title": "Download speed",
+   "ok": "The speed test finished.",
+   "problem": "The speed test could not run.",
+   "notes": [
+    {
+     "pattern": "Download speed: ([\\d.,]+) Mbps",
+     "level": "info",
+     "message": "Download speed is about $1 Mbps."
+    }
+   ]
+  }
+ },
+ {
+  "id": "backup-check",
+  "name": "Check for a backup",
+  "description": "Looks for a Time Machine backup.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if tmutil destinationinfo 2>/dev/null | grep -q \"Name\"; then l=$(tmutil latestbackup 2>/dev/null | tail -1); echo \"BACKUP_FOUND: Time Machine${l:+, latest $(basename \"$l\")}\"; else echo NO_BACKUP; fi"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Backup",
+   "ok": "Backup settings were checked.",
+   "problem": "Backup settings could not be checked.",
+   "notes": [
+    {
+     "pattern": "BACKUP_FOUND: (.+)",
+     "level": "good",
+     "message": "A backup is set up: $1."
+    },
+    {
+     "pattern": "NO_BACKUP",
+     "level": "attention",
+     "message": "Time Machine is not set up, so a failed drive would lose your files. Connect an external drive and turn on Time Machine, or use Back up to a drive in Migrate. Other backup programs are not checked here."
+    }
+   ]
+  }
+ },
+ {
+  "id": "recent-crashes",
+  "name": "Recent crashes and errors",
+  "description": "Lists crash and panic reports from the last week.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "p=$(find /Library/Logs/DiagnosticReports -name \"*.panic\" -mtime -7 2>/dev/null | wc -l | tr -d \" \"); echo \"PANICS: $p\"; a=$(find ~/Library/Logs/DiagnosticReports /Library/Logs/DiagnosticReports \\( -name \"*.ips\" -o -name \"*.crash\" \\) -mtime -7 2>/dev/null | wc -l | tr -d \" \"); echo \"APP_CRASHES: $a\"; find ~/Library/Logs/DiagnosticReports \\( -name \"*.ips\" -o -name \"*.crash\" \\) -mtime -7 2>/dev/null | sed \"s|.*/||\" | sed \"s/[-_][0-9].*//\" | sort | uniq -c | sort -rn | head -5"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Crashes in the last week",
+   "ok": "No crashes in the last week.",
+   "problem": "The crash history could not be read.",
+   "notes": [
+    {
+     "pattern": "PANICS: ([1-9]\\d*)",
+     "level": "problem",
+     "message": "macOS restarted because of a serious error $1 times in the last week. A technician should read the reports."
+    },
+    {
+     "pattern": "APP_CRASHES: ([1-9]\\d*)",
+     "level": "attention",
+     "message": "Apps crashed $1 times in the last week. The technician log names them."
+    }
+   ]
+  }
+ }
+]

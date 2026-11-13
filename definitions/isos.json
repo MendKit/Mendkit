@@ -1,0 +1,250 @@
+[
+  {
+    "id": "win11",
+    "group": "System installers",
+    "name": "Windows 11",
+    "size": "about 6 GB",
+    "description": "Official installer image from Microsoft, for a clean install or an in-place repair install. Choose \"Download Windows 11 Disk Image (ISO)\" on the page.",
+    "url": "https://www.microsoft.com/software-download/windows11"
+  },
+  {
+    "id": "win10",
+    "group": "System installers",
+    "name": "Windows 10",
+    "size": "about 6 GB",
+    "description": "Official installer from Microsoft. On a Windows PC the page offers the Media Creation Tool, which builds the ISO or a USB stick.",
+    "url": "https://www.microsoft.com/software-download/windows10"
+  },
+  {
+    "id": "macos",
+    "group": "System installers",
+    "name": "macOS installers",
+    "size": "12 to 15 GB",
+    "description": "Apple's page with links to each macOS version in the App Store and instructions for making a bootable installer. Apple does not publish ISO files.",
+    "url": "https://support.apple.com/en-us/102662"
+  },
+  {
+    "id": "hirens",
+    "group": "Rescue and repair",
+    "name": "Hiren's BootCD PE",
+    "size": "about 3 GB",
+    "description": "A bootable Windows environment with a large set of free repair, recovery and diagnostic tools.",
+    "url": "https://www.hirensbootcd.org/download/"
+  },
+  {
+    "id": "systemrescue",
+    "group": "Rescue and repair",
+    "name": "SystemRescue",
+    "size": "about 1 GB",
+    "description": "A bootable Linux rescue system with TestDisk, ddrescue, GParted and file system repair tools.",
+    "url": "https://www.system-rescue.org/Download/"
+  },
+  {
+    "id": "medicat",
+    "group": "Rescue and repair",
+    "name": "MediCat USB",
+    "size": "about 25 GB",
+    "description": "A very large technician toolkit built on Ventoy: Windows PE environments, antivirus scanners, partition and imaging tools and diagnostics in one menu. Needs a 32 GB or larger stick.",
+    "url": "https://medicatusb.com/"
+  },
+  {
+    "id": "ubcd",
+    "group": "Rescue and repair",
+    "name": "Ultimate Boot CD",
+    "size": "about 850 MB",
+    "description": "A long-standing collection of drive maker diagnostics, memory tests and low-level utilities. Best for older, BIOS-based computers.",
+    "url": "https://www.ultimatebootcd.com/download.html"
+  },
+  {
+    "id": "eset-sysrescue",
+    "group": "Rescue and repair",
+    "name": "ESET SysRescue Live",
+    "size": "about 800 MB",
+    "description": "Scans and cleans a computer for malware from outside Windows, for infections that block normal scanners.",
+    "url": "https://www.eset.com/int/support/sysrescue/"
+  },
+  {
+    "id": "supergrub",
+    "group": "Rescue and repair",
+    "name": "Super Grub2 Disk",
+    "size": "under 50 MB",
+    "description": "Starts an installed system whose boot loader is broken, so it can be repaired from inside.",
+    "url": "https://www.supergrubdisk.org/super-grub2-disk/"
+  },
+  {
+    "id": "boot-repair",
+    "group": "Rescue and repair",
+    "name": "Boot-Repair-Disk",
+    "size": "about 1 GB",
+    "description": "A live disc with a one-click repair for computers that will not start after an update or a dual-boot install.",
+    "url": "https://sourceforge.net/projects/boot-repair-cd/"
+  },
+  {
+    "id": "finnix",
+    "group": "Rescue and repair",
+    "name": "Finnix",
+    "size": "about 500 MB",
+    "description": "A small text-only Linux rescue system for administrators. Starts fast on almost anything.",
+    "url": "https://www.finnix.org/"
+  },
+  {
+    "id": "netbootxyz",
+    "group": "Rescue and repair",
+    "name": "netboot.xyz",
+    "size": "under 10 MB",
+    "description": "A tiny boot image that downloads and starts installers and rescue systems over the internet from one menu. Needs a wired connection.",
+    "url": "https://netboot.xyz/downloads/"
+  },
+  {
+    "id": "gparted",
+    "group": "Partitions and imaging",
+    "name": "GParted Live",
+    "size": "about 550 MB",
+    "description": "Bootable partition editor for resizing, moving and creating partitions.",
+    "url": "https://gparted.org/download.php"
+  },
+  {
+    "id": "clonezilla",
+    "group": "Partitions and imaging",
+    "name": "Clonezilla Live",
+    "size": "about 450 MB",
+    "description": "Clones a drive to another drive or to an image file. Text menus, very reliable.",
+    "url": "https://clonezilla.org/downloads.php"
+  },
+  {
+    "id": "rescuezilla",
+    "group": "Partitions and imaging",
+    "name": "Rescuezilla",
+    "size": "about 1.5 GB",
+    "description": "Drive imaging and cloning with a simple point-and-click window. Works with Clonezilla images.",
+    "url": "https://rescuezilla.com/download"
+  },
+  {
+    "id": "shredos",
+    "group": "Partitions and imaging",
+    "name": "ShredOS",
+    "size": "under 300 MB",
+    "description": "Securely erases whole drives before resale or disposal, using nwipe. Everything on the chosen drives is destroyed.",
+    "url": "https://github.com/PartialVolume/shredos.x86_64"
+  },
+  {
+    "id": "memtest",
+    "group": "Hardware tests",
+    "name": "Memtest86+",
+    "size": "under 50 MB",
+    "description": "Tests the memory for faults. Leave it running for several passes, ideally overnight.",
+    "url": "https://www.memtest.org/"
+  },
+  {
+    "id": "memtest86",
+    "group": "Hardware tests",
+    "name": "MemTest86 (PassMark)",
+    "size": "under 50 MB",
+    "description": "A memory tester with a free edition, an alternative to Memtest86+ with more detailed reports. Supplied as a USB image.",
+    "url": "https://www.memtest86.com/download.htm"
+  },
+  {
+    "id": "seatools",
+    "group": "Hardware tests",
+    "name": "SeaTools Bootable",
+    "size": "under 100 MB",
+    "description": "Seagate's drive diagnostic, run from a USB stick. Tests drives from any maker.",
+    "url": "https://www.seagate.com/support/downloads/seatools/"
+  },
+  {
+    "id": "ubuntu",
+    "group": "Linux systems",
+    "name": "Ubuntu Desktop",
+    "size": "about 6 GB",
+    "description": "Runs as a live system from the stick to rescue files or test hardware, and installs as a replacement for an unsupported Windows.",
+    "url": "https://ubuntu.com/download/desktop"
+  },
+  {
+    "id": "mint",
+    "group": "Linux systems",
+    "name": "Linux Mint",
+    "size": "about 3 GB",
+    "description": "A Linux system with a familiar Windows-like desktop. A good fit for older computers that cannot run Windows 11.",
+    "url": "https://linuxmint.com/download.php"
+  },
+  {
+    "id": "fedora",
+    "group": "Linux systems",
+    "name": "Fedora Workstation",
+    "size": "about 2.5 GB",
+    "description": "An up-to-date Linux system with strong support for recent hardware.",
+    "url": "https://fedoraproject.org/workstation/download"
+  },
+  {
+    "id": "debian",
+    "group": "Linux systems",
+    "name": "Debian",
+    "size": "about 4 GB",
+    "description": "A very stable Linux system. Live images are available for testing hardware before installing.",
+    "url": "https://www.debian.org/distrib/"
+  },
+  {
+    "id": "zorin",
+    "group": "Linux systems",
+    "name": "Zorin OS",
+    "size": "about 3 GB",
+    "description": "A Linux system designed to feel familiar to Windows users, with a Lite edition for older computers.",
+    "url": "https://zorin.com/os/download/"
+  },
+  {
+    "id": "popos",
+    "group": "Linux systems",
+    "name": "Pop!_OS",
+    "size": "about 3 GB",
+    "description": "A polished Linux system with good graphics driver support, including an image with NVIDIA drivers built in.",
+    "url": "https://system76.com/pop/download/"
+  },
+  {
+    "id": "xubuntu",
+    "group": "Linux systems",
+    "name": "Xubuntu",
+    "size": "about 4 GB",
+    "description": "Ubuntu with a lighter desktop, for computers with 4 GB of memory or less.",
+    "url": "https://xubuntu.org/download/"
+  },
+  {
+    "id": "mxlinux",
+    "group": "Linux systems",
+    "name": "MX Linux",
+    "size": "about 2.5 GB",
+    "description": "A light, fast Linux system that runs well on old hardware and includes its own live-USB tools.",
+    "url": "https://mxlinux.org/download-links/"
+  },
+  {
+    "id": "chromeos-flex",
+    "group": "Linux systems",
+    "name": "ChromeOS Flex",
+    "size": "about 1.2 GB",
+    "description": "Google's system for turning an old PC or Mac into a Chromebook-style computer. Supplied as an installer image made with the Chromebook Recovery Utility, not an ISO.",
+    "url": "https://chromeos.google/products/chromeos-flex/"
+  },
+  {
+    "id": "ventoy",
+    "group": "Making the USB stick",
+    "name": "Ventoy",
+    "size": "about 20 MB",
+    "description": "Not an ISO. Install Ventoy on a USB stick once, then copy any of these ISO files onto it and choose one at startup. Also in the Tools screen.",
+    "url": "https://www.ventoy.net/en/download.html"
+  },
+  {
+    "id": "rufus",
+    "group": "Making the USB stick",
+    "name": "Rufus",
+    "size": "under 5 MB",
+    "description": "Not an ISO. Writes a single ISO to a USB stick, and can build a Windows 11 installer that skips the hardware checks. Also in the Tools screen.",
+    "url": "https://rufus.ie/"
+  },
+  {
+    "id": "etcher",
+    "group": "Making the USB stick",
+    "name": "balenaEtcher",
+    "size": "about 150 MB",
+    "description": "Not an ISO. Writes an image to a USB stick on Windows, macOS and Linux with three clicks.",
+    "url": "https://etcher.balena.io/"
+  }
+]

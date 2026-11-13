@@ -1,0 +1,1136 @@
+[
+ {
+  "id": "standard-service",
+  "name": "Standard service",
+  "description": "Health check, system file repair, disk check, malware scan and cleanup.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "restore-point",
+     "gate": true,
+     "overridable": true
+    },
+    {
+     "command": "drive-health",
+     "gate": true
+    },
+    {
+     "command": "dism-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "dism-scan",
+     "onFail": "continue"
+    },
+    {
+     "command": "dism-restore",
+     "onFail": "continue"
+    },
+    {
+     "command": "sfc",
+     "onFail": "continue"
+    },
+    {
+     "command": "chkdsk-scan",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-quick",
+     "onFail": "continue"
+    },
+    {
+     "command": "temp-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "app-updates-list",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "snapshot",
+     "onFail": "continue"
+    },
+    {
+     "command": "os-info",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "verify-volume",
+     "onFail": "continue"
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "restart-mdns",
+     "onFail": "continue"
+    },
+    {
+     "command": "thin-snapshots",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "os-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-outdated",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "snapshot",
+     "onFail": "continue"
+    },
+    {
+     "command": "os-info",
+     "onFail": "continue"
+    },
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-configure",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-fix-broken",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "zypper-verify",
+     "onFail": "continue"
+    },
+    {
+     "command": "flatpak-repair",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    },
+    {
+     "command": "journal-errors",
+     "onFail": "continue"
+    },
+    {
+     "command": "fstrim",
+     "onFail": "continue"
+    },
+    {
+     "command": "journal-vacuum",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-autoremove",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-autoremove",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-cache",
+     "onFail": "continue"
+    },
+    {
+     "command": "flatpak-unused",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "zypper-updates-list",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "network-fix",
+  "name": "Network fix",
+  "description": "Clears the DNS cache and resets the network stack.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "restore-point",
+     "gate": true,
+     "overridable": true
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "winsock-reset",
+     "onFail": "continue"
+    },
+    {
+     "command": "ip-reset",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "restart-mdns",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "restart-network",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "health-report",
+  "name": "Health report",
+  "description": "Read-only checks. Changes nothing on the computer.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "drive-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    },
+    {
+     "command": "battery-report",
+     "onFail": "continue"
+    },
+    {
+     "command": "app-updates-list",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "os-info",
+     "onFail": "continue"
+    },
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "battery",
+     "onFail": "continue"
+    },
+    {
+     "command": "os-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-outdated",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "os-info",
+     "onFail": "continue"
+    },
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    },
+    {
+     "command": "journal-errors",
+     "onFail": "continue"
+    },
+    {
+     "command": "battery",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "zypper-updates-list",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "printer-fix",
+  "name": "Printer fix",
+  "description": "Clears stuck print jobs and restarts the print service.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "printer-reset",
+     "onFail": "continue"
+    },
+    {
+     "command": "printer-list",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "printer-reset",
+     "onFail": "continue"
+    },
+    {
+     "command": "printer-list",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "printer-reset",
+     "onFail": "continue"
+    },
+    {
+     "command": "printer-list",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "sound-fix",
+  "name": "Sound fix",
+  "description": "Restarts the sound services and checks the speakers and microphone.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "sound-restart",
+     "onFail": "continue"
+    },
+    {
+     "command": "sound-devices",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "sound-restart",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "sound-restart",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "bluetooth-fix",
+  "name": "Bluetooth fix",
+  "description": "Restarts Bluetooth.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "bluetooth-restart",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "bluetooth-restart",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "bluetooth-restart",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "camera-fix",
+  "name": "Camera fix",
+  "description": "Checks the camera privacy switch and turns the camera back on.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "camera-check",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "wifi-fix",
+  "name": "Wi-Fi fix",
+  "description": "Restarts Wi-Fi and checks the connection.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "wifi-restart",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "wifi-restart",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "wifi-restart",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "network-check",
+  "name": "Network check",
+  "description": "Tests the connection step by step and measures download speed. Changes nothing.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "net-adapters",
+     "onFail": "continue"
+    },
+    {
+     "command": "active-connection",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    },
+    {
+     "command": "dns-test",
+     "onFail": "continue"
+    },
+    {
+     "command": "speed-test",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "net-adapters",
+     "onFail": "continue"
+    },
+    {
+     "command": "active-connection",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    },
+    {
+     "command": "dns-test",
+     "onFail": "continue"
+    },
+    {
+     "command": "speed-test",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "net-adapters",
+     "onFail": "continue"
+    },
+    {
+     "command": "active-connection",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    },
+    {
+     "command": "dns-test",
+     "onFail": "continue"
+    },
+    {
+     "command": "speed-test",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "no-internet",
+  "name": "No internet",
+  "description": "Finds where the connection stops, then clears the address cache.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "net-adapters",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    },
+    {
+     "command": "dns-test",
+     "onFail": "continue"
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "net-adapters",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    },
+    {
+     "command": "dns-test",
+     "onFail": "continue"
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "net-adapters",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-router",
+     "onFail": "continue"
+    },
+    {
+     "command": "ping-internet",
+     "onFail": "continue"
+    },
+    {
+     "command": "dns-test",
+     "onFail": "continue"
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "backup-checkup",
+  "name": "Backup checkup",
+  "description": "Checks whether this computer has a working backup. Changes nothing.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "drive-health",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "slow-computer",
+  "name": "Slow computer",
+  "description": "Checks the drive, startup programs and free space, scans for malware and cleans up.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "restore-point",
+     "gate": true,
+     "overridable": true
+    },
+    {
+     "command": "drive-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "startup-apps",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-quick",
+     "onFail": "continue"
+    },
+    {
+     "command": "temp-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "dism-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "app-updates-list",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    },
+    {
+     "command": "journal-vacuum",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-autoremove",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-autoremove",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-cache",
+     "onFail": "continue"
+    },
+    {
+     "command": "flatpak-unused",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "thin-snapshots",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "os-updates-list",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "popups",
+  "name": "Pop-ups or strange behaviour",
+  "description": "Updates the virus definitions, scans for malware and lists what starts with the computer.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "defender-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-quick",
+     "onFail": "continue"
+    },
+    {
+     "command": "startup-apps",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "wont-update",
+  "name": "Updates will not install",
+  "description": "Resets Windows Update and repairs the system files it depends on.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "restore-point",
+     "gate": true,
+     "overridable": true
+    },
+    {
+     "command": "windows-update-reset",
+     "onFail": "continue"
+    },
+    {
+     "command": "dism-restore",
+     "onFail": "continue"
+    },
+    {
+     "command": "sfc",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "apt-configure",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-fix-broken",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "zypper-verify",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "os-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-doctor",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "crashing",
+  "name": "Crashing or freezing",
+  "description": "Reads the crash history and checks the drive and system files.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "recent-crashes",
+     "onFail": "continue"
+    },
+    {
+     "command": "drive-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "dism-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "sfc",
+     "onFail": "continue"
+    },
+    {
+     "command": "chkdsk-scan",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "recent-crashes",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    },
+    {
+     "command": "journal-errors",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "recent-crashes",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "verify-volume",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "light-maintenance",
+  "name": "Light maintenance",
+  "description": "A quick monthly check: drive health, cleanup, a virus scan, and a look at updates and backup.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "drive-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "temp-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-quick",
+     "onFail": "continue"
+    },
+    {
+     "command": "app-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    },
+    {
+     "command": "flatpak-unused",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "zypper-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "os-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-outdated",
+     "onFail": "continue"
+    },
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "light-maintenance-updates",
+  "name": "Light maintenance with app updates",
+  "description": "The monthly check, and it also installs app updates.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "drive-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "temp-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-quick",
+     "onFail": "continue"
+    },
+    {
+     "command": "app-updates-install",
+     "onFail": "continue"
+    },
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    }
+   ],
+   "linux": [
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    },
+    {
+     "command": "flatpak-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "flatpak-unused",
+     "onFail": "continue"
+    },
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "smart-health",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-upgrade",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-cleanup",
+     "onFail": "continue"
+    },
+    {
+     "command": "os-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "backup-check",
+     "onFail": "continue"
+    }
+   ]
+  }
+ }
+]

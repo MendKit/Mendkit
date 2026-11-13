@@ -1,0 +1,992 @@
+[
+ {
+  "id": "restore-point",
+  "name": "Create restore point",
+  "description": "Turns on System Restore for C: and saves a restore point, so today's changes can be rolled back.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "Enable-ComputerRestore -Drive 'C:\\' -ErrorAction Stop; Checkpoint-Computer -Description 'MendKit before repair' -RestorePointType 'MODIFY_SETTINGS' -ErrorAction Stop; Write-Output 'Restore point saved (Windows keeps at most one per 24 hours).'"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Safety restore point",
+   "ok": "A restore point was saved, so today's changes can be undone.",
+   "problem": "A restore point could not be saved in time, so the repair did not go ahead. This often happens while a Windows update is waiting for a restart. Restart the computer and try again."
+  },
+  "timeoutMinutes": 5
+ },
+ {
+  "id": "drive-health",
+  "name": "Check drive health",
+  "description": "Reads each drive's health status. Repairs stop here if a drive is failing.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$d = Get-PhysicalDisk; $d | Format-Table FriendlyName, MediaType, HealthStatus, OperationalStatus -AutoSize | Out-String -Width 200; if ($d | Where-Object { $_.HealthStatus -ne 'Healthy' }) { Write-Output 'One or more drives report a problem. Back up or image the drive before running repairs.'; exit 2 } else { exit 0 }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "exitNotes": {
+   "2": "A drive reports a health problem"
+  },
+  "friendly": {
+   "title": "Drive health",
+   "ok": "Your drives report that they are healthy.",
+   "problem": "A drive is reporting a problem. Back up your important files as soon as you can."
+  }
+ },
+ {
+  "id": "dism-check",
+  "name": "DISM CheckHealth",
+  "description": "Quick check for damage already recorded in the Windows component store.",
+  "exec": "DISM.exe",
+  "args": [
+   "/Online",
+   "/Cleanup-Image",
+   "/CheckHealth"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Windows system files: quick check",
+   "ok": "No damage is recorded in the Windows system files.",
+   "problem": "The quick check could not finish.",
+   "notes": [
+    {
+     "pattern": "repairable",
+     "level": "attention",
+     "message": "Windows has some damaged system files. They can be repaired."
+    }
+   ]
+  }
+ },
+ {
+  "id": "dism-scan",
+  "name": "DISM ScanHealth",
+  "description": "Full scan of the Windows component store for damage.",
+  "exec": "DISM.exe",
+  "args": [
+   "/Online",
+   "/Cleanup-Image",
+   "/ScanHealth"
+  ],
+  "admin": true,
+  "heavy": true,
+  "typicalMinutes": 10,
+  "friendly": {
+   "title": "Windows system files: full scan",
+   "ok": "The full scan found no damage.",
+   "problem": "The full scan could not finish.",
+   "notes": [
+    {
+     "pattern": "repairable",
+     "level": "attention",
+     "message": "The full scan found damaged system files that can be repaired."
+    }
+   ]
+  }
+ },
+ {
+  "id": "dism-restore",
+  "name": "DISM RestoreHealth",
+  "description": "Repairs the Windows component store using Windows Update.",
+  "exec": "DISM.exe",
+  "args": [
+   "/Online",
+   "/Cleanup-Image",
+   "/RestoreHealth"
+  ],
+  "admin": true,
+  "heavy": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "Windows system files: repair",
+   "ok": "Windows system files were checked and repaired where needed.",
+   "problem": "Windows could not finish repairing its system files. A technician should take a look."
+  }
+ },
+ {
+  "id": "sfc",
+  "name": "System File Checker",
+  "description": "Checks Windows system files and replaces damaged ones.",
+  "exec": "sfc.exe",
+  "args": [
+   "/scannow"
+  ],
+  "admin": true,
+  "heavy": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "System file check",
+   "ok": "System files were checked.",
+   "problem": "The system file check could not finish.",
+   "notes": [
+    {
+     "pattern": "did not find any integrity violations",
+     "level": "good",
+     "message": "All Windows system files are intact."
+    },
+    {
+     "pattern": "successfully repaired",
+     "level": "good",
+     "message": "Some damaged system files were found and repaired."
+    },
+    {
+     "pattern": "unable to fix",
+     "level": "problem",
+     "message": "Some damaged system files could not be repaired. A technician should take a look."
+    }
+   ]
+  }
+ },
+ {
+  "id": "dism-cleanup",
+  "name": "Component store cleanup",
+  "description": "Removes superseded Windows update files to free space.",
+  "exec": "DISM.exe",
+  "args": [
+   "/Online",
+   "/Cleanup-Image",
+   "/StartComponentCleanup"
+  ],
+  "admin": true,
+  "heavy": true,
+  "typicalMinutes": 10,
+  "friendly": {
+   "title": "Old update files",
+   "ok": "Old Windows update files were cleared out.",
+   "problem": "Old update files could not be cleared."
+  }
+ },
+ {
+  "id": "chkdsk-scan",
+  "name": "Disk check (read-only)",
+  "description": "Scans the C: file system for errors without locking the drive.",
+  "exec": "chkdsk.exe",
+  "args": [
+   "C:",
+   "/scan"
+  ],
+  "admin": true,
+  "heavy": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Disk check",
+   "ok": "The disk was scanned and no file system problems were found.",
+   "problem": "The disk check found problems with the file system. A repair may be needed."
+  }
+ },
+ {
+  "id": "defender-update",
+  "name": "Update Defender definitions",
+  "description": "Downloads the latest Microsoft Defender virus definitions.",
+  "exec": "%ProgramFiles%\\Windows Defender\\MpCmdRun.exe",
+  "args": [
+   "-SignatureUpdate"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Virus definitions",
+   "ok": "Microsoft Defender has the latest virus definitions.",
+   "problem": "Virus definitions could not be updated. Check the internet connection."
+  }
+ },
+ {
+  "id": "defender-quick",
+  "name": "Defender quick scan",
+  "description": "Scans the places malware usually hides.",
+  "exec": "%ProgramFiles%\\Windows Defender\\MpCmdRun.exe",
+  "args": [
+   "-Scan",
+   "-ScanType",
+   "1"
+  ],
+  "admin": true,
+  "heavy": true,
+  "typicalMinutes": 5,
+  "exitNotes": {
+   "2": "Threats were found or the scan did not finish cleanly; check Windows Security"
+  },
+  "friendly": {
+   "title": "Virus scan",
+   "ok": "The quick virus scan found no threats.",
+   "problem": "The virus scan found something or could not finish. Open Windows Security to see the details."
+  }
+ },
+ {
+  "id": "temp-cleanup",
+  "name": "Clean temp folders",
+  "description": "Deletes temporary files from the user and Windows temp folders.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "Get-ChildItem -Path $env:TEMP, \"$env:SystemRoot\\Temp\" -Force -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue; Write-Output 'Temp folders cleaned.'; exit 0"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Temporary files",
+   "ok": "Temporary files were cleaned up.",
+   "problem": "Temporary files could not be cleaned up."
+  }
+ },
+ {
+  "id": "flush-dns",
+  "name": "Flush DNS cache",
+  "description": "Clears saved website address lookups.",
+  "exec": "ipconfig.exe",
+  "args": [
+   "/flushdns"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Website address cache",
+   "ok": "The saved website address cache was cleared.",
+   "problem": "The website address cache could not be cleared."
+  }
+ },
+ {
+  "id": "winsock-reset",
+  "name": "Reset Winsock",
+  "description": "Resets the Windows network socket catalog. Needs a restart afterwards.",
+  "exec": "netsh.exe",
+  "args": [
+   "winsock",
+   "reset"
+  ],
+  "admin": true,
+  "needsRestart": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network reset (sockets)",
+   "ok": "Network sockets were reset. Restart the computer to finish.",
+   "problem": "Network sockets could not be reset."
+  }
+ },
+ {
+  "id": "ip-reset",
+  "name": "Reset TCP/IP",
+  "description": "Resets TCP/IP settings to defaults. Needs a restart afterwards.",
+  "exec": "netsh.exe",
+  "args": [
+   "int",
+   "ip",
+   "reset"
+  ],
+  "admin": true,
+  "needsRestart": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network reset (TCP/IP)",
+   "ok": "Network settings were reset. Restart the computer to finish.",
+   "problem": "Network settings could not be fully reset."
+  }
+ },
+ {
+  "id": "app-updates-list",
+  "name": "List app updates",
+  "description": "Lists installed apps that have updates available. Installs nothing.",
+  "exec": "winget.exe",
+  "args": [
+   "upgrade",
+   "--accept-source-agreements",
+   "--disable-interactivity"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "App updates",
+   "ok": "Your apps were checked for updates.",
+   "problem": "App updates could not be checked.",
+   "notes": [
+    {
+     "pattern": "(\\d+) upgrades? available",
+     "level": "attention",
+     "message": "Updates are available for $1 apps."
+    },
+    {
+     "pattern": "No installed package found|No available upgrade",
+     "level": "good",
+     "message": "Your apps are up to date."
+    }
+   ]
+  }
+ },
+ {
+  "id": "app-updates-install",
+  "name": "Install all app updates",
+  "description": "Updates every app winget can update.",
+  "exec": "winget.exe",
+  "args": [
+   "upgrade",
+   "--all",
+   "--accept-source-agreements",
+   "--accept-package-agreements",
+   "--disable-interactivity"
+  ],
+  "admin": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "App updates",
+   "ok": "App updates were installed.",
+   "problem": "Some app updates could not be installed."
+  }
+ },
+ {
+  "id": "failed-services",
+  "name": "Stopped automatic services",
+  "description": "Lists services that should start with Windows but stopped with an error. Services that simply wait until they are needed are left out.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $s=@(Get-CimInstance Win32_Service | Where-Object { $_.StartMode -eq 'Auto' -and $_.State -ne 'Running' -and $_.ExitCode -notin 0,1077 }); $s | Format-Table Name, DisplayName, State, ExitCode -AutoSize | Out-String -Width 200; \"FAILED_SERVICES: $($s.Count)\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Background services",
+   "ok": "Background services were checked.",
+   "problem": "Background services could not be checked.",
+   "notes": [
+    {
+     "pattern": "FAILED_SERVICES: ([1-9]\\d*)",
+     "level": "attention",
+     "message": "$1 background services that should be running have stopped with an error. The full log names them."
+    },
+    {
+     "pattern": "FAILED_SERVICES: 0",
+     "level": "good",
+     "message": "All background services that should be running are running."
+    }
+   ]
+  }
+ },
+ {
+  "id": "battery-report",
+  "name": "Battery report",
+  "description": "Saves a battery wear report to the temp folder.",
+  "exec": "powercfg.exe",
+  "args": [
+   "/batteryreport",
+   "/output",
+   "%TEMP%\\mendkit-battery-report.html"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Battery",
+   "ok": "A battery report was saved.",
+   "problem": "This computer has no battery to report on, or the report could not be saved."
+  }
+ },
+ {
+  "id": "printer-reset",
+  "name": "Reset the print queue",
+  "description": "Stops the print service, clears stuck jobs and starts it again.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Stop-Service Spooler -Force; Remove-Item \"$env:SystemRoot\\System32\\spool\\PRINTERS\\*\" -Recurse -Force; Start-Service Spooler; Get-Printer | Format-Table Name, PrinterStatus, DriverName -AutoSize | Out-String -Width 200; if ((Get-Service Spooler).Status -ne 'Running') { exit 1 }"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Print queue",
+   "ok": "Stuck print jobs were cleared and the print service was restarted. Try printing again.",
+   "problem": "The print service could not be restarted."
+  }
+ },
+ {
+  "id": "printer-list",
+  "name": "List printers",
+  "description": "Shows installed printers and whether Windows can reach them.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Get-Printer | Format-Table Name, PrinterStatus, PortName, DriverName -AutoSize | Out-String -Width 200; $d=(Get-CimInstance Win32_Printer | Where-Object Default).Name; \"Default printer: $d\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Installed printers",
+   "ok": "Installed printers were listed.",
+   "problem": "Printers could not be listed.",
+   "notes": [
+    {
+     "pattern": "Offline|Error",
+     "level": "attention",
+     "message": "A printer shows as offline or in error. Check that it is switched on and on the same network, then try again."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sound-restart",
+  "name": "Restart the sound services",
+  "description": "Restarts the Windows audio services.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Restart-Service AudioEndpointBuilder -Force; Start-Service Audiosrv; Start-Sleep 2; Get-Service Audiosrv, AudioEndpointBuilder | Format-Table Name, Status -AutoSize | Out-String; if ((Get-Service Audiosrv).Status -ne 'Running') { exit 1 }"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Sound services",
+   "ok": "The sound services were restarted. Try playing something again.",
+   "problem": "The sound services could not be restarted."
+  }
+ },
+ {
+  "id": "sound-devices",
+  "name": "Check sound devices",
+  "description": "Lists speakers and microphones and re-enables any that are turned off.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $d=Get-PnpDevice -Class AudioEndpoint, MEDIA -PresentOnly; $d | Format-Table Status, Class, FriendlyName -AutoSize | Out-String -Width 200; $off=$d | Where-Object { $_.Status -ne 'OK' }; foreach ($x in $off) { Enable-PnpDevice -InstanceId $x.InstanceId -Confirm:$false; \"Re-enabled: $($x.FriendlyName)\" }; if (-not $d) { 'NO_SOUND_DEVICE' }"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Speakers and microphones",
+   "ok": "All sound devices are working.",
+   "problem": "Sound devices could not be checked.",
+   "notes": [
+    {
+     "pattern": "NO_SOUND_DEVICE",
+     "level": "problem",
+     "message": "Windows does not see any sound device. The sound driver may be missing."
+    },
+    {
+     "pattern": "Re-enabled:",
+     "level": "attention",
+     "message": "A sound device was turned off and has been turned back on."
+    }
+   ]
+  }
+ },
+ {
+  "id": "bluetooth-restart",
+  "name": "Restart Bluetooth",
+  "description": "Restarts the Bluetooth service and re-enables the Bluetooth radio.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Restart-Service bthserv -Force; $d=Get-PnpDevice -Class Bluetooth -PresentOnly; $d | Where-Object { $_.Status -ne 'OK' } | ForEach-Object { Enable-PnpDevice -InstanceId $_.InstanceId -Confirm:$false; \"Re-enabled: $($_.FriendlyName)\" }; $d | Format-Table Status, FriendlyName -AutoSize | Out-String -Width 200; if (-not $d) { 'NO_BLUETOOTH' }"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Bluetooth",
+   "ok": "Bluetooth was restarted. Try connecting the device again.",
+   "problem": "Bluetooth could not be restarted.",
+   "notes": [
+    {
+     "pattern": "NO_BLUETOOTH",
+     "level": "problem",
+     "message": "This computer has no Bluetooth radio that Windows can see."
+    }
+   ]
+  }
+ },
+ {
+  "id": "camera-check",
+  "name": "Check the camera",
+  "description": "Checks the camera privacy switch and re-enables a camera that is turned off.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $v=(Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\webcam').Value; \"Camera privacy setting: $v\"; $d=Get-PnpDevice -Class Camera, Image -PresentOnly; $d | Format-Table Status, FriendlyName -AutoSize | Out-String -Width 200; $d | Where-Object { $_.Status -ne 'OK' } | ForEach-Object { Enable-PnpDevice -InstanceId $_.InstanceId -Confirm:$false; \"Re-enabled: $($_.FriendlyName)\" }; if (-not $d) { 'NO_CAMERA' }"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Camera",
+   "ok": "The camera is present and allowed.",
+   "problem": "The camera could not be checked.",
+   "notes": [
+    {
+     "pattern": "NO_CAMERA",
+     "level": "problem",
+     "message": "Windows does not see a camera. Check for a privacy shutter or a camera key on the keyboard."
+    },
+    {
+     "pattern": "privacy setting: Deny",
+     "level": "attention",
+     "message": "Camera access is turned off in Windows privacy settings. Turn it on under Settings, Privacy and security, Camera."
+    },
+    {
+     "pattern": "Re-enabled:",
+     "level": "attention",
+     "message": "The camera was turned off and has been turned back on."
+    }
+   ]
+  }
+ },
+ {
+  "id": "wifi-restart",
+  "name": "Restart Wi-Fi",
+  "description": "Restarts the Wi-Fi service and asks the router for a fresh address.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; if (-not (Get-NetAdapter | Where-Object { $_.PhysicalMediaType -match '802\\.11|Wireless' })) { 'NO_WIFI_ADAPTER'; exit 0 }; Restart-Service WlanSvc -Force; Start-Sleep 5; ipconfig /renew | Out-Null; netsh wlan show interfaces"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Wi-Fi",
+   "ok": "Wi-Fi was restarted.",
+   "problem": "Wi-Fi could not be restarted.",
+   "notes": [
+    {
+     "pattern": "NO_WIFI_ADAPTER",
+     "level": "attention",
+     "message": "This computer has no Wi-Fi adapter, or it is switched off or disabled. If it uses a network cable, run \"Check my network\" instead."
+    },
+    {
+     "pattern": "State\\s*:\\s*disconnected",
+     "level": "attention",
+     "message": "Wi-Fi restarted but is not connected to a network. Choose your network from the Wi-Fi list."
+    }
+   ]
+  }
+ },
+ {
+  "id": "net-adapters",
+  "name": "Network adapters",
+  "description": "Lists network adapters and whether they are connected.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Get-NetAdapter -Physical | Format-Table Name, InterfaceDescription, Status, LinkSpeed -AutoSize | Out-String -Width 200; if (-not (Get-NetAdapter -Physical | Where-Object Status -eq 'Up')) { 'NO_LINK' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network connection",
+   "ok": "A network adapter is connected.",
+   "problem": "Network adapters could not be read.",
+   "notes": [
+    {
+     "pattern": "NO_LINK",
+     "level": "problem",
+     "message": "No network adapter is connected. Check the cable, or that Wi-Fi is switched on and joined to a network."
+    }
+   ]
+  }
+ },
+ {
+  "id": "active-connection",
+  "name": "Active connection",
+  "description": "Works out whether this computer is online by cable or Wi-Fi and checks that connection.",
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Active connection",
+   "ok": "The active connection was checked.",
+   "problem": "The active connection could not be read.",
+   "notes": [
+    {
+     "pattern": "CONN_NONE",
+     "level": "problem",
+     "message": "This computer has no working network connection. Plug in the network cable, or join a Wi-Fi network."
+    },
+    {
+     "pattern": "CONN_WIRED (.+?) LINK 10 Mbps",
+     "level": "attention",
+     "message": "Connected by network cable ($1), but only at 10 Mbps. That points to a damaged cable or port: try another cable."
+    },
+    {
+     "pattern": "CONN_WIRED (.+?) LINK ([\\d.]+ [GM]bps)",
+     "level": "good",
+     "message": "Connected by network cable ($1) at $2."
+    },
+    {
+     "pattern": "CONN_WIRED (\\S.*)",
+     "level": "good",
+     "message": "Connected by network cable ($1)."
+    },
+    {
+     "pattern": "Signal\\s*:\\s*([1-4]?\\d)%",
+     "level": "attention",
+     "message": "Connected by Wi-Fi, but the signal is weak ($1%). Move closer to the router or remove obstacles."
+    },
+    {
+     "pattern": "Signal\\s*:\\s*(\\d+)%",
+     "level": "good",
+     "message": "Connected by Wi-Fi with a signal of $1%."
+    },
+    {
+     "pattern": "CONN_WIFI",
+     "level": "good",
+     "message": "Connected by Wi-Fi."
+    },
+    {
+     "pattern": "CONN_OTHER (\\S.*)",
+     "level": "info",
+     "message": "Connected through $1, which is not a normal cable or Wi-Fi adapter (a VPN, phone tether or virtual adapter)."
+    }
+   ]
+  },
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $r=Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object { $_.RouteMetric + $_.InterfaceMetric } | Select-Object -First 1; if (-not $r) { 'CONN_NONE'; exit 0 }; $a=Get-NetAdapter -InterfaceIndex $r.ifIndex; if (-not $a) { 'CONN_OTHER ' + $r.InterfaceAlias; exit 0 }; if ($a.PhysicalMediaType -match '802\\.11|Wireless') { 'CONN_WIFI ' + $a.Name; netsh wlan show interfaces } elseif ($a.PhysicalMediaType -match '802\\.3') { 'CONN_WIRED ' + $a.Name + ' LINK ' + $a.LinkSpeed } else { 'CONN_OTHER ' + $a.Name + ' (' + $a.InterfaceDescription + ')' }"
+  ]
+ },
+ {
+  "id": "wifi-signal",
+  "name": "Wi-Fi signal",
+  "description": "Shows the Wi-Fi network, signal strength and channel.",
+  "exec": "netsh.exe",
+  "args": [
+   "wlan",
+   "show",
+   "interfaces"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Wi-Fi signal",
+   "ok": "Wi-Fi details were read.",
+   "problem": "This computer has no Wi-Fi, or it is turned off.",
+   "notes": [
+    {
+     "pattern": "Signal\\s*:\\s*([1-4]?\\d)%",
+     "level": "attention",
+     "message": "Wi-Fi signal is weak ($1%). Move closer to the router or remove obstacles."
+    },
+    {
+     "pattern": "Signal\\s*:\\s*(\\d+)%",
+     "level": "good",
+     "message": "Wi-Fi signal is $1%."
+    }
+   ]
+  }
+ },
+ {
+  "id": "ping-router",
+  "name": "Reach the router",
+  "description": "Sends four test messages to your router.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $g=(Get-NetRoute -DestinationPrefix '0.0.0.0/0' | Sort-Object RouteMetric | Select-Object -First 1).NextHop; if (-not $g) { 'NO_ROUTER'; exit 1 }; ping -n 4 $g"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Router",
+   "ok": "The router answers normally.",
+   "problem": "The router did not answer.",
+   "notes": [
+    {
+     "pattern": "NO_ROUTER",
+     "level": "problem",
+     "message": "This computer has not been given a router address. Restart the router, then try again."
+    },
+    {
+     "pattern": "100(\\.0)?% (packet )?loss",
+     "level": "problem",
+     "message": "The router did not answer."
+    },
+    {
+     "pattern": "\\b0(\\.0)?% (packet )?loss",
+     "level": "good",
+     "message": "The router answers normally."
+    },
+    {
+     "pattern": "% (packet )?loss",
+     "level": "attention",
+     "message": "Some replies from The router were lost, which points to a weak or unstable connection."
+    }
+   ]
+  }
+ },
+ {
+  "id": "ping-internet",
+  "name": "Reach the internet",
+  "description": "Sends four test messages to a well-known internet address.",
+  "exec": "ping.exe",
+  "args": [
+   "-n",
+   "4",
+   "1.1.1.1"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Internet connection",
+   "ok": "The internet answers normally.",
+   "problem": "The internet did not answer. If the router test passed, the fault is with the router or the internet provider.",
+   "notes": [
+    {
+     "pattern": "100(\\.0)?% (packet )?loss",
+     "level": "problem",
+     "message": "The internet did not answer."
+    },
+    {
+     "pattern": "\\b0(\\.0)?% (packet )?loss",
+     "level": "good",
+     "message": "The internet answers normally."
+    },
+    {
+     "pattern": "% (packet )?loss",
+     "level": "attention",
+     "message": "Some replies from The internet were lost, which points to a weak or unstable connection."
+    }
+   ]
+  }
+ },
+ {
+  "id": "dns-test",
+  "name": "Website name lookup",
+  "description": "Checks that website names can be turned into addresses.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $r=Resolve-DnsName example.com -Type A -DnsOnly; if ($r) { 'DNS_OK ' + ($r | Select-Object -First 1).IPAddress } else { 'DNS_FAIL'; exit 1 }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Website name lookup",
+   "ok": "Website names are being looked up correctly.",
+   "problem": "Website names cannot be looked up. Run Network fix, or change the DNS server."
+  }
+ },
+ {
+  "id": "speed-test",
+  "name": "Download speed test",
+  "description": "Downloads a 25 MB test file and times it.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $sw=[Diagnostics.Stopwatch]::StartNew(); try { $r=Invoke-WebRequest -UseBasicParsing -Uri 'https://speed.cloudflare.com/__down?bytes=25000000' -TimeoutSec 120 } catch { 'SPEED_FAIL'; exit 1 }; $s=$sw.Elapsed.TotalSeconds; 'Download speed: {0:N1} Mbps' -f (25000000*8/1000000/$s)"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "timeoutMinutes": 4,
+  "friendly": {
+   "title": "Download speed",
+   "ok": "The speed test finished.",
+   "problem": "The speed test could not run.",
+   "notes": [
+    {
+     "pattern": "Download speed: ([\\d.,]+) Mbps",
+     "level": "info",
+     "message": "Download speed is about $1 Mbps."
+    }
+   ]
+  }
+ },
+ {
+  "id": "backup-check",
+  "name": "Check for a backup",
+  "description": "Looks for File History and OneDrive folder backup.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $f=@(); $fh=Get-ItemProperty 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\FileHistory'; if ($fh -and $fh.ProtectedUpToTime) { $f+=('File History, last saved ' + [DateTime]::FromFileTime($fh.ProtectedUpToTime).ToString('yyyy-MM-dd')) }; Get-ChildItem 'HKCU:\\Software\\Microsoft\\OneDrive\\Accounts' | ForEach-Object { $p=Get-ItemProperty $_.PSPath; if ($p.KfmFoldersProtectedNow -gt 0) { $f+='OneDrive folder backup' } }; if ($f.Count) { 'BACKUP_FOUND: ' + (($f | Select-Object -Unique) -join ' and ') } else { 'NO_BACKUP' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Backup",
+   "ok": "Backup settings were checked.",
+   "problem": "Backup settings could not be checked.",
+   "notes": [
+    {
+     "pattern": "BACKUP_FOUND: (.+)",
+     "level": "good",
+     "message": "A backup is set up: $1."
+    },
+    {
+     "pattern": "NO_BACKUP",
+     "level": "attention",
+     "message": "No Windows backup is set up, so a failed drive would lose your files. Turn on OneDrive folder backup or File History, or use Back up to a drive in Migrate. Backup programs from other companies are not checked here."
+    }
+   ]
+  }
+ },
+ {
+  "id": "windows-update-reset",
+  "name": "Reset Windows Update",
+  "description": "Stops the update services, sets aside the download cache and starts them again.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Stop-Service wuauserv, bits, cryptsvc -Force; $s=\"$env:SystemRoot\\SoftwareDistribution\"; if (Test-Path $s) { Rename-Item $s (\"SoftwareDistribution.old-\" + (Get-Date -Format yyyyMMddHHmmss)) }; Start-Service cryptsvc, bits, wuauserv; Get-Service wuauserv, bits | Format-Table Name, Status -AutoSize | Out-String; if (Test-Path $s) { 'CACHE_STILL_THERE' }"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Windows Update reset",
+   "ok": "Windows Update was reset. Open Windows Update and check for updates again.",
+   "problem": "Windows Update could not be reset.",
+   "notes": [
+    {
+     "pattern": "CACHE_STILL_THERE",
+     "level": "attention",
+     "message": "The update services were restarted, but the old download cache could not be set aside because it was in use. Restart the computer and run this again."
+    }
+   ]
+  }
+ },
+ {
+  "id": "recent-crashes",
+  "name": "Recent crashes and errors",
+  "description": "Lists blue screens, unexpected shutdowns and serious errors from the last week.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $since=(Get-Date).AddDays(-7); $b=@(Get-WinEvent -FilterHashtable @{LogName='System'; Id=1001; ProviderName='Microsoft-Windows-WER-SystemErrorReporting'; StartTime=$since}); $k=@(Get-WinEvent -FilterHashtable @{LogName='System'; ProviderName='Microsoft-Windows-Kernel-Power'; Id=41; StartTime=$since}); $a=@(Get-WinEvent -FilterHashtable @{LogName='Application'; ProviderName='Application Error'; Id=1000; StartTime=$since}); \"BLUESCREENS: $($b.Count)\"; \"UNEXPECTED_SHUTDOWNS: $($k.Count)\"; \"APP_CRASHES: $($a.Count)\"; $b | Select-Object -First 5 | ForEach-Object { $_.TimeCreated.ToString('yyyy-MM-dd HH:mm') + '  ' + ($_.Message -split \"`n\")[0] }; $a | Group-Object { $_.Properties[0].Value } | Sort-Object Count -Descending | Select-Object -First 5 | ForEach-Object { 'Crashing app: ' + $_.Name + ' (' + $_.Count + ' times)' }; Get-WinEvent -FilterHashtable @{LogName='System'; Level=1,2; StartTime=$since} -MaxEvents 15 | Format-Table TimeCreated, ProviderName, Id -AutoSize | Out-String -Width 200"
+  ],
+  "admin": false,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Crashes in the last week",
+   "ok": "No blue screens or unexpected shutdowns in the last week.",
+   "problem": "The crash history could not be read.",
+   "notes": [
+    {
+     "pattern": "BLUESCREENS: ([1-9]\\d*)",
+     "level": "problem",
+     "message": "Windows blue-screened $1 times in the last week. A technician should read the log to find the driver or part responsible."
+    },
+    {
+     "pattern": "UNEXPECTED_SHUTDOWNS: ([1-9]\\d*)",
+     "level": "attention",
+     "message": "The computer lost power or froze and was switched off $1 times in the last week."
+    },
+    {
+     "pattern": "Crashing app: (.+?) \\(",
+     "level": "attention",
+     "message": "An app has been crashing: $1. Updating or reinstalling it usually fixes this."
+    }
+   ]
+  }
+ },
+ {
+  "id": "startup-apps",
+  "name": "Startup apps",
+  "description": "Lists programs that start with Windows.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $s=Get-CimInstance Win32_StartupCommand | Select-Object Name, Location; $s | Format-Table -AutoSize | Out-String -Width 200; \"STARTUP_COUNT: $(@($s).Count)\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Programs that start with Windows",
+   "ok": "Startup programs were listed.",
+   "problem": "Startup programs could not be listed.",
+   "notes": [
+    {
+     "pattern": "STARTUP_COUNT: (1[5-9]|[2-9]\\d|\\d{3,})",
+     "level": "attention",
+     "message": "$1 programs start with Windows, which slows startup. Turn off the ones you do not need in Task Manager, Startup apps."
+    },
+    {
+     "pattern": "STARTUP_COUNT: (\\d+)",
+     "level": "good",
+     "message": "$1 programs start with Windows, which is reasonable."
+    }
+   ]
+  }
+ },
+ {
+  "id": "driver-backup",
+  "name": "Back up installed drivers",
+  "description": "Copies every third-party driver to Public Documents, so they can be put back after a reinstall.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$d=Join-Path $env:PUBLIC 'Documents\\MendKit Driver Backup'; New-Item -ItemType Directory -Force -Path $d | Out-Null; pnputil.exe /export-driver * $d | Select-Object -Last 4; $n=@(Get-ChildItem $d -Directory).Count; \"DRIVERS_SAVED: $n in $d\"; if ($n -eq 0) { exit 1 }"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Driver backup",
+   "ok": "The drivers were backed up.",
+   "problem": "The drivers could not be backed up.",
+   "notes": [
+    {
+     "pattern": "DRIVERS_SAVED: (\\d+) in (.+)",
+     "level": "good",
+     "message": "$1 drivers were saved to the \"MendKit Driver Backup\" folder in Public Documents. After a reinstall, point Device Manager at that folder to restore them."
+    }
+   ]
+  }
+ }
+]

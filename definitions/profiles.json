@@ -1,0 +1,46 @@
+[
+  {
+    "id": "home-basics",
+    "name": "Home basics",
+    "description": "A browser, an office suite, a media player and an archive tool, with the Standard tweaks.",
+    "apps": [
+      "firefox",
+      "libreoffice",
+      "vlc",
+      "7zip"
+    ],
+    "tools": [],
+    "tweaks": [],
+    "tweakPreset": "standard"
+  },
+  {
+    "id": "technician-bench",
+    "name": "Technician bench",
+    "description": "The diagnostic tools a bench computer needs. No tweaks.",
+    "apps": [
+      "firefox",
+      "7zip"
+    ],
+    "tools": [
+      "crystaldiskinfo",
+      "hwinfo",
+      "lhm",
+      "windirstat",
+      "autoruns",
+      "procexp",
+      "smartmontools",
+      "testdisk",
+      "ventoy",
+      "rufus",
+      "bluescreenview",
+      "cpuz",
+      "htop",
+      "inxi",
+      "lm-sensors",
+      "ncdu",
+      "stats"
+    ],
+    "tweaks": [],
+    "tweakPreset": ""
+  }
+]

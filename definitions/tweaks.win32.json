@@ -1,0 +1,354 @@
+[
+ {
+  "id": "telemetry-minimum",
+  "group": "Privacy",
+  "admin": true,
+  "name": "Send only required diagnostic data",
+  "description": "Sets Windows diagnostic data to the lowest level your edition allows.",
+  "entries": [
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection",
+    "name": "AllowTelemetry",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "advertising-id",
+  "group": "Privacy",
+  "admin": false,
+  "name": "Turn off the advertising ID",
+  "description": "Stops apps using an ID to show you personalised ads.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo",
+    "name": "Enabled",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "tailored-experiences",
+  "group": "Privacy",
+  "admin": false,
+  "name": "Turn off tailored experiences",
+  "description": "Stops Windows using diagnostic data for tips and ads.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Privacy",
+    "name": "TailoredExperiencesWithDiagnosticDataEnabled",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "activity-history",
+  "group": "Privacy",
+  "admin": true,
+  "name": "Turn off activity history",
+  "description": "Stops Windows keeping and uploading a history of what you open.",
+  "entries": [
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "name": "PublishUserActivities",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": null
+   },
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\System",
+    "name": "EnableActivityFeed",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "bing-in-search",
+  "group": "Privacy",
+  "admin": true,
+  "needsSignOut": true,
+  "name": "Remove web results from Start search",
+  "description": "Start menu search shows only apps, files and settings.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Policies\\Microsoft\\Windows\\Explorer",
+    "name": "DisableSearchBoxSuggestions",
+    "type": "REG_DWORD",
+    "on": "1",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "copilot-off",
+  "group": "Privacy",
+  "admin": true,
+  "needsSignOut": true,
+  "name": "Turn off Windows Copilot",
+  "description": "Turns off the older Windows Copilot side panel and its taskbar button. Microsoft has retired this setting: it does not remove the newer Copilot app, which you uninstall from Settings, Apps, Installed apps.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Policies\\Microsoft\\Windows\\WindowsCopilot",
+    "name": "TurnOffWindowsCopilot",
+    "type": "REG_DWORD",
+    "on": "1",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "recall-off",
+  "group": "Privacy",
+  "admin": true,
+  "name": "Turn off Recall snapshots",
+  "description": "Stops Windows saving snapshots of the screen for Recall.",
+  "entries": [
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsAI",
+    "name": "DisableAIDataAnalysis",
+    "type": "REG_DWORD",
+    "on": "1",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "consumer-features",
+  "group": "Privacy",
+  "admin": true,
+  "name": "Stop suggested apps being installed",
+  "description": "Stops Windows adding promoted apps and suggestions to Start.",
+  "entries": [
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent",
+    "name": "DisableWindowsConsumerFeatures",
+    "type": "REG_DWORD",
+    "on": "1",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "file-extensions",
+  "group": "Interface",
+  "admin": false,
+  "needsSignOut": true,
+  "name": "Show file extensions",
+  "description": "Shows endings like .pdf and .exe on file names.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "HideFileExt",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "taskbar-left",
+  "group": "Interface",
+  "admin": false,
+  "name": "Put the Start button on the left",
+  "description": "Aligns the taskbar to the left like older Windows versions.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "TaskbarAl",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "hide-task-view",
+  "group": "Interface",
+  "admin": false,
+  "name": "Hide the Task View button",
+  "description": "Removes the Task View button from the taskbar.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "ShowTaskViewButton",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "hide-widgets",
+  "group": "Interface",
+  "admin": true,
+  "needsSignOut": true,
+  "name": "Turn off Widgets",
+  "description": "Removes the weather and news panel from the taskbar.",
+  "entries": [
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Dsh",
+    "name": "AllowNewsAndInterests",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "classic-context-menu",
+  "group": "Interface",
+  "admin": false,
+  "needsSignOut": true,
+  "name": "Use the classic right-click menu",
+  "description": "Right-click shows the full menu without \"Show more options\".",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\\InprocServer32",
+    "name": "",
+    "type": "REG_SZ",
+    "on": "",
+    "off": null,
+    "deleteKeyOnOff": "HKCU\\Software\\Classes\\CLSID\\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"
+   }
+  ]
+ },
+ {
+  "id": "dark-mode",
+  "group": "Interface",
+  "admin": false,
+  "name": "Use dark mode",
+  "description": "Dark colours for Windows and apps.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    "name": "AppsUseLightTheme",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   },
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+    "name": "SystemUsesLightTheme",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "search-highlights",
+  "group": "Interface",
+  "admin": false,
+  "name": "Turn off search highlights",
+  "description": "Removes the daily pictures and trivia from the search box.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\SearchSettings",
+    "name": "IsDynamicSearchBoxEnabled",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "startup-delay",
+  "group": "Performance",
+  "admin": false,
+  "needsSignOut": true,
+  "name": "Remove the startup app delay",
+  "description": "Starts your startup apps straight after sign-in.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Serialize",
+    "name": "StartupDelayInMSec",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "taskbar-animations",
+  "group": "Performance",
+  "admin": false,
+  "name": "Turn off taskbar animations",
+  "description": "Makes the taskbar feel snappier on slower computers.",
+  "entries": [
+   {
+    "path": "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced",
+    "name": "TaskbarAnimations",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ]
+ },
+ {
+  "id": "background-apps",
+  "group": "Performance",
+  "admin": true,
+  "name": "Stop Store apps running in the background",
+  "description": "Saves memory and battery. Notifications from those apps may arrive late.",
+  "entries": [
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AppPrivacy",
+    "name": "LetAppsRunInBackground",
+    "type": "REG_DWORD",
+    "on": "2",
+    "off": null
+   }
+  ]
+ },
+ {
+  "id": "hibernation-off",
+  "group": "Performance",
+  "admin": true,
+  "name": "Turn off hibernation",
+  "description": "Frees several GB of disk space. Also turns off Fast Startup.",
+  "detectOnly": true,
+  "entries": [
+   {
+    "path": "HKLM\\SYSTEM\\CurrentControlSet\\Control\\Power",
+    "name": "HibernateEnabled",
+    "type": "REG_DWORD",
+    "on": "0",
+    "off": "1"
+   }
+  ],
+  "applyCmd": [
+   "powercfg.exe",
+   "/hibernate",
+   "off"
+  ],
+  "revertCmd": [
+   "powercfg.exe",
+   "/hibernate",
+   "on"
+  ]
+ },
+ {
+  "id": "no-auto-restart",
+  "group": "Updates",
+  "admin": true,
+  "name": "No automatic restart while signed in",
+  "description": "Windows Update will not restart the computer while someone is using it.",
+  "entries": [
+   {
+    "path": "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU",
+    "name": "NoAutoRebootWithLoggedOnUsers",
+    "type": "REG_DWORD",
+    "on": "1",
+    "off": null
+   }
+  ]
+ }
+]

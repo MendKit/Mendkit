@@ -1,0 +1,303 @@
+[
+  {
+    "id": "firefox",
+    "name": "Firefox",
+    "winget": "Mozilla.Firefox",
+    "brew": "cask:firefox",
+    "macApp": "Firefox.app",
+    "apt": "firefox",
+    "dnf": "firefox",
+    "pacman": "firefox",
+    "zypper": "MozillaFirefox",
+    "flatpak": "org.mozilla.firefox"
+  },
+  {
+    "id": "thunderbird",
+    "name": "Thunderbird",
+    "winget": "Mozilla.Thunderbird",
+    "brew": "cask:thunderbird",
+    "macApp": "Thunderbird.app",
+    "apt": "thunderbird",
+    "dnf": "thunderbird",
+    "pacman": "thunderbird",
+    "zypper": "MozillaThunderbird",
+    "flatpak": "org.mozilla.Thunderbird"
+  },
+  {
+    "id": "chrome",
+    "name": "Google Chrome",
+    "winget": "Google.Chrome",
+    "brew": "cask:google-chrome",
+    "macApp": "Google Chrome.app",
+    "flatpak": "com.google.Chrome"
+  },
+  {
+    "id": "brave",
+    "name": "Brave",
+    "winget": "Brave.Brave",
+    "brew": "cask:brave-browser",
+    "macApp": "Brave Browser.app",
+    "flatpak": "com.brave.Browser"
+  },
+  {
+    "id": "vscode",
+    "name": "Visual Studio Code",
+    "winget": "Microsoft.VisualStudioCode",
+    "brew": "cask:visual-studio-code",
+    "macApp": "Visual Studio Code.app",
+    "flatpak": "com.visualstudio.code"
+  },
+  {
+    "id": "libreoffice",
+    "name": "LibreOffice",
+    "winget": "TheDocumentFoundation.LibreOffice",
+    "brew": "cask:libreoffice",
+    "macApp": "LibreOffice.app",
+    "apt": "libreoffice",
+    "dnf": "libreoffice",
+    "pacman": "libreoffice-fresh",
+    "zypper": "libreoffice",
+    "flatpak": "org.libreoffice.LibreOffice"
+  },
+  {
+    "id": "vlc",
+    "name": "VLC",
+    "winget": "VideoLAN.VLC",
+    "brew": "cask:vlc",
+    "macApp": "VLC.app",
+    "apt": "vlc",
+    "dnf": "vlc",
+    "pacman": "vlc",
+    "zypper": "vlc",
+    "flatpak": "org.videolan.VLC"
+  },
+  {
+    "id": "gimp",
+    "name": "GIMP",
+    "winget": "GIMP.GIMP",
+    "brew": "cask:gimp",
+    "macApp": "GIMP.app",
+    "apt": "gimp",
+    "dnf": "gimp",
+    "pacman": "gimp",
+    "zypper": "gimp",
+    "flatpak": "org.gimp.GIMP"
+  },
+  {
+    "id": "inkscape",
+    "name": "Inkscape",
+    "winget": "Inkscape.Inkscape",
+    "brew": "cask:inkscape",
+    "macApp": "Inkscape.app",
+    "apt": "inkscape",
+    "dnf": "inkscape",
+    "pacman": "inkscape",
+    "zypper": "inkscape",
+    "flatpak": "org.inkscape.Inkscape"
+  },
+  {
+    "id": "audacity",
+    "name": "Audacity",
+    "winget": "Audacity.Audacity",
+    "brew": "cask:audacity",
+    "macApp": "Audacity.app",
+    "apt": "audacity",
+    "dnf": "audacity",
+    "pacman": "audacity",
+    "zypper": "audacity",
+    "flatpak": "org.audacityteam.Audacity"
+  },
+  {
+    "id": "obs",
+    "name": "OBS Studio",
+    "winget": "OBSProject.OBSStudio",
+    "brew": "cask:obs",
+    "macApp": "OBS.app",
+    "apt": "obs-studio",
+    "dnf": "obs-studio",
+    "pacman": "obs-studio",
+    "zypper": "obs-studio",
+    "flatpak": "com.obsproject.Studio"
+  },
+  {
+    "id": "blender",
+    "name": "Blender",
+    "winget": "BlenderFoundation.Blender",
+    "brew": "cask:blender",
+    "macApp": "Blender.app",
+    "apt": "blender",
+    "dnf": "blender",
+    "pacman": "blender",
+    "zypper": "blender",
+    "flatpak": "org.blender.Blender"
+  },
+  {
+    "id": "krita",
+    "name": "Krita",
+    "winget": "KDE.Krita",
+    "brew": "cask:krita",
+    "macApp": "krita.app",
+    "apt": "krita",
+    "dnf": "krita",
+    "pacman": "krita",
+    "zypper": "krita",
+    "flatpak": "org.kde.krita"
+  },
+  {
+    "id": "handbrake",
+    "name": "HandBrake",
+    "winget": "HandBrake.HandBrake",
+    "brew": "cask:handbrake",
+    "macApp": "HandBrake.app",
+    "apt": "handbrake",
+    "pacman": "handbrake",
+    "flatpak": "fr.handbrake.ghb"
+  },
+  {
+    "id": "telegram",
+    "name": "Telegram",
+    "winget": "Telegram.TelegramDesktop",
+    "brew": "cask:telegram",
+    "macApp": "Telegram.app",
+    "apt": "telegram-desktop",
+    "pacman": "telegram-desktop",
+    "flatpak": "org.telegram.desktop"
+  },
+  {
+    "id": "signal",
+    "name": "Signal",
+    "winget": "OpenWhisperSystems.Signal",
+    "brew": "cask:signal",
+    "macApp": "Signal.app",
+    "flatpak": "org.signal.Signal"
+  },
+  {
+    "id": "slack",
+    "name": "Slack",
+    "winget": "SlackTechnologies.Slack",
+    "brew": "cask:slack",
+    "macApp": "Slack.app",
+    "flatpak": "com.slack.Slack"
+  },
+  {
+    "id": "discord",
+    "name": "Discord",
+    "winget": "Discord.Discord",
+    "brew": "cask:discord",
+    "macApp": "Discord.app",
+    "flatpak": "com.discordapp.Discord"
+  },
+  {
+    "id": "zoom",
+    "name": "Zoom",
+    "winget": "Zoom.Zoom",
+    "brew": "cask:zoom",
+    "macApp": "zoom.us.app",
+    "flatpak": "us.zoom.Zoom"
+  },
+  {
+    "id": "teams",
+    "name": "Microsoft Teams",
+    "winget": "Microsoft.Teams",
+    "brew": "cask:microsoft-teams",
+    "macApp": "Microsoft Teams.app"
+  },
+  {
+    "id": "spotify",
+    "name": "Spotify",
+    "winget": "Spotify.Spotify",
+    "brew": "cask:spotify",
+    "macApp": "Spotify.app",
+    "flatpak": "com.spotify.Client"
+  },
+  {
+    "id": "qbittorrent",
+    "name": "qBittorrent",
+    "winget": "qBittorrent.qBittorrent",
+    "brew": "cask:qbittorrent",
+    "macApp": "qBittorrent.app",
+    "apt": "qbittorrent",
+    "dnf": "qbittorrent",
+    "pacman": "qbittorrent",
+    "zypper": "qbittorrent",
+    "flatpak": "org.qbittorrent.qBittorrent"
+  },
+  {
+    "id": "keepassxc",
+    "name": "KeePassXC",
+    "winget": "KeePassXCTeam.KeePassXC",
+    "brew": "cask:keepassxc",
+    "macApp": "KeePassXC.app",
+    "apt": "keepassxc",
+    "dnf": "keepassxc",
+    "pacman": "keepassxc",
+    "zypper": "keepassxc",
+    "flatpak": "org.keepassxc.KeePassXC"
+  },
+  {
+    "id": "bitwarden",
+    "name": "Bitwarden",
+    "winget": "Bitwarden.Bitwarden",
+    "brew": "cask:bitwarden",
+    "macApp": "Bitwarden.app",
+    "flatpak": "com.bitwarden.desktop"
+  },
+  {
+    "id": "steam",
+    "name": "Steam",
+    "winget": "Valve.Steam",
+    "brew": "cask:steam",
+    "macApp": "Steam.app",
+    "flatpak": "com.valvesoftware.Steam"
+  },
+  {
+    "id": "filezilla",
+    "name": "FileZilla",
+    "apt": "filezilla",
+    "dnf": "filezilla",
+    "pacman": "filezilla",
+    "zypper": "filezilla",
+    "flatpak": "org.filezillaproject.Filezilla"
+  },
+  {
+    "id": "obsidian",
+    "name": "Obsidian",
+    "winget": "Obsidian.Obsidian",
+    "brew": "cask:obsidian",
+    "macApp": "Obsidian.app",
+    "flatpak": "md.obsidian.Obsidian"
+  },
+  {
+    "id": "prusaslicer",
+    "name": "PrusaSlicer",
+    "winget": "Prusa3D.PrusaSlicer",
+    "brew": "cask:prusaslicer",
+    "macApp": "PrusaSlicer.app",
+    "flatpak": "com.prusa3d.PrusaSlicer"
+  },
+  {
+    "id": "rustdesk",
+    "name": "RustDesk",
+    "brew": "cask:rustdesk",
+    "macApp": "RustDesk.app"
+  },
+  {
+    "id": "git",
+    "name": "Git",
+    "winget": "Git.Git",
+    "brew": "git",
+    "apt": "git",
+    "dnf": "git",
+    "pacman": "git",
+    "zypper": "git"
+  },
+  {
+    "id": "7zip",
+    "name": "7-Zip",
+    "winget": "7zip.7zip",
+    "brew": "sevenzip",
+    "apt": "p7zip-full",
+    "dnf": "p7zip",
+    "pacman": "p7zip"
+  }
+]

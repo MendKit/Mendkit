@@ -1,0 +1,1157 @@
+[
+ {
+  "id": "snapshot",
+  "name": "Timeshift snapshot",
+  "description": "Saves a system snapshot so changes can be rolled back.",
+  "exec": "timeshift",
+  "args": [
+   "--create",
+   "--comments",
+   "MendKit before repair",
+   "--scripted"
+  ],
+  "admin": true,
+  "requires": "timeshift",
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Safety snapshot",
+   "ok": "A system snapshot was saved, so today's changes can be undone.",
+   "problem": "A snapshot could not be saved. Timeshift may not be set up yet."
+  }
+ },
+ {
+  "id": "os-info",
+  "name": "System version",
+  "description": "Shows the distribution and kernel version.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "cat /etc/os-release 2>/dev/null | head -4; uname -r"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "System version",
+   "ok": "System information was collected.",
+   "problem": "System information could not be read."
+  }
+ },
+ {
+  "id": "disk-usage",
+  "name": "Disk usage",
+  "description": "Shows free and used space per file system.",
+  "exec": "df",
+  "args": [
+   "-h",
+   "-x",
+   "tmpfs",
+   "-x",
+   "devtmpfs"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Storage space",
+   "ok": "Storage space was checked.",
+   "problem": "Storage space could not be checked.",
+   "notes": [
+    {
+     "pattern": "\\s(9[5-9]|100)%\\s",
+     "level": "attention",
+     "message": "A drive is almost full. Free up some space."
+    }
+   ]
+  }
+ },
+ {
+  "id": "smart-health",
+  "name": "Drive health (SMART)",
+  "description": "Asks each drive for its own health verdict.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "for d in $(smartctl --scan | cut -d\" \" -f1); do echo \"== $d\"; smartctl -H \"$d\" | tail -n +5; done"
+  ],
+  "admin": true,
+  "requires": "smartctl",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Drive health",
+   "ok": "Your drives report that they are healthy.",
+   "problem": "Drive health could not be read.",
+   "notes": [
+    {
+     "pattern": "FAILED|FAILING_NOW",
+     "level": "problem",
+     "message": "A drive is reporting a problem. Back up your important files as soon as you can."
+    }
+   ]
+  }
+ },
+ {
+  "id": "failed-services",
+  "name": "Failed services",
+  "description": "Lists systemd services that failed to start.",
+  "exec": "systemctl",
+  "args": [
+   "--failed",
+   "--no-pager"
+  ],
+  "admin": false,
+  "requires": "systemctl",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Background services",
+   "ok": "Background services were checked.",
+   "problem": "Some background services failed to start.",
+   "notes": [
+    {
+     "pattern": "0 loaded units listed",
+     "level": "good",
+     "message": "No background services have failed."
+    },
+    {
+     "pattern": "[1-9]\\d* loaded units listed",
+     "level": "attention",
+     "message": "Some background services failed to start. The technician log lists them."
+    }
+   ]
+  }
+ },
+ {
+  "id": "journal-errors",
+  "name": "Errors since boot",
+  "description": "Shows the last 50 error messages from this boot.",
+  "exec": "journalctl",
+  "args": [
+   "-p",
+   "err",
+   "-b",
+   "--no-pager",
+   "-n",
+   "50"
+  ],
+  "admin": false,
+  "requires": "journalctl",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Recent errors",
+   "ok": "Recent system errors were collected for the technician log.",
+   "problem": "The system log could not be read."
+  }
+ },
+ {
+  "id": "apt-configure",
+  "name": "Finish interrupted installs (dpkg)",
+  "description": "Completes any package installs that were cut off.",
+  "exec": "dpkg",
+  "args": [
+   "--configure",
+   "-a"
+  ],
+  "admin": true,
+  "requires": "apt-get",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Interrupted installs",
+   "ok": "No interrupted package installs were left behind.",
+   "problem": "Some interrupted installs could not be finished."
+  }
+ },
+ {
+  "id": "apt-fix-broken",
+  "name": "Fix broken packages (apt)",
+  "description": "Repairs packages with missing or broken dependencies.",
+  "exec": "env",
+  "args": [
+   "DEBIAN_FRONTEND=noninteractive",
+   "apt-get",
+   "-y",
+   "--fix-broken",
+   "install"
+  ],
+  "admin": true,
+  "requires": "apt-get",
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Broken packages",
+   "ok": "Package dependencies are in good order.",
+   "problem": "Some broken packages could not be repaired."
+  }
+ },
+ {
+  "id": "apt-update",
+  "name": "Refresh package lists (apt)",
+  "description": "Downloads the latest list of available packages.",
+  "exec": "env",
+  "args": [
+   "DEBIAN_FRONTEND=noninteractive",
+   "apt-get",
+   "update"
+  ],
+  "admin": true,
+  "requires": "apt-get",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Package lists",
+   "ok": "Package lists are up to date.",
+   "problem": "Package lists could not be refreshed. Check the internet connection."
+  }
+ },
+ {
+  "id": "apt-updates-list",
+  "name": "List updates (apt)",
+  "description": "Lists packages with updates. Installs nothing.",
+  "exec": "apt",
+  "args": [
+   "list",
+   "--upgradable"
+  ],
+  "admin": false,
+  "requires": "apt-get",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "System updates",
+   "ok": "The system is up to date.",
+   "problem": "Updates could not be checked.",
+   "notes": [
+    {
+     "pattern": "upgradable from",
+     "level": "attention",
+     "message": "System updates are available."
+    }
+   ]
+  }
+ },
+ {
+  "id": "apt-upgrade",
+  "name": "Install all updates (apt)",
+  "description": "Installs every available update.",
+  "exec": "env",
+  "args": [
+   "DEBIAN_FRONTEND=noninteractive",
+   "apt-get",
+   "-y",
+   "full-upgrade"
+  ],
+  "admin": true,
+  "requires": "apt-get",
+  "heavy": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "System updates",
+   "ok": "All updates were installed.",
+   "problem": "Some updates could not be installed."
+  }
+ },
+ {
+  "id": "apt-autoremove",
+  "name": "Remove unused packages (apt)",
+  "description": "Removes packages nothing needs any more, and old kernels.",
+  "exec": "env",
+  "args": [
+   "DEBIAN_FRONTEND=noninteractive",
+   "apt-get",
+   "-y",
+   "autoremove"
+  ],
+  "admin": true,
+  "requires": "apt-get",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Unused packages",
+   "ok": "Unused packages were removed.",
+   "problem": "Unused packages could not be removed."
+  }
+ },
+ {
+  "id": "apt-clean",
+  "name": "Clear package cache (apt)",
+  "description": "Deletes downloaded package files.",
+  "exec": "env",
+  "args": [
+   "DEBIAN_FRONTEND=noninteractive",
+   "apt-get",
+   "clean"
+  ],
+  "admin": true,
+  "requires": "apt-get",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Package cache",
+   "ok": "The package download cache was cleared.",
+   "problem": "The package cache could not be cleared."
+  }
+ },
+ {
+  "id": "dnf-check",
+  "name": "Check packages (dnf)",
+  "description": "Looks for problems in the package database.",
+  "exec": "dnf",
+  "args": [
+   "check"
+  ],
+  "admin": true,
+  "requires": "dnf",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Package database",
+   "ok": "The package database is in good order.",
+   "problem": "The package database has problems. The technician log lists them."
+  }
+ },
+ {
+  "id": "dnf-updates-list",
+  "name": "List updates (dnf)",
+  "description": "Lists packages with updates. Installs nothing.",
+  "exec": "dnf",
+  "args": [
+   "check-update",
+   "--quiet"
+  ],
+  "admin": false,
+  "requires": "dnf",
+  "typicalMinutes": 2,
+  "okExitCodes": [
+   0,
+   100
+  ],
+  "friendly": {
+   "title": "System updates",
+   "ok": "System updates were checked.",
+   "problem": "Updates could not be checked."
+  }
+ },
+ {
+  "id": "dnf-upgrade",
+  "name": "Install all updates (dnf)",
+  "description": "Installs every available update.",
+  "exec": "dnf",
+  "args": [
+   "-y",
+   "upgrade"
+  ],
+  "admin": true,
+  "requires": "dnf",
+  "heavy": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "System updates",
+   "ok": "All updates were installed.",
+   "problem": "Some updates could not be installed."
+  }
+ },
+ {
+  "id": "dnf-autoremove",
+  "name": "Remove unused packages (dnf)",
+  "description": "Removes packages nothing needs any more.",
+  "exec": "dnf",
+  "args": [
+   "-y",
+   "autoremove"
+  ],
+  "admin": true,
+  "requires": "dnf",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Unused packages",
+   "ok": "Unused packages were removed.",
+   "problem": "Unused packages could not be removed."
+  }
+ },
+ {
+  "id": "dnf-clean",
+  "name": "Clear package cache (dnf)",
+  "description": "Deletes downloaded package data.",
+  "exec": "dnf",
+  "args": [
+   "clean",
+   "all"
+  ],
+  "admin": true,
+  "requires": "dnf",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Package cache",
+   "ok": "The package download cache was cleared.",
+   "problem": "The package cache could not be cleared."
+  }
+ },
+ {
+  "id": "pacman-check",
+  "name": "Check packages (pacman)",
+  "description": "Checks the package database for missing dependencies.",
+  "exec": "pacman",
+  "args": [
+   "-Dk"
+  ],
+  "admin": false,
+  "requires": "pacman",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Package database",
+   "ok": "The package database is in good order.",
+   "problem": "The package database has problems. The technician log lists them."
+  }
+ },
+ {
+  "id": "pacman-updates-list",
+  "name": "List updates (pacman)",
+  "description": "Lists packages with updates. Installs nothing.",
+  "exec": "checkupdates",
+  "args": [],
+  "admin": false,
+  "requires": "checkupdates",
+  "typicalMinutes": 2,
+  "okExitCodes": [
+   0,
+   2
+  ],
+  "friendly": {
+   "title": "System updates",
+   "ok": "System updates were checked.",
+   "problem": "Updates could not be checked."
+  }
+ },
+ {
+  "id": "pacman-upgrade",
+  "name": "Install all updates (pacman)",
+  "description": "Installs every available update.",
+  "exec": "pacman",
+  "args": [
+   "-Syu",
+   "--noconfirm"
+  ],
+  "admin": true,
+  "requires": "pacman",
+  "heavy": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "System updates",
+   "ok": "All updates were installed.",
+   "problem": "Some updates could not be installed."
+  }
+ },
+ {
+  "id": "pacman-cache",
+  "name": "Trim package cache (pacman)",
+  "description": "Keeps the three newest versions of each cached package.",
+  "exec": "paccache",
+  "args": [
+   "-r"
+  ],
+  "admin": true,
+  "requires": "paccache",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Package cache",
+   "ok": "Old cached packages were removed.",
+   "problem": "The package cache could not be trimmed."
+  }
+ },
+ {
+  "id": "zypper-verify",
+  "name": "Check packages (zypper)",
+  "description": "Checks that installed packages have what they need.",
+  "exec": "zypper",
+  "args": [
+   "--non-interactive",
+   "verify"
+  ],
+  "admin": true,
+  "requires": "zypper",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Package database",
+   "ok": "Package dependencies are in good order.",
+   "problem": "Some package problems could not be repaired."
+  }
+ },
+ {
+  "id": "zypper-updates-list",
+  "name": "List updates (zypper)",
+  "description": "Lists packages with updates. Installs nothing.",
+  "exec": "zypper",
+  "args": [
+   "--non-interactive",
+   "list-updates"
+  ],
+  "admin": false,
+  "requires": "zypper",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "System updates",
+   "ok": "System updates were checked.",
+   "problem": "Updates could not be checked."
+  }
+ },
+ {
+  "id": "zypper-upgrade",
+  "name": "Install all updates (zypper)",
+  "description": "Installs every available update.",
+  "exec": "zypper",
+  "args": [
+   "--non-interactive",
+   "update"
+  ],
+  "admin": true,
+  "requires": "zypper",
+  "heavy": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "System updates",
+   "ok": "All updates were installed.",
+   "problem": "Some updates could not be installed."
+  }
+ },
+ {
+  "id": "zypper-clean",
+  "name": "Clear package cache (zypper)",
+  "description": "Deletes downloaded package files.",
+  "exec": "zypper",
+  "args": [
+   "clean"
+  ],
+  "admin": true,
+  "requires": "zypper",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Package cache",
+   "ok": "The package download cache was cleared.",
+   "problem": "The package cache could not be cleared."
+  }
+ },
+ {
+  "id": "flatpak-repair",
+  "name": "Repair Flatpak apps",
+  "description": "Checks your Flatpak apps and repairs damaged files.",
+  "exec": "flatpak",
+  "args": [
+   "repair",
+   "--user"
+  ],
+  "admin": false,
+  "requires": "flatpak",
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Flatpak apps",
+   "ok": "Flatpak apps were checked and repaired where needed.",
+   "problem": "Flatpak apps could not be repaired."
+  }
+ },
+ {
+  "id": "flatpak-update",
+  "name": "Update Flatpak apps",
+  "description": "Updates every Flatpak app.",
+  "exec": "flatpak",
+  "args": [
+   "update",
+   "-y",
+   "--noninteractive"
+  ],
+  "admin": false,
+  "requires": "flatpak",
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Flatpak app updates",
+   "ok": "Flatpak apps are up to date.",
+   "problem": "Some Flatpak apps could not be updated."
+  }
+ },
+ {
+  "id": "flatpak-unused",
+  "name": "Remove unused Flatpak runtimes",
+  "description": "Removes runtimes no app uses any more.",
+  "exec": "flatpak",
+  "args": [
+   "uninstall",
+   "--unused",
+   "-y",
+   "--noninteractive"
+  ],
+  "admin": false,
+  "requires": "flatpak",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Unused Flatpak runtimes",
+   "ok": "Unused Flatpak runtimes were removed.",
+   "problem": "Unused runtimes could not be removed."
+  }
+ },
+ {
+  "id": "fstrim",
+  "name": "Trim SSDs",
+  "description": "Tells SSDs which blocks are free, which keeps them fast.",
+  "exec": "fstrim",
+  "args": [
+   "-av"
+  ],
+  "admin": true,
+  "requires": "fstrim",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "SSD trim",
+   "ok": "SSDs were trimmed.",
+   "problem": "SSD trim could not run."
+  }
+ },
+ {
+  "id": "journal-vacuum",
+  "name": "Trim system logs",
+  "description": "Deletes system logs older than two weeks.",
+  "exec": "journalctl",
+  "args": [
+   "--vacuum-time=14d"
+  ],
+  "admin": true,
+  "requires": "journalctl",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Old system logs",
+   "ok": "Old system logs were cleared.",
+   "problem": "Old system logs could not be cleared."
+  }
+ },
+ {
+  "id": "flush-dns",
+  "name": "Flush DNS cache",
+  "description": "Clears saved website address lookups.",
+  "exec": "resolvectl",
+  "args": [
+   "flush-caches"
+  ],
+  "admin": false,
+  "requires": "resolvectl",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Website address cache",
+   "ok": "The saved website address cache was cleared.",
+   "problem": "The website address cache could not be cleared."
+  }
+ },
+ {
+  "id": "restart-network",
+  "name": "Restart NetworkManager",
+  "description": "Restarts the network service. The connection drops for a few seconds.",
+  "exec": "systemctl",
+  "args": [
+   "restart",
+   "NetworkManager"
+  ],
+  "admin": true,
+  "requires": "nmcli",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network service",
+   "ok": "The network service was restarted.",
+   "problem": "The network service could not be restarted."
+  }
+ },
+ {
+  "id": "battery",
+  "name": "Battery status",
+  "description": "Shows battery charge and wear.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "for b in $(upower -e | grep -i bat); do upower -i \"$b\" | grep -E \"state|percentage|capacity|energy-full\"; done"
+  ],
+  "admin": false,
+  "requires": "upower",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Battery",
+   "ok": "Battery status was read.",
+   "problem": "Battery status could not be read."
+  }
+ },
+ {
+  "id": "clamav-scan",
+  "name": "ClamAV scan of the home folder",
+  "description": "Scans your home folder for malware. Can take a long time.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "clamscan -r --infected --no-summary \"$HOME\"; echo \"scan finished\""
+  ],
+  "admin": false,
+  "requires": "clamscan",
+  "heavy": true,
+  "typicalMinutes": 30,
+  "friendly": {
+   "title": "Virus scan",
+   "ok": "The virus scan found no threats.",
+   "problem": "The virus scan could not finish.",
+   "notes": [
+    {
+     "pattern": " FOUND",
+     "level": "problem",
+     "message": "The virus scan found suspicious files. The technician log lists them."
+    }
+   ]
+  }
+ },
+ {
+  "id": "printer-reset",
+  "name": "Restart the print service",
+  "description": "Restarts CUPS, the Linux print service.",
+  "exec": "systemctl",
+  "args": [
+   "restart",
+   "cups"
+  ],
+  "admin": true,
+  "requires": "lpstat",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Print service",
+   "ok": "The print service was restarted. Try printing again.",
+   "problem": "The print service could not be restarted."
+  }
+ },
+ {
+  "id": "printer-list",
+  "name": "List printers",
+  "description": "Shows installed printers and their state.",
+  "exec": "lpstat",
+  "args": [
+   "-p",
+   "-d"
+  ],
+  "admin": false,
+  "requires": "lpstat",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Installed printers",
+   "ok": "Installed printers were listed.",
+   "problem": "No printers are set up, or the print service is not running.",
+   "notes": [
+    {
+     "pattern": "disabled",
+     "level": "attention",
+     "message": "A printer is paused or disabled. Re-enable it in the printer settings."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sound-restart",
+  "name": "Restart the sound system",
+  "description": "Restarts PipeWire or PulseAudio for your user.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "systemctl --user restart pipewire pipewire-pulse wireplumber 2>/dev/null || pulseaudio -k"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Sound system",
+   "ok": "The sound system was restarted. Try playing something again.",
+   "problem": "The sound system could not be restarted."
+  }
+ },
+ {
+  "id": "bluetooth-restart",
+  "name": "Restart Bluetooth",
+  "description": "Restarts the Bluetooth service.",
+  "exec": "systemctl",
+  "args": [
+   "restart",
+   "bluetooth"
+  ],
+  "admin": true,
+  "requires": "bluetoothctl",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Bluetooth",
+   "ok": "Bluetooth was restarted. Try connecting the device again.",
+   "problem": "Bluetooth could not be restarted."
+  }
+ },
+ {
+  "id": "wifi-restart",
+  "name": "Restart Wi-Fi",
+  "description": "Turns Wi-Fi off and on again.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "nmcli -t -f TYPE dev | grep -q '^wifi' || { echo NO_WIFI_ADAPTER; exit 0; }; nmcli radio wifi off; sleep 2; nmcli radio wifi on; sleep 6; nmcli -t -f DEVICE,STATE dev"
+  ],
+  "admin": false,
+  "requires": "nmcli",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Wi-Fi",
+   "ok": "Wi-Fi was restarted.",
+   "problem": "Wi-Fi could not be restarted.",
+   "notes": [
+    {
+     "pattern": "NO_WIFI_ADAPTER",
+     "level": "attention",
+     "message": "This computer has no Wi-Fi adapter, or it is switched off or disabled. If it uses a network cable, run \"Check my network\" instead."
+    }
+   ]
+  }
+ },
+ {
+  "id": "net-adapters",
+  "name": "Network adapters",
+  "description": "Lists network adapters and whether they are connected.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "ip -br link | grep -v \"^lo\"; ip -br link | grep -v \"^lo\" | grep -q \" UP \" || echo NO_LINK"
+  ],
+  "admin": false,
+  "requires": "ip",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network connection",
+   "ok": "A network adapter is connected.",
+   "problem": "Network adapters could not be read.",
+   "notes": [
+    {
+     "pattern": "NO_LINK",
+     "level": "problem",
+     "message": "No network adapter is connected. Check the cable, or that Wi-Fi is switched on and joined to a network."
+    }
+   ]
+  }
+ },
+ {
+  "id": "active-connection",
+  "name": "Active connection",
+  "description": "Works out whether this computer is online by cable or Wi-Fi and checks that connection.",
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Active connection",
+   "ok": "The active connection was checked.",
+   "problem": "The active connection could not be read.",
+   "notes": [
+    {
+     "pattern": "CONN_NONE",
+     "level": "problem",
+     "message": "This computer has no working network connection. Plug in the network cable, or join a Wi-Fi network."
+    },
+    {
+     "pattern": "CONN_WIRED (.+?) LINK 10 Mbps",
+     "level": "attention",
+     "message": "Connected by network cable ($1), but only at 10 Mbps. That points to a damaged cable or port: try another cable."
+    },
+    {
+     "pattern": "CONN_WIRED (.+?) LINK ([\\d.]+ [GM]bps)",
+     "level": "good",
+     "message": "Connected by network cable ($1) at $2."
+    },
+    {
+     "pattern": "CONN_WIRED (\\S.*)",
+     "level": "good",
+     "message": "Connected by network cable ($1)."
+    },
+    {
+     "pattern": "Signal\\s*:\\s*([1-4]?\\d)%",
+     "level": "attention",
+     "message": "Connected by Wi-Fi, but the signal is weak ($1%). Move closer to the router or remove obstacles."
+    },
+    {
+     "pattern": "Signal\\s*:\\s*(\\d+)%",
+     "level": "good",
+     "message": "Connected by Wi-Fi with a signal of $1%."
+    },
+    {
+     "pattern": "CONN_WIFI",
+     "level": "good",
+     "message": "Connected by Wi-Fi."
+    },
+    {
+     "pattern": "CONN_OTHER (\\S.*)",
+     "level": "info",
+     "message": "Connected through $1, which is not a normal cable or Wi-Fi adapter (a VPN, phone tether or virtual adapter)."
+    }
+   ]
+  },
+  "exec": "sh",
+  "args": [
+   "-c",
+   "dev=$(ip route | awk '/^default/{print $5; exit}'); [ -z \"$dev\" ] && { echo CONN_NONE; exit 0; }; if [ -d \"/sys/class/net/$dev/wireless\" ]; then echo \"CONN_WIFI $dev\"; s=$(nmcli -t -f IN-USE,SIGNAL dev wifi 2>/dev/null | awk -F: '$1==\"*\"{print $2; exit}'); [ -z \"$s\" ] && s=$(awk -v d=\"$dev:\" '$1==d{printf \"%d\", $3*100/70}' /proc/net/wireless 2>/dev/null); [ -n \"$s\" ] && echo \"Signal : $s%\"; elif [ -e \"/sys/class/net/$dev/device\" ]; then sp=$(cat \"/sys/class/net/$dev/speed\" 2>/dev/null); if [ -n \"$sp\" ] && [ \"$sp\" -gt 0 ] 2>/dev/null; then echo \"CONN_WIRED $dev LINK $sp Mbps\"; else echo \"CONN_WIRED $dev\"; fi; else echo \"CONN_OTHER $dev\"; fi"
+  ],
+  "requires": "ip"
+ },
+ {
+  "id": "wifi-signal",
+  "name": "Wi-Fi signal",
+  "description": "Shows the Wi-Fi network, signal strength and channel.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "nmcli -f IN-USE,SSID,SIGNAL,CHAN dev wifi | grep -E \"^\\*|IN-USE\""
+  ],
+  "admin": false,
+  "requires": "nmcli",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Wi-Fi signal",
+   "ok": "Wi-Fi details were read.",
+   "problem": "Wi-Fi is not connected."
+  }
+ },
+ {
+  "id": "ping-router",
+  "name": "Reach the router",
+  "description": "Sends four test messages to your router.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "g=$(ip route | awk \"/^default/{print \\$3; exit}\"); [ -z \"$g\" ] && { echo NO_ROUTER; exit 1; }; ping -c 4 \"$g\""
+  ],
+  "admin": false,
+  "requires": "ping",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Router",
+   "ok": "The router answers normally.",
+   "problem": "The router did not answer.",
+   "notes": [
+    {
+     "pattern": "NO_ROUTER",
+     "level": "problem",
+     "message": "This computer has not been given a router address. Restart the router, then try again."
+    },
+    {
+     "pattern": "100(\\.0)?% (packet )?loss",
+     "level": "problem",
+     "message": "The router did not answer."
+    },
+    {
+     "pattern": "\\b0(\\.0)?% (packet )?loss",
+     "level": "good",
+     "message": "The router answers normally."
+    },
+    {
+     "pattern": "% (packet )?loss",
+     "level": "attention",
+     "message": "Some replies from The router were lost, which points to a weak or unstable connection."
+    }
+   ]
+  }
+ },
+ {
+  "id": "ping-internet",
+  "name": "Reach the internet",
+  "description": "Sends four test messages to a well-known internet address.",
+  "exec": "ping",
+  "args": [
+   "-c",
+   "4",
+   "1.1.1.1"
+  ],
+  "admin": false,
+  "requires": "ping",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Internet connection",
+   "ok": "The internet answers normally.",
+   "problem": "The internet did not answer. If the router test passed, the fault is with the router or the internet provider.",
+   "notes": [
+    {
+     "pattern": "100(\\.0)?% (packet )?loss",
+     "level": "problem",
+     "message": "The internet did not answer."
+    },
+    {
+     "pattern": "\\b0(\\.0)?% (packet )?loss",
+     "level": "good",
+     "message": "The internet answers normally."
+    },
+    {
+     "pattern": "% (packet )?loss",
+     "level": "attention",
+     "message": "Some replies from The internet were lost, which points to a weak or unstable connection."
+    }
+   ]
+  }
+ },
+ {
+  "id": "dns-test",
+  "name": "Website name lookup",
+  "description": "Checks that website names can be turned into addresses.",
+  "exec": "getent",
+  "args": [
+   "hosts",
+   "example.com"
+  ],
+  "admin": false,
+  "requires": "getent",
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Website name lookup",
+   "ok": "Website names are being looked up correctly.",
+   "problem": "Website names cannot be looked up. Run Network fix, or change the DNS server."
+  }
+ },
+ {
+  "id": "speed-test",
+  "name": "Download speed test",
+  "description": "Downloads a 25 MB test file and times it.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "b=$(curl -s -m 120 -o /dev/null -w \"%{speed_download}\" \"https://speed.cloudflare.com/__down?bytes=25000000\") || { echo SPEED_FAIL; exit 1; }; echo \"$b\" | awk '{printf \"Download speed: %.1f Mbps\\n\", $1*8/1000000}'"
+  ],
+  "admin": false,
+  "requires": "curl",
+  "typicalMinutes": 1,
+  "timeoutMinutes": 4,
+  "friendly": {
+   "title": "Download speed",
+   "ok": "The speed test finished.",
+   "problem": "The speed test could not run.",
+   "notes": [
+    {
+     "pattern": "Download speed: ([\\d.,]+) Mbps",
+     "level": "info",
+     "message": "Download speed is about $1 Mbps."
+    }
+   ]
+  }
+ },
+ {
+  "id": "backup-check",
+  "name": "Check for a backup",
+  "description": "Looks for Timeshift snapshots and a desktop backup schedule.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "f=\"\"; if command -v timeshift >/dev/null && [ -d /timeshift/snapshots ] && [ -n \"$(ls /timeshift/snapshots 2>/dev/null)\" ]; then f=\"Timeshift system snapshots\"; fi; d=$(gsettings get org.gnome.DejaDup last-backup 2>/dev/null | tr -d \"'\"); if [ -n \"$d\" ]; then f=\"${f:+$f and }Backups (Deja Dup), last run $d\"; fi; if [ -n \"$f\" ]; then echo \"BACKUP_FOUND: $f\"; else echo NO_BACKUP; fi"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Backup",
+   "ok": "Backup settings were checked.",
+   "problem": "Backup settings could not be checked.",
+   "notes": [
+    {
+     "pattern": "BACKUP_FOUND: (.+)",
+     "level": "good",
+     "message": "A backup is set up: $1."
+    },
+    {
+     "pattern": "NO_BACKUP",
+     "level": "attention",
+     "message": "No backup was found, so a failed drive would lose your files. Set up the Backups app or Timeshift, or use Back up to a drive in Migrate. Other backup programs are not checked here."
+    }
+   ]
+  }
+ },
+ {
+  "id": "recent-crashes",
+  "name": "Recent crashes and errors",
+  "description": "Lists crashes and serious errors from the last week.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "n=$(coredumpctl list --since \"-7days\" --no-pager 2>/dev/null | grep -c \" present\\| missing\"); echo \"APP_CRASHES: ${n:-0}\"; coredumpctl list --since \"-7days\" --no-pager 2>/dev/null | tail -8; k=$(journalctl -k -p 3 --since \"-7days\" --no-pager 2>/dev/null | grep -ci \"panic\\|oops\\|mce:\"); echo \"KERNEL_ERRORS: ${k:-0}\"; journalctl -p 3 --since \"-7days\" --no-pager -n 20 2>/dev/null"
+  ],
+  "admin": false,
+  "requires": "journalctl",
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Crashes in the last week",
+   "ok": "No serious crashes in the last week.",
+   "problem": "The crash history could not be read.",
+   "notes": [
+    {
+     "pattern": "KERNEL_ERRORS: ([1-9]\\d*)",
+     "level": "problem",
+     "message": "The system logged $1 kernel or hardware errors in the last week. A technician should read the log."
+    },
+    {
+     "pattern": "APP_CRASHES: ([1-9]\\d*)",
+     "level": "attention",
+     "message": "Programs crashed $1 times in the last week. The technician log names them."
+    }
+   ]
+  }
+ },
+ {
+  "id": "fwupd-refresh",
+  "name": "Refresh the firmware catalogue",
+  "description": "Downloads the latest list of firmware updates.",
+  "exec": "fwupdmgr",
+  "args": [
+   "refresh",
+   "--force"
+  ],
+  "admin": false,
+  "requires": "fwupdmgr",
+  "typicalMinutes": 1,
+  "okExitCodes": [
+   0,
+   2
+  ],
+  "friendly": {
+   "title": "Firmware catalogue",
+   "ok": "The firmware catalogue is up to date.",
+   "problem": "The firmware catalogue could not be refreshed."
+  }
+ },
+ {
+  "id": "fwupd-list",
+  "name": "List firmware updates",
+  "description": "Lists firmware updates for this computer and its devices. Installs nothing.",
+  "exec": "fwupdmgr",
+  "args": [
+   "get-updates"
+  ],
+  "admin": false,
+  "requires": "fwupdmgr",
+  "typicalMinutes": 1,
+  "okExitCodes": [
+   0,
+   2
+  ],
+  "friendly": {
+   "title": "Firmware updates",
+   "ok": "Firmware was checked for updates.",
+   "problem": "Firmware updates could not be checked.",
+   "notes": [
+    {
+     "pattern": "No updat|No upgrades|no available firmware",
+     "level": "good",
+     "message": "Firmware is up to date, or the maker does not publish updates for this hardware."
+    },
+    {
+     "pattern": "New version|Upgrade available|\\u2192|->",
+     "level": "attention",
+     "message": "Firmware updates are available."
+    }
+   ]
+  }
+ },
+ {
+  "id": "fwupd-update",
+  "name": "Install firmware updates",
+  "description": "Installs available firmware updates. The computer may need a restart.",
+  "exec": "fwupdmgr",
+  "args": [
+   "update",
+   "-y",
+   "--no-reboot-check"
+  ],
+  "admin": false,
+  "requires": "fwupdmgr",
+  "typicalMinutes": 10,
+  "okExitCodes": [
+   0,
+   2
+  ],
+  "friendly": {
+   "title": "Firmware updates",
+   "ok": "Firmware updates were installed. Restart the computer to finish.",
+   "problem": "Firmware updates could not be installed."
+  }
+ }
+]

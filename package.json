@@ -1,0 +1,94 @@
+{
+  "name": "mendkit",
+  "version": "0.17.1",
+  "description": "MendKit - repair, tool, tune and migrate Windows, macOS and Linux computers",
+  "main": "dist/main/main.js",
+  "private": true,
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "npm run build && electron .",
+    "test": "npm run build && node dist/scripts/smoke-test.js",
+    "dist": "npm run build && electron-builder --publish never",
+    "dist:win": "npm run build && electron-builder --win --publish never",
+    "dist:mac": "npm run build && electron-builder --mac --publish never",
+    "dist:linux": "npm run build && electron-builder --linux --publish never"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "electron": "^45.3.1",
+    "electron-builder": "^26.18.0",
+    "typescript": "^5.6.0"
+  },
+  "author": "MendKit",
+  "build": {
+    "appId": "com.mendkit.app",
+    "productName": "MendKit",
+    "copyright": "MendKit",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "!dist/scripts/**",
+      "renderer/**/*",
+      "definitions/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "MendKit",
+      "artifactName": "MendKit-Setup-${version}.${ext}"
+    },
+    "portable": {
+      "artifactName": "MendKit-Portable-${version}.${ext}"
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.utilities",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "System",
+      "icon": "build/icon.png",
+      "synopsis": "Repair, tune and migrate computers",
+      "artifactName": "MendKit-${version}-${arch}.${ext}"
+    },
+    "publish": [
+      {
+        "provider": "generic",
+        "url": "https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev"
+      }
+    ]
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.11"
+  }
+}
