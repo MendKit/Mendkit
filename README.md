@@ -8,6 +8,19 @@ It has two modes. **Simple mode** asks "What is the problem?" and reports result
 
 **Status:** version 0.17.1. Every feature on the original design list is built. Windows is the main target and the only system it has been run on by hand; the macOS and Linux command packs pass the automated checks but have had little real-world use. Builds are unsigned.
 
+## Download
+
+Version 0.17.1, free for everyone:
+
+| System | Download | Notes |
+| --- | --- | --- |
+| Windows 10 and 11 | [MendKit-Setup-0.17.1.exe](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-Setup-0.17.1.exe) (122 MB) | Installer. SmartScreen may warn: More info, then Run anyway. |
+| macOS (Apple silicon) | [MendKit-0.17.1-arm64.dmg](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-arm64.dmg) (122 MB) | Unsigned: right-click the app and choose Open the first time. |
+| Linux, AppImage | [MendKit-0.17.1-x86_64.AppImage](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-x86_64.AppImage) (126 MB) | `chmod +x`, then run. |
+| Linux, archive | [MendKit-0.17.1-x64.tar.gz](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-x64.tar.gz) (121 MB) | Unpack and run `mendkit`. |
+
+The files are served from the project's release bucket, the same place installed copies check for updates. The public website is in `website/`.
+
 ## What it does
 
 ### Repair
