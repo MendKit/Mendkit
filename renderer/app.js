@@ -23,6 +23,7 @@ const SCREENS = [
   { id: 'undo', name: 'Undo Center', simple: true },
   { id: 'guides', name: 'How-To Guides', simple: true },
   { id: 'reports', name: 'Reports', simple: true },
+  { id: 'permissions', name: 'Permissions', simple: true },
 ];
 
 const state = { mode: 'simple', screen: 'dashboard', info: null, catalog: null, running: false, toolStatus: null, symptoms: [], guide: null };
@@ -73,6 +74,7 @@ function show(id) {
   else if (cur.id === 'tools') renderTools(view);
   else if (cur.id === 'tweaks') renderTweaks(view);
   else if (cur.id === 'migrate') renderMigrate(view);
+  else if (cur.id === 'permissions') renderPermissions(view);
   else if (cur.id === 'reports') renderReports(view);
   if (state.online === false && ['tools', 'updates', 'isos', 'setup'].includes(state.screen)) view.prepend(el('div', { className: 'notice offline' }, el('span', { textContent: 'This computer has no internet connection. Installs, updates and downloads will fail until it is back. Repairs, hardware tests, migration, tweaks and erasing still work.' })));
 }
@@ -97,6 +99,17 @@ function adminNotice() {
 function renderDashboard(view) {
   const i = state.info;
   view.append(el('h1', { textContent: 'Dashboard' }), el('p', { className: 'lead', textContent: 'A quick look at this computer.' }));
+  if (i.platform === 'darwin') {
+    const slot = el('div');
+    view.append(slot);
+    api.permList().then((list) => {
+      const missing = list.filter((p) => p.required && p.state === 'denied');
+      if (!missing.length || !slot.isConnected) return;
+      const b = el('button', { className: 'ghost', textContent: 'Set up permissions' });
+      b.onclick = () => show('permissions');
+      slot.append(el('div', { className: 'notice' }, el('span', { textContent: `MendKit is missing ${missing.map((p) => p.name).join(' and ')}, so some repairs and transfers cannot reach every file.` }), b));
+    }).catch(() => {});
+  }
   const cards = el('div', { className: 'cards' });
   cards.append(card('Computer', i.hostname), card('System', i.osName), card('Processor', i.cpu), card('Memory', i.memoryGb + ' GB'));
   if (i.diskFreeGb !== null) {
@@ -626,6 +639,81 @@ async function showRemoteAudit() {
     syncButtons();
   };
   view.scrollTop = 0;
+}
+
+// ---------- Permissions ----------
+
+let permTimer = null;
+async function renderPermissions(view) {
+  const plat = state.info.platform;
+  const first = !!state.firstRun;
+  view.append(
+    el('h1', { textContent: first ? 'Welcome to MendKit' : 'Permissions' }),
+    el('p', { className: 'lead', textContent: (first ? 'Before you start, give MendKit the permissions it needs. ' : '') + (plat === 'darwin' ? 'macOS asks you to allow some things yourself. MendKit checks each one and opens the right page in System Settings. This screen updates by itself when you come back.' : 'MendKit checks each one and opens the right settings page when something is switched off. This screen updates by itself when you come back.') }),
+  );
+  const holder = el('div');
+  const foot = el('div', { className: 'result-foot' });
+  view.append(holder, foot);
+  let busy = false;
+  const paint = async (list) => {
+    if (!holder.isConnected) return;
+    list = list || (await api.permList());
+    holder.replaceChildren();
+    for (const p of list) {
+      const ok = p.state === 'granted' || p.state === 'not-needed';
+      const level = ok ? 'good' : p.state === 'unknown' ? 'info' : p.required ? 'problem' : 'attention';
+      const body = el('div', {}, el('strong', { textContent: p.name }), el('span', { className: 'tag' + (ok ? '' : p.required ? ' hot' : ''), textContent: p.stateText }));
+      if (!p.required) body.append(el('span', { className: 'tag', textContent: 'optional' }));
+      body.append(el('p', { className: 'dim', textContent: p.why }));
+      if (!ok && p.help) body.append(el('p', { textContent: p.help }));
+      const acts = el('div', { className: 'toolbar' });
+      if (!ok && p.canAsk) {
+        const b = el('button', { className: 'run', textContent: plat === 'win32' && p.id === 'admin' ? 'Restart as administrator' : p.id === 'notifications' ? 'Send a test' : 'Allow' });
+        b.onclick = async () => {
+          busy = true;
+          b.disabled = true;
+          try {
+            if (plat === 'win32' && p.id === 'admin') await api.relaunchElevated();
+            else await paint(await api.permAsk(p.id));
+          } catch (err) {
+            migSafeStatus(errText(err));
+          }
+          busy = false;
+          b.disabled = false;
+        };
+        acts.append(b);
+      }
+      if (!ok && p.canOpen) {
+        const b = el('button', { className: 'ghost', textContent: 'Open Settings' });
+        b.onclick = () => api.permOpen(p.id).catch((err) => migSafeStatus(errText(err)));
+        acts.append(b);
+      }
+      if (acts.childNodes.length) body.append(acts);
+      holder.append(el('div', { className: 'result ' + (level === 'good' ? '' : level) }, el('div', { className: 'icon ' + level, textContent: ICONS[level] || '' }), body));
+    }
+    const missing = list.filter((p) => p.required && p.state !== 'granted' && p.state !== 'not-needed');
+    foot.replaceChildren();
+    if (plat === 'darwin' && list.some((p) => p.id === 'full-disk' && p.state !== 'granted')) {
+      const r = el('button', { className: 'ghost', textContent: 'Restart MendKit' });
+      r.onclick = () => api.permRestart();
+      foot.append(el('p', { className: 'lead note', textContent: 'Turned Full Disk Access on but it still shows Not allowed? Restart MendKit. After a MendKit update, macOS can keep an old switch that no longer works: select MendKit in the list, click − to remove it, then add it again.' }), r, ' ');
+    }
+    const go = el('button', { className: 'big', textContent: first ? (missing.length ? 'Skip for now' : 'Start using MendKit') : 'Done' });
+    go.onclick = async () => {
+      await api.permDone();
+      state.firstRun = false;
+      show('dashboard');
+    };
+    foot.append(go);
+    if (first && missing.length) foot.append(el('p', { className: 'dim', textContent: 'You can come back to this any time from Permissions in the menu.' }));
+  };
+  await paint();
+  clearInterval(permTimer);
+  // Re-check while the screen is open, so switches turned on in Settings show up without a click.
+  permTimer = setInterval(() => {
+    if (!holder.isConnected) return clearInterval(permTimer);
+    if (!busy && document.hasFocus()) paint();
+  }, 2500);
 }
 
 // ---------- Mac tools ----------
@@ -2407,5 +2495,7 @@ $('#techToggle').onchange = async (ev) => {
   $('#updateBadge').onclick = () => !state.running && show('updates');
   checkOnline(); // not awaited: with no network this can take seconds, and the first screen should not wait for it
   setInterval(checkOnline, 60000);
-  show('dashboard');
+  // Straight after install, start on the permissions setup instead of the dashboard.
+  state.firstRun = await api.permNeedsSetup().catch(() => false);
+  show(state.firstRun ? 'permissions' : 'dashboard');
 })();

@@ -5,6 +5,7 @@ import { currentPlatform, loadCatalog, PLATFORMS } from '../engine/catalog';
 import { spawn } from 'child_process';
 import { Engine, toolCheckCommand, toolCommand } from '../engine/runner';
 import { Catalog, CommandDef } from '../engine/types';
+import { hasFullDiskAccess } from '../main/permissions';
 import { loadTweaks, RegBackend, RegValue, TweakManager } from '../engine/tweaks';
 import { runSource, safeTarget, startDestination } from '../engine/migrate';
 import { bookmarksToHtml, countApps, fromWinget, installPlan, loadApps, normalizeAppList, registerMozillaProfiles } from '../engine/apps';
@@ -296,6 +297,14 @@ async function main(): Promise<void> {
   await testBackup(logDir);
   await testPhase5(defs, logDir);
   testCrossSystem(defs, logDir);
+
+  // Full Disk Access probe: a readable protected file means granted, none at all means unknown.
+  const fda = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-fda-'));
+  assert(hasFullDiskAccess(fda) === 'unknown' || process.platform === 'darwin', 'Full Disk Access guessed without evidence');
+  fs.mkdirSync(path.join(fda, 'Library/Safari'), { recursive: true });
+  fs.writeFileSync(path.join(fda, 'Library/Safari/Bookmarks.plist'), '');
+  assert(hasFullDiskAccess(fda) === 'granted', 'Full Disk Access not detected');
+  console.log('permissions: Full Disk Access probe OK');
 
   // Symptoms point at real recipes on every system that lists them; advisor verdicts.
   const symptoms = JSON.parse(fs.readFileSync(path.join(defs, 'symptoms.json'), 'utf8')) as { id: string; recipe: string }[];

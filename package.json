@@ -72,7 +72,17 @@
       "icon": "build/icon.png",
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist"
+      "entitlementsInherit": "build/entitlements.mac.plist",
+      "extendInfo": {
+        "NSCameraUsageDescription": "MendKit uses the camera only for the camera test in Hardware Tests.",
+        "NSMicrophoneUsageDescription": "MendKit uses the microphone only for the microphone test in Hardware Tests.",
+        "NSAppleEventsUsageDescription": "MendKit asks System Events to list and remove login items.",
+        "NSDesktopFolderUsageDescription": "MendKit backs up, moves and cleans files on the Desktop when you ask it to.",
+        "NSDocumentsFolderUsageDescription": "MendKit backs up and moves files in Documents when you ask it to.",
+        "NSDownloadsFolderUsageDescription": "MendKit backs up, moves and measures files in Downloads when you ask it to.",
+        "NSRemovableVolumesUsageDescription": "MendKit backs up to, restores from and checks USB drives when you ask it to.",
+        "NSNetworkVolumesUsageDescription": "MendKit backs up to and restores from network drives when you ask it to."
+      }
     },
     "linux": {
       "target": [

@@ -18,6 +18,7 @@ import { gsettings, loadTweaks, macDefaults, memoryRegistry, TweakManager, windo
 import { findProfiles, oldApps, oldItems, OldProfile } from '../engine/olddrive';
 import { registerBatch4 } from './batch4';
 import { registerMacTools } from './mactools';
+import { registerPermissions } from './permissions';
 import { registerUpdater } from './updater';
 import { offlineInstallSteps, quickOnline, readCache, registerOffline } from './offline';
 import { applyPortableMode, jobScheduled, jobsSupported, registerBatch5, scheduleJob, Job } from './batch5';
@@ -326,6 +327,7 @@ function registerIpc(): void {
   registerBatch3({ engine, catalog, tweakMgr, presets: tweakData.presets, appTable, hasFlatpak, getWin: () => win, logDir, noteToolRun: extras.noteToolRun });
   registerBatch4({ engine, getWin: () => win, logDir });
   registerMacTools({ engine, getWin: () => win });
+  registerPermissions();
   registerUpdater({ getWin: () => win, busy: () => engine.isBusy() || job !== null });
   registerOffline({ engine, catalog, getWin: () => win });
   registerBatch5({ engine, getWin: () => win, portable });
