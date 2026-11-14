@@ -7,11 +7,8 @@ call npm.cmd run dist:win || goto :fail
 echo.
 echo Done. The installer and the portable build are in the "release" folder.
 echo.
-echo To publish this version as an update, upload these three files from "release" to the Cloudflare bucket:
-echo   latest.yml
-echo   MendKit-Setup-[version].exe
-echo   MendKit-Setup-[version].exe.blockmap
-echo Installed copies of MendKit will then offer the update by themselves.
+echo To publish a version for everyone, use GitHub instead: Actions, "Build and publish", Run workflow.
+echo It builds Windows, Mac and Linux and uploads them to the download server by itself.
 start "" "%~dp0release"
 pause
 exit /b 0
