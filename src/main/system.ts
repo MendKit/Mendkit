@@ -53,13 +53,33 @@ function disk(): { free: number | null; total: number | null } {
   }
 }
 
+/** "Windows 11 Pro (build 26100)", "macOS 15.6" or "Ubuntu 24.04.3 LTS", rather than kernel version strings. */
+export function friendlyOsName(platform = process.platform): string {
+  try {
+    if (platform === 'win32') {
+      const build = Number(os.release().split('.')[2]) || 0;
+      // Windows 11 still reports its product name as "Windows 10 ..."; the build number tells them apart.
+      const name = (os.version() || 'Windows').replace(/^Windows 10/, build >= 22000 ? 'Windows 11' : 'Windows 10');
+      return `${name} (build ${build})`;
+    }
+    if (platform === 'darwin') {
+      const v = spawnSync('sw_vers', ['-productVersion'], { encoding: 'utf8' }).stdout.trim();
+      return v ? `macOS ${v}` : '';
+    }
+    const m = /^PRETTY_NAME="?([^"\n]+)"?/m.exec(fs.readFileSync('/etc/os-release', 'utf8'));
+    return m ? m[1] : '';
+  } catch {
+    return '';
+  }
+}
+
 export async function getSystemInfo(): Promise<SystemInfo> {
   const d = disk();
   const names: Record<string, string> = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
   return {
     platform: process.platform,
     hostname: os.hostname(),
-    osName: `${names[process.platform] ?? process.platform} ${os.release()}${typeof os.version === 'function' ? ` (${os.version()})` : ''}`,
+    osName: friendlyOsName() || `${names[process.platform] ?? process.platform} ${os.release()}`,
     cpu: os.cpus()[0]?.model.trim() ?? 'Unknown',
     memoryGb: Math.round(os.totalmem() / 1024 ** 3),
     diskFreeGb: d.free,

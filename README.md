@@ -2,28 +2,37 @@
 
 # MendKit
 
-MendKit is an all-in-one repair, tune-up and migration toolkit for Windows, macOS and Linux. It puts the jobs a repair technician does by hand into one desktop app: guided repairs, installing trusted free tools, system tweaks that can be undone, moving a person's files and apps to a new computer, hardware tests, crash analysis, backups and secure erase.
+MendKit is a free repair, tune-up and migration toolkit for Windows, macOS and Linux. It puts the jobs a repair technician does by hand into one desktop app, and explains every result in plain language.
 
-It has two modes. **Simple mode** asks "What is the problem?" and reports results in plain language, so a customer can use it. **Technician mode** adds the full command catalog, raw output, tweaks, setup profiles, imaging and erase tools.
+It has two modes. **Simple mode** asks "What is the problem?", shows the plan before anything runs, and reports results a customer can read. **Technician mode** adds the full command catalog, live output and logs, tweaks, setup profiles, imaging, secure erase and a portable technician USB.
 
-**Status:** version 0.17.1. Every feature on the original design list is built. Windows is the main target and the only system it has been run on by hand; the macOS and Linux command packs pass the automated checks but have had little real-world use. Builds are unsigned.
+## At a glance
+
+- **Diagnose and repair:** one-click service (Fix my computer), fixes for 17 everyday problems, a crash analyzer, a network check for cable or Wi-Fi, a keep/upgrade/replace verdict, a Windows reinstall assistant and Linux boot repair from a live USB.
+- **Clean up and secure:** a remote access audit for 39 remote-control programs scammers use (with removal on Windows and Linux), startup items, free up space and security checkups on Mac and Linux, driver installs, and a fix for Mac apps reported as "damaged".
+- **Move and protect files:** migrate files, settings and the app list between any mix of Windows, Mac and Linux over the network, rescue files from a dead computer's drive, weekly backups, backup images and secure erase.
+- **Test hardware:** keyboard, screen, speakers, microphone, camera, USB ports, a processor stress test, drive health, battery wear, specs and temperatures.
+- **Set up and maintain:** 61 trusted free tools installed from official sources (offline installers on Windows and Linux), 87 settings with exact undo (Windows, Mac, and GNOME, Cinnamon, KDE and XFCE on Linux), setup profiles, updates in one place and quiet monthly maintenance.
+- **Switch to Linux:** checks a Windows 10 computer for Linux, lists what replaces each app, and walks through backup, install and a one-run first setup.
+- **106 How-To Guides** inside the app, written for people who do not fix computers: numbered steps with what you will see, tips and warnings, for every screen and every tool.
+
+**Status:** version 0.18.0. Windows has had the most real-world use. The macOS and Linux packs pass automated checks on real Windows and Mac machines and in seven Linux distributions (Ubuntu 24.04 and 22.04, Debian, Linux Mint 22, Fedora, Arch and openSUSE), but have had little hands-on use. Builds are not yet signed.
 
 ## Download
 
-Website: **https://mendkit.github.io** (source in `website/`, published from the `MendKit/mendkit.github.io` repository).
+Website: **https://mendkit.github.io** (source in `website/`; run `python3 website/build.py` after changing definitions to refresh its numbers and problem panel, then copy it to the `MendKit/mendkit.github.io` repository).
 
-Version 0.17.1, free for everyone:
+These links always give the newest version:
 
 | System | Download | Notes |
 | --- | --- | --- |
-| Windows 10 and 11 | [MendKit-Setup-0.17.1.exe](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-Setup-0.17.1.exe) (122 MB) | Installer. SmartScreen may warn: More info, then Run anyway. |
-| macOS (Apple silicon) | [MendKit-0.17.1-arm64.dmg](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-arm64.dmg) (122 MB) | Not yet registered with Apple: open it once, then System Settings, Privacy & Security, Open Anyway. |
-| Linux, .deb (Ubuntu, Mint, Debian) | [MendKit-latest-amd64.deb](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-amd64.deb) (from 0.18.0) | Double-click, Install. |
-| Linux, .rpm (Fedora, openSUSE) | [MendKit-latest-x86_64.rpm](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x86_64.rpm) (from 0.18.0) | Double-click, Install. |
-| Linux, AppImage | [MendKit-0.17.1-x86_64.AppImage](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-x86_64.AppImage) (126 MB) | `chmod +x`, then run. Ubuntu 22.04 and later also need `libfuse2t64` (`libfuse2` on 22.04). |
-| Linux, archive | [MendKit-0.17.1-x64.tar.gz](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-0.17.1-x64.tar.gz) (121 MB) | Unpack and run `mendkit`. |
+| Windows 10 and 11 | [Installer](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-Setup-latest.exe), or [portable](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-Portable-latest.exe) | SmartScreen may warn: More info, then Run anyway. |
+| macOS (Apple silicon) | [Disk image](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-arm64.dmg) | Not yet registered with Apple: open it once, then System Settings, Privacy & Security, Open Anyway. |
+| Linux: Ubuntu, Mint, Debian | [.deb](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-amd64.deb) | Double-click, Install, or `sudo apt install ./MendKit-*.deb`. |
+| Linux: Fedora, openSUSE | [.rpm](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x86_64.rpm) | Double-click, Install, or `sudo dnf install ./MendKit-*.rpm`. |
+| Linux: other | [AppImage](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x86_64.AppImage) or [tar.gz](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x64.tar.gz) | AppImage on Ubuntu 22.04 and later also needs `libfuse2t64` (`libfuse2` on 22.04). |
 
-The files are served from the project's release bucket, the same place installed copies check for updates.
+The files are served from the project's release bucket, the same place installed copies check for updates. Versioned names (for example `MendKit-Setup-0.18.0.exe`) stay available there too.
 
 ## What it does
 
