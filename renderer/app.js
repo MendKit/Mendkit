@@ -893,7 +893,7 @@ async function renderSwitch(view) {
   view.append(
     el('h2', { textContent: '3. Back up the files' }),
     el('p', { textContent: 'Copy everything to an external drive with MendKit, so it can be restored on Linux. Also note down Wi-Fi passwords and make sure browser passwords are synced or exported (Move saved passwords).' }),
-    el('div', { className: 'toolbar' }, btn('Back up files to a drive', () => show('migrate')), btn('How to back up', guide('mk-drive-backup'))),
+    el('div', { className: 'toolbar' }, btn('Back up to a drive', () => show('migrate')), btn('How to back up', guide('mk-drive-backup'))),
     el('h2', { textContent: '4. Make the Linux USB stick' }),
     el('p', { textContent: `Download ${r.distro} and write it to a USB stick of 8 GB or more with Rufus or Ventoy.` }),
     el('div', { className: 'toolbar' }, btn('Open the ISO Library', () => show('isos')), btn('Rufus guide', guide('rufus')), btn('Ventoy guide', guide('ventoy'))),

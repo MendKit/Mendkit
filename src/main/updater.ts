@@ -31,6 +31,17 @@ export function registerUpdater(ctx: { getWin: () => BrowserWindow | null; busy:
     }
   })();
   const single = !!process.env.PORTABLE_EXECUTABLE_DIR;
+  // A copy installed from the .deb or .rpm is offered the same kind of package, not the AppImage the feed names.
+  // electron-builder records the package type in resources/package-type.
+  const linuxPackageFile = (version: string): string | null => {
+    if (process.platform !== 'linux' || !app.isPackaged) return null;
+    try {
+      const t = fs.readFileSync(path.join(process.resourcesPath, 'package-type'), 'utf8').trim();
+      return t === 'deb' ? `MendKit-${version}-amd64.deb` : t === 'rpm' ? `MendKit-${version}-x86_64.rpm` : null;
+    } catch {
+      return null;
+    }
+  };
   const canAuto = app.isPackaged && !single && (process.platform === 'win32' || (process.platform === 'linux' && !!process.env.APPIMAGE));
   const state: UpdateState = { status: 'idle', current: app.getVersion(), mode: canAuto ? 'auto' : 'manual' };
   const push = (patch: Partial<UpdateState>) => {
@@ -94,7 +105,7 @@ export function registerUpdater(ctx: { getWin: () => BrowserWindow | null; busy:
     try {
       const info = parseLatest(await fetchText(`${feed}/${latestFileName(process.platform)}?t=${Date.now()}`));
       if (!info) throw new Error('unreadable');
-      if (isNewer(info.version, state.current)) push({ status: 'available', version: info.version, url: `${feed}/${encodeURI(info.path)}` });
+      if (isNewer(info.version, state.current)) push({ status: 'available', version: info.version, url: `${feed}/${encodeURI(linuxPackageFile(info.version) ?? info.path)}` });
       else push({ status: 'none' });
     } catch (e) {
       push({ status: 'error', message: friendly(e) });

@@ -41,7 +41,14 @@ function embeddedScripts(): { name: string; script: string }[] {
     while ((m = re.exec(src))) {
       if (!/\$\w|Get-|ConvertTo-Json|Write-Output/.test(m[1])) continue;
       // Undo template-literal escaping and stand in for interpolations.
-      const script = m[1].replace(/\$\{[^}]*\}/g, 'PLACEHOLDER').replace(/\\`/g, '`').replace(/\\\$/g, '$').replace(/\\\\/g, '\\');
+      // \${...} is PowerShell's own ${...} syntax; plain ${...} is a TypeScript value, stood in for by 0.
+      const script = m[1]
+        .replace(/\\\$\{/g, '\u0000')
+        .replace(/\$\{[^}]*\}/g, '0')
+        .replace(/\u0000/g, '${')
+        .replace(/\\`/g, '`')
+        .replace(/\\\$/g, '$')
+        .replace(/\\\\/g, '\\');
       out.push({ name: `${f} script ${++n}`, script });
     }
     // One-line scripts in plain quotes: powershellScript("...") and powershellJson('...').

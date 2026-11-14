@@ -356,7 +356,7 @@
       "tip": "Open MendKit's Dashboard: if any drive card does not say Healthy, back up before anything else and copy the most precious folders first."
      },
      {
-      "t": "Open Migrate and click Back up files to a drive.",
+      "t": "Open Migrate and click Back up to a drive.",
       "see": "A list of the user accounts and folders: Desktop, Documents, Pictures, Music, Videos, Downloads and browser data, with sizes."
      },
      {
@@ -1069,7 +1069,7 @@
     "heading": "Back up to a drive",
     "steps": [
      {
-      "t": "Plug in the external drive. Open Migrate and click Back up files to a drive.",
+      "t": "Plug in the external drive. Open Migrate and click Back up to a drive.",
       "see": "1. What to back up, with sizes. 2. Where to save it."
      },
      "Tick what to back up and click Choose drive or folder to pick the drive.",
@@ -2389,7 +2389,7 @@
     "heading": "2. Back up everything",
     "steps": [
      {
-      "t": "Plug in an external drive. In MendKit, click Back up files to a drive and back up every user.",
+      "t": "Plug in an external drive. In MendKit, click Back up to a drive and back up every user.",
       "tip": "See \"Backing up to a drive and restoring\"."
      },
      "Make sure browser passwords are synced to the person's account or exported (Move saved passwords).",

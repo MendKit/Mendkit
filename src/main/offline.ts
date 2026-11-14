@@ -154,7 +154,10 @@ export function registerOffline(ctx: { engine: Engine; catalog: Catalog; getWin:
       fs.rmSync(path.dirname(partial), { recursive: true, force: true });
       fs.mkdirSync(path.dirname(partial), { recursive: true });
       const c = linuxDownloadCommand(m, t.packages[m]!, partial)!;
-      steps.push({ id: `cache-dl-${t.id}`, name: `Download ${t.name}`, description: '', exec: c[0], args: c.slice(1), admin: true, typicalMinutes: 2, friendly: { title: t.name, ok: `${t.name} was downloaded.`, problem: `${t.name} could not be downloaded.` } });
+      // The download runs as root; give the files back to this user, keeping the download's own result.
+      const owner = `${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`;
+      const script = `${c[2]}; r=$?; chown -R ${owner} '${path.dirname(partial).replace(/'/g, `'\\''`)}'; exit $r`;
+      steps.push({ id: `cache-dl-${t.id}`, name: `Download ${t.name}`, description: '', exec: c[0], args: [c[1], script], admin: true, typicalMinutes: 2, friendly: { title: t.name, ok: `${t.name} was downloaded.`, problem: `${t.name} could not be downloaded.` } });
       steps.push({
         id: `cache-${t.id}`, name: `Save ${t.name}`, admin: false, ok: `${t.name} was saved for offline use.`, problem: `${t.name} could not be saved.`,
         action: async () => {

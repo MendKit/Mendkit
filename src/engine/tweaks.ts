@@ -294,7 +294,8 @@ export class TweakManager {
   async isOn(def: TweakDef): Promise<boolean> {
     for (const e of def.entries) {
       const v = await this.backend.get(e.path, e.name);
-      if (!v.exists || norm(v.type, v.data) !== norm(e.type, e.on)) return false;
+      // Compare as the tweak's own type: KDE and XFCE print booleans as true/false, macOS as 1/0, the registry as hex.
+      if (!v.exists || norm(e.type, v.data) !== norm(e.type, e.on)) return false;
     }
     return def.entries.length > 0;
   }

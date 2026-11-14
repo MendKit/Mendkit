@@ -39,7 +39,7 @@ export function registerLinuxTools(ctx: { engine: Engine }): void {
   const home = os.homedir();
   const opts = () => ({ elevated: isElevated() });
   const journal = path.join(app.getPath('userData'), 'linux-startup-off.json');
-  const readJournal = (): { id: string; kind: string; name: string; unit?: string; file?: string; when: string }[] => {
+  const readJournal = (): { id: string; kind: string; name: string; unit?: string; file?: string; hadOwnCopy?: boolean; when: string }[] => {
     try {
       return JSON.parse(fs.readFileSync(journal, 'utf8'));
     } catch {
@@ -100,7 +100,7 @@ export function registerLinuxTools(ctx: { engine: Engine }): void {
     const pick = startup.filter((s) => ids.includes(s.id) && !s.essential);
     if (!pick.length) throw new Error('Nothing that can be turned off was selected.');
     const steps: (CommandDef | ActionStep)[] = pick.map((s) => {
-      const record = () => fs.writeFileSync(journal, JSON.stringify([...readJournal().filter((j) => j.id !== `${s.kind}:${s.unit ?? s.file}`), { id: `${s.kind}:${s.unit ?? s.file}`, kind: s.kind, name: s.name, unit: s.unit, file: s.file, when: new Date().toISOString() }], null, 2));
+      const record = (hadOwnCopy: boolean) => fs.writeFileSync(journal, JSON.stringify([...readJournal().filter((j) => j.id !== `${s.kind}:${s.unit ?? s.file}`), { id: `${s.kind}:${s.unit ?? s.file}`, kind: s.kind, name: s.name, unit: s.unit, file: s.file, hadOwnCopy, when: new Date().toISOString() }], null, 2));
       if (s.kind === 'autostart')
         return {
           id: `off-${s.id}`, name: `Stop ${s.name} starting`, admin: false, ok: `${s.name} will not start when you sign in.`, problem: `${s.name} could not be turned off.`,
@@ -109,11 +109,12 @@ export function registerLinuxTools(ctx: { engine: Engine }): void {
             const dir = path.join(home, '.config/autostart');
             fs.mkdirSync(dir, { recursive: true });
             const mine = path.join(dir, s.file!);
-            const src = fs.existsSync(mine) ? mine : path.join('/etc/xdg/autostart', s.file!);
+            const hadOwnCopy = fs.existsSync(mine);
+            const src = hadOwnCopy ? mine : path.join('/etc/xdg/autostart', s.file!);
             const text = fs.readFileSync(src, 'utf8').replace(/^Hidden=.*$/m, '');
             fs.writeFileSync(mine, text.replace(/\n*$/, '\nHidden=true\n'));
             write(`Marked ${mine} as hidden\n`);
-            record();
+            record(hadOwnCopy);
             return { ok: true };
           },
         } as ActionStep;
@@ -138,8 +139,9 @@ export function registerLinuxTools(ctx: { engine: Engine }): void {
         id: 'on', name: `Start ${j.name} again`, admin: false, ok: `${j.name} will start when you sign in again.`, problem: 'It could not be turned back on.',
         action: async () => {
           const mine = path.join(home, '.config/autostart', j.file!);
-          if (fs.existsSync(path.join('/etc/xdg/autostart', j.file!))) fs.rmSync(mine, { force: true });
-          else fs.writeFileSync(mine, fs.readFileSync(mine, 'utf8').replace(/^Hidden=true\n?/m, ''));
+          // A copy MendKit made only to hide the system entry is removed; the person's own copy is kept, just unhidden.
+          if (!j.hadOwnCopy && fs.existsSync(path.join('/etc/xdg/autostart', j.file!))) fs.rmSync(mine, { force: true });
+          else if (fs.existsSync(mine)) fs.writeFileSync(mine, fs.readFileSync(mine, 'utf8').replace(/^Hidden=true\n?/m, ''));
           return { ok: true };
         },
       };
@@ -256,13 +258,13 @@ export function registerLinuxTools(ctx: { engine: Engine }): void {
     if (!/^\/dev\/[\w/.-]+$/.test(String(root))) throw new Error('Bad partition');
     const steps: CommandDef[] = [];
     if (opt.fsck)
-      steps.push(cmd('boot-fsck', `Check and repair ${root}`, `umount ${q(root)} 2>/dev/null; t=$(lsblk -no FSTYPE ${q(root)}); case "$t" in ext*) e2fsck -f -y ${q(root)}; r=$?; [ $r -le 1 ] && echo FSCK_OK || { [ $r -le 3 ] && echo FSCK_FIXED; } ;; xfs) xfs_repair ${q(root)} && echo FSCK_OK ;; btrfs) btrfs check --readonly ${q(root)} && echo FSCK_OK ;; esac`, 'The file system was checked and repaired where needed.', 'The file system has damage that could not be repaired. Copy the files off before anything else.', true, 10));
+      steps.push(cmd('boot-fsck', `Check and repair ${root}`, `umount ${q(root)} 2>/dev/null; t=$(lsblk -no FSTYPE ${q(root)}); case "$t" in ext*) e2fsck -f -y ${q(root)}; r=$?; [ $r -le 1 ] && echo FSCK_OK || { [ $r -le 3 ] && echo FSCK_FIXED; } ;; xfs) xfs_repair ${q(root)} && echo FSCK_OK ;; btrfs) btrfs check --readonly ${q(root)} && echo FSCK_OK ;; *) echo "No check for file system type $t"; exit 1 ;; esac`, 'The file system was checked and repaired where needed.', 'The file system has damage that could not be repaired. Copy the files off before anything else.', true, 10));
     if (opt.grub || opt.initramfs) {
       const inner = [
         'mount /boot 2>/dev/null; mount /boot/efi 2>/dev/null; true',
         opt.initramfs ? '(command -v update-initramfs >/dev/null && update-initramfs -u -k all) || (command -v dracut >/dev/null && dracut -f --regenerate-all) || (command -v mkinitcpio >/dev/null && mkinitcpio -P)' : 'true',
         opt.grub
-          ? `if [ -d /sys/firmware/efi ]; then if command -v dnf >/dev/null; then dnf reinstall -y shim-\\* grub2-efi-\\* grub2-common; else id=$(. /etc/os-release; echo $ID); grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id="$id" --recheck; fi; else d=$(lsblk -no PKNAME ${q(root)} | head -1); (grub-install /dev/$d || grub2-install /dev/$d); fi
+          ? `if [ -d /sys/firmware/efi ]; then if command -v dnf >/dev/null; then dnf reinstall -y shim-\\* grub2-efi-\\* grub2-common; else id=$(. /etc/os-release; echo $ID); grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id="$id" --recheck; fi; else d=$(lsblk -nspo NAME,TYPE ${q(root)} | awk '$2=="disk"{print $1; exit}' | sed 's/^[^/]*//'); [ -n "$d" ] || { echo "Could not find the disk holding ${root}"; exit 1; }; (grub-install "$d" || grub2-install "$d"); fi
 if command -v update-grub >/dev/null; then update-grub; elif [ -d /boot/grub2 ]; then grub2-mkconfig -o /boot/grub2/grub.cfg; else grub-mkconfig -o /boot/grub/grub.cfg; fi && echo GRUB_DONE`
           : 'true',
       ].join('\n');
@@ -296,7 +298,8 @@ umount -R $m; exit $r`;
     const free = parseInt((await sh("df -k / | awk 'NR==2{print $4}'")).out, 10) * 1024 || 0;
     const onBattery = /^Discharging/m.test((await sh('cat /sys/class/power_supply/BAT*/status 2>/dev/null')).out);
     const third = (await sh('ls /etc/apt/sources.list.d/ 2>/dev/null | grep -vE "^(ubuntu|official-package-repositories|official-source-repositories)\\.(list|sources)$"')).out.split('\n').filter(Boolean);
-    const snaps = (await sh('timeshift --list --scripted 2>/dev/null | grep -c "^[0-9]" ')).out.trim();
+    // timeshift --list needs root; its snapshot folder on the system drive does not.
+    const snaps = (await sh('n=$(ls -d /timeshift/snapshots/*/ 2>/dev/null | wc -l); [ "$n" -gt 0 ] && echo $n || (timeshift --list --scripted 2>/dev/null | grep -c "^[0-9]")')).out.trim();
     const pending = id === 'fedora' ? (await sh('dnf check-update -q 2>/dev/null | grep -c "^\\S"')).out.trim() : (await sh("apt list --upgradable 2>/dev/null | grep -c upgradable")).out.trim();
     const e = linuxEol(o);
     const method = id === 'ubuntu' || id === 'pop' ? 'ubuntu' : id === 'linuxmint' ? 'mint' : id === 'fedora' ? 'fedora' : 'manual';

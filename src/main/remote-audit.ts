@@ -213,7 +213,11 @@ export function registerRemoteAudit(engine: Engine): void {
       const cmd = (id: string, name: string, script: string, ok: string, admin = true): CommandDef => ({ id, name, description: '', exec: 'sh', args: ['-c', script], admin, typicalMinutes: 1, friendly: { title: f.name, ok, problem: `${name} did not finish.` } });
       if (services.length || pids.length) steps.push(cmd(`stop-${f.id}`, `${f.name}: stop it running`, `${services.map((n) => `systemctl disable --now ${q(n)} 2>&1`).join('; ')}; ${pids.length ? `kill ${pids.join(' ')} 2>/dev/null` : 'true'}; echo stopped`, 'It is no longer running, and its service will not start again.'));
       for (const m of pkgs) {
-        const rm = m[1] === 'apt' ? `DEBIAN_FRONTEND=noninteractive apt-get purge -y ${q(m[2])}` : m[1] === 'dnf' ? `dnf remove -y ${q(m[2])}` : m[1] === 'zypper' ? `zypper --non-interactive remove ${q(m[2])}` : `pacman -Rns --noconfirm ${q(m[2])}`;
+        // Refuse when removing it would take other packages with it; pacman -R refuses on its own.
+        const guard = m[1] === 'apt'
+          ? `others=$(LC_ALL=C apt-get -s purge ${q(m[2])} | awk '/^(Purg|Remv) /{print $2}' | grep -vx ${q(m[2])}); [ -z "$others" ] || { echo "Not removed: it would also remove $others. Remove it by hand if that is intended."; exit 1; }; `
+          : m[1] === 'pacman' ? '' : `others=$(rpm -q --whatrequires ${q(m[2])} 2>/dev/null | grep -v "^no package"); [ -z "$others" ] || { echo "Not removed: $others need it. Remove it by hand if that is intended."; exit 1; }; `;
+        const rm = guard + (m[1] === 'apt' ? `DEBIAN_FRONTEND=noninteractive apt-get purge -y ${q(m[2])}` : m[1] === 'dnf' ? `dnf remove -y ${q(m[2])}` : m[1] === 'zypper' ? `zypper --non-interactive remove ${q(m[2])}` : `pacman -Rns --noconfirm ${q(m[2])}`);
         steps.push(cmd(`uninstall-${f.id}-${m[2]}`, `${f.name}: uninstall ${m[2]}`, rm, 'It was uninstalled.'));
       }
       for (const m of flats) steps.push(cmd(`flatpak-${f.id}-${m[2]}`, `${f.name}: uninstall ${m[2]}`, `flatpak uninstall -y --${m[1]} --delete-data ${q(m[2])}`, 'It was uninstalled.', m[1] === 'system'));

@@ -654,7 +654,7 @@
   "exec": "sh",
   "args": [
    "-c",
-   "for b in $(upower -e | grep -i bat); do upower -i \"$b\" | grep -E \"state|percentage|capacity|energy-full\"; done"
+   "b=$(upower -e | grep -i bat); [ -n \"$b\" ] || { echo NO_BATTERY; exit 0; }; for x in $b; do upower -i \"$x\" | grep -E \"state|percentage|capacity|energy-full\"; done; true"
   ],
   "admin": false,
   "requires": "upower",
@@ -664,6 +664,11 @@
    "ok": "Battery status was read.",
    "problem": "Battery status could not be read.",
    "notes": [
+    {
+     "pattern": "NO_BATTERY",
+     "level": "info",
+     "message": "This computer has no battery."
+    },
     {
      "pattern": "capacity:\\s+([1-7]\\d)(\\.\\d+)?%",
      "level": "attention",

@@ -192,6 +192,15 @@ async function testPhase5(defs: string, tmp: string): Promise<void> {
   assert(xf.includes('xfce-no-tearing') && gnome.includes('gnome-min-max') && !gnome.includes('cinnamon-date'), 'XFCE or GNOME tweaks wrong');
   const mintPresets = loadTweaks(defs, 'linux', (all) => linuxTweaksAvailable(all, ['cinnamon'], () => true)).presets;
   assert(mintPresets.every((p) => p.tweaks.every((id) => mint.includes(id))), 'a preset offers another desktop\'s tweak');
+  // Backends that print booleans as words (KDE, XFCE) or numbers (macOS) still read back as on.
+  {
+    const words = new Map<string, string>();
+    const wordy: RegBackend = { get: async (p, n) => (words.has(`${p}|${n}`) ? { exists: true, data: words.get(`${p}|${n}`)! } : { exists: false }), set: async (p, n, t, d) => void words.set(`${p}|${n}`, t === 'bool' ? (/^(1|true)$/.test(d) ? 'true' : 'false') : d), del: async (p, n) => void words.delete(`${p}|${n}`), delKey: async () => {}, run: async () => {} };
+    const kdeTweaks = allLinux.filter((t) => t.id.startsWith('kde-') || t.id.startsWith('xfce-'));
+    const km = new TweakManager(kdeTweaks, wordy, path.join(tmp, 'journal-kde.json'));
+    const ks = await new Engine(catalog, tmp).runActions('t', 't', 'tweak', kdeTweaks.map((t) => km.step(t.id, true)), { elevated: false });
+    assert(ks.steps.every((x) => x.status === 'ok'), `KDE/XFCE tweaks not detected after applying: ${ks.steps.filter((x) => x.status !== 'ok').map((x) => x.name)}`);
+  }
   console.log(`linux desktops: Cinnamon ${mint.length}, KDE ${plasma.length}, XFCE ${xf.length}, GNOME ${gnome.length} tweaks OK`);
   console.log('phase 5: single root shell, refused prompt, distro filtering, package manager commands OK');
 }
