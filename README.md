@@ -84,7 +84,7 @@ npm start
 - **Windows:** double-click `Build-Installer.cmd` as administrator. It makes `MendKit-Setup-<version>.exe` (installer with Start menu and Desktop shortcuts) and `MendKit-Portable-<version>.exe` (single file, keeps its data in a `MendKitData` folder beside it).
 - **macOS:** a `.dmg`. It has to be built on a Mac.
 - **Linux:** an AppImage and a `.tar.gz`.
-- **All three at once:** `.github/workflows/release.yml` builds them on GitHub's machines if the project is put in a GitHub repository.
+- **All three at once, and published:** the **Build and publish** workflow (see Updates below).
 
 The builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on first run. Signing needs a purchased certificate (Windows) and an Apple Developer account (macOS); the workflow already reads `CSC_LINK` and `CSC_KEY_PASSWORD` for when those exist. Auto-update is described under Updates below.
 
@@ -92,11 +92,16 @@ The builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on fir
 
 MendKit checks the release bucket named in `definitions/update.json` (the Cloudflare R2 bucket; `build.publish` in `package.json` must name the same address) a few seconds after it starts and from the Updates screen. The logic is in `src/main/updater.ts` and `src/engine/update.ts`.
 
-To publish a new version:
+To publish a new version, open **Actions > Build and publish > Run workflow**, type the new version number (for example `0.18.0`) and click **Run workflow**. In about ten minutes it:
 
-1. Raise `version` in `package.json`.
-2. Build (`Build-Installer.cmd` on Windows).
-3. Upload from `release/` to the bucket, keeping the file names: `latest.yml`, `MendKit-Setup-<version>.exe` and `MendKit-Setup-<version>.exe.blockmap`. For Linux also `latest-linux.yml` and the AppImage. Old installers can stay or be deleted.
+1. builds Windows, macOS and Linux,
+2. uploads the installers to the bucket under their versioned names and under fixed `-latest` names (the website links to those),
+3. uploads `latest*.yml` and `version.json` last, so installed copies only see the new version once its files are there,
+4. sets the new version in `package.json` on `main` and tags the commit `v<version>`.
+
+It refuses to replace a version that is already published unless **overwrite** is ticked. Untick **publish** to only build. The bucket keys are the repository secrets `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_ACCOUNT_ID` and `R2_BUCKET`; **Check release bucket** tests them. The upload logic is `.github/scripts/publish-r2.sh`.
+
+The website (`website/`, published from `MendKit/mendkit.github.io`) reads `version.json` from the bucket, so it needs no change for a new version.
 
 What each kind of copy does when a newer version is in the bucket:
 

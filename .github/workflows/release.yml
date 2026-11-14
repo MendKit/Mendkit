@@ -1,14 +1,59 @@
-# Builds installers for Windows, macOS and Linux and attaches them to the run.
-# Start it from the Actions tab ("Run workflow"), or push a tag like v0.16.0.
-name: Build installers
+# Builds MendKit for Windows, macOS and Linux and publishes it to the Cloudflare R2 release bucket.
+#
+# From the Actions tab: "Build and publish" > Run workflow.
+#   version    New version number, for example 0.18.0. Leave empty to build the version in package.json.
+#   publish    Upload to the bucket. Untick to only build (the files stay on the run page).
+#   overwrite  Allow publishing a version the bucket already has.
+#
+# Publishing uploads the installers first and the "latest" files last, so installed copies never
+# see a new version before its files are there. When a new version number was given, package.json
+# is updated on main and the commit is tagged v<version>.
+name: Build and publish
+
 on:
   workflow_dispatch:
-  push:
-    tags: ['v*']
+    inputs:
+      version:
+        description: "New version number (for example 0.18.0). Empty = keep the one in package.json"
+        required: false
+        default: ""
+      publish:
+        description: "Upload to the release bucket"
+        type: boolean
+        default: true
+      overwrite:
+        description: "Allow replacing a version that is already published"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
 jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v5
+      - id: v
+        name: Work out the version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          current=$(node -p "require('./package.json').version")
+          v="${INPUT_VERSION:-$current}"
+          v="${v#v}"
+          if ! [[ "$v" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::'$v' is not a version number like 0.18.0"; exit 1
+          fi
+          echo "Building MendKit $v (package.json has $current)"
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+
   build:
+    needs: prepare
     strategy:
-      fail-fast: false
+      fail-fast: true
       matrix:
         include:
           - os: windows-latest
@@ -19,11 +64,14 @@ jobs:
             script: dist:linux
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
         with:
           node-version: 22
       - run: npm ci
+      - name: Set the version
+        shell: bash
+        run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm test
         if: matrix.os == 'ubuntu-latest'
       # Code signing: add CSC_LINK and CSC_KEY_PASSWORD as repository secrets once you have certificates.
@@ -52,9 +100,10 @@ jobs:
           app=$(ls -d release/mac*/MendKit.app | head -1)
           codesign --verify --deep --strict --verbose=2 "$app"
           codesign -dv "$app" 2>&1 | grep -E "Signature|flags|Identifier"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
-          name: MendKit-${{ matrix.os }}
+          name: MendKit-${{ runner.os }}
+          if-no-files-found: error
           path: |
             release/*.exe
             release/*.dmg
@@ -62,3 +111,41 @@ jobs:
             release/*.tar.gz
             release/*.yml
             release/*.blockmap
+            !release/builder-debug.yml
+            !release/builder-effective-config.yaml
+
+  publish:
+    needs: [prepare, build]
+    if: inputs.publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      OVERWRITE: ${{ inputs.overwrite }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      # Newer AWS CLI versions add checksums R2 does not need; send them only when required.
+      AWS_REQUEST_CHECKSUM_CALCULATION: when_required
+      AWS_RESPONSE_CHECKSUM_VALIDATION: when_required
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v7
+        with:
+          path: out
+          merge-multiple: true
+      - name: Upload to the release bucket
+        run: bash .github/scripts/publish-r2.sh out
+      - name: Record the version on main
+        if: inputs.version != ''
+        run: |
+          npm version "$VERSION" --no-git-tag-version --allow-same-version
+          if git diff --quiet; then echo "package.json already has $VERSION"; exit 0; fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Release $VERSION"
+          git tag "v$VERSION"
+          git push origin HEAD:main "v$VERSION"
