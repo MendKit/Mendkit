@@ -25,3 +25,10 @@ jobs:
           echo "mendkit write test $(date -u)" > check.txt
           aws s3 cp check.txt "s3://$R2_BUCKET/.mendkit-write-test.txt" --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
           aws s3 rm "s3://$R2_BUCKET/.mendkit-write-test.txt" --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+      - name: Website can read the version (CORS)
+        env:
+          PUBLIC_URL: https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev
+        run: |
+          h=$(curl -s -D - -o /dev/null -H "Origin: https://mendkit.github.io" "$PUBLIC_URL/latest.yml" | tr -d '\r')
+          echo "$h" | grep -i "^access-control" || true
+          echo "$h" | grep -qi "^access-control-allow-origin: \(https://mendkit.github.io\|\*\)" || { echo "::error::The bucket's CORS policy does not allow https://mendkit.github.io"; exit 1; }
