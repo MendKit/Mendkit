@@ -1,0 +1,27 @@
+# Checks that the Cloudflare R2 secrets are set and can list and write to the release bucket.
+# Run it from the Actions tab after changing the keys. It prints no secret values.
+name: Check release bucket
+on: workflow_dispatch
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+      R2_BUCKET: ${{ secrets.R2_BUCKET }}
+    steps:
+      - name: Secrets present
+        run: |
+          for v in AWS_ACCESS_KEY_ID AWS_SECRET_ACCESS_KEY R2_ACCOUNT_ID R2_BUCKET; do
+            if [ -n "${!v}" ]; then echo "$v: set"; else echo "::error::$v is missing"; missing=1; fi
+          done
+          [ -z "$missing" ]
+      - name: List the bucket
+        run: aws s3 ls "s3://$R2_BUCKET/" --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+      - name: Write and delete a test file
+        run: |
+          echo "mendkit write test $(date -u)" > check.txt
+          aws s3 cp check.txt "s3://$R2_BUCKET/.mendkit-write-test.txt" --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
+          aws s3 rm "s3://$R2_BUCKET/.mendkit-write-test.txt" --endpoint-url "https://$R2_ACCOUNT_ID.r2.cloudflarestorage.com"
