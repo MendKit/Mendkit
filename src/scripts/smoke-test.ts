@@ -360,7 +360,11 @@ async function main(): Promise<void> {
   console.log(`remote audit: ${rdefs.length} products, recognition and removal planning OK`);
 
   // Every tool in the catalog has a guide, and every guide has steps.
-  const guides = JSON.parse(fs.readFileSync(path.join(defs, 'guides.json'), 'utf8')) as { id: string; sections: { heading: string; steps: string[] }[] }[];
+  const guides = JSON.parse(fs.readFileSync(path.join(defs, 'guides.json'), 'utf8')) as { id: string; related?: string[]; screen?: string; sections: { heading: string; steps: (string | { t: string })[] }[] }[];
+  const gIds = new Set(guides.map((g) => g.id));
+  assert(gIds.size === guides.length, 'two guides share an id');
+  assert(guides.every((g) => (g.related ?? []).every((r) => gIds.has(r))), 'a guide links to a missing guide');
+  assert(guides.every((g) => g.sections.every((x) => x.steps.every((st) => typeof st === 'string' ? st.length > 0 : typeof st.t === 'string' && st.t.length > 0))), 'a guide step is empty');
   const toolIds = (JSON.parse(fs.readFileSync(path.join(defs, 'tools.json'), 'utf8')) as { id: string }[]).map((t) => t.id);
   assert(toolIds.every((id) => guides.some((g) => g.id === id)), 'a tool has no guide');
   assert(guides.every((g) => g.sections.length > 0 && g.sections.every((x) => x.steps.length > 0)) && guides.some((g) => g.id === 'mendkit'), 'a guide is empty');

@@ -504,26 +504,102 @@ function showResults(r) {
 
 // ---------- How-To Guides ----------
 
+const GROUP_LEAD = {
+  'Start here': 'New to fixing computers? Read these first. They explain the words and everyday skills the other guides use.',
+  'Using MendKit': 'One guide for each part of MendKit, in the order you are most likely to need them.',
+  Mac: 'Mac repairs you do yourself, outside MendKit.',
+  Tools: 'Every tool on the Tools screen: what it is for, how to install it, how to use it step by step, and what the results mean.',
+};
+const stepText = (st) => (typeof st === 'string' ? st : [st.t, st.see, st.tip, st.warn].filter(Boolean).join(' '));
+const guideText = (g) => [g.title, g.summary, ...(g.need || []), ...g.sections.flatMap((x) => [x.heading, ...x.steps.map(stepText)])].join(' ');
+
+/** One guide, laid out for someone following along at the computer: numbered steps, what they will see, tips and warnings. */
+function renderGuide(view, g, all) {
+  const back = el('button', { className: 'ghost', textContent: 'All guides' });
+  back.onclick = () => {
+    state.guide = null;
+    show('guides');
+  };
+  const print = el('button', { className: 'ghost', textContent: 'Print this guide' });
+  print.onclick = () => window.print();
+  const bar = el('div', { className: 'toolbar no-print' }, back, print);
+  const tool = g.tool && state.catalog.tools && state.catalog.tools.find((t) => t.id === g.tool);
+  if (tool) {
+    const b = el('button', { className: 'run', textContent: `Install ${tool.name}` });
+    b.onclick = () => {
+      if (state.mode !== 'technician') {
+        state.mode = 'technician';
+        api.setMode('technician');
+      }
+      show('tools');
+    };
+    bar.append(b);
+  }
+  if (g.screen && SCREENS.some((x) => x.id === g.screen)) {
+    const b = el('button', { className: 'run', textContent: `Open ${SCREENS.find((x) => x.id === g.screen).name}` });
+    b.onclick = () => {
+      const sc = SCREENS.find((x) => x.id === g.screen);
+      if (!sc.simple && state.mode !== 'technician') {
+        state.mode = 'technician';
+        api.setMode('technician');
+      }
+      show(g.screen);
+    };
+    bar.append(b);
+  }
+  view.append(bar, el('h1', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary }));
+  const meta = el('div', { className: 'guide-meta' });
+  for (const [k, v] of [['Works on', g.systems], ['Time', g.time], ['Difficulty', g.level]]) if (v) meta.append(el('span', {}, el('small', { textContent: k }), el('strong', { textContent: v })));
+  if (meta.childNodes.length) view.append(meta);
+  if (g.need && g.need.length) view.append(el('div', { className: 'guide-need' }, el('strong', { textContent: 'You will need' }), el('ul', {}, ...g.need.map((n) => el('li', { textContent: n })))));
+  if (g.sections.length > 3) {
+    const toc = el('ol', { className: 'guide-toc no-print' });
+    g.sections.forEach((sec, i) => {
+      const a = el('a', { className: 'link', textContent: sec.heading });
+      a.onclick = () => view.querySelector(`#gs-${i}`).scrollIntoView({ behavior: 'smooth' });
+      toc.append(el('li', {}, a));
+    });
+    view.append(el('div', { className: 'guide-need no-print' }, el('strong', { textContent: 'In this guide' }), toc));
+  }
+  g.sections.forEach((sec, i) => {
+    view.append(el('h2', { id: `gs-${i}`, textContent: sec.heading }));
+    const numbered = sec.kind ? sec.kind === 'steps' : /^How to|^Step|^Install/.test(sec.heading);
+    const list = el(numbered ? 'ol' : 'ul', { className: 'guide' + (numbered ? ' steps' : '') });
+    for (const st of sec.steps) {
+      if (typeof st === 'string') {
+        list.append(el('li', { textContent: st }));
+        continue;
+      }
+      const li = el('li', {}, el('span', { textContent: st.t }));
+      if (st.see) li.append(el('div', { className: 'g-see' }, el('strong', { textContent: 'You will see: ' }), st.see));
+      if (st.tip) li.append(el('div', { className: 'g-tip' }, el('strong', { textContent: 'Tip: ' }), st.tip));
+      if (st.warn) li.append(el('div', { className: 'g-warn' }, el('strong', { textContent: 'Careful: ' }), st.warn));
+      list.append(li);
+    }
+    view.append(list);
+  });
+  const rel = (g.related || []).map((id) => all.find((x) => x.id === id)).filter(Boolean);
+  if (rel.length) {
+    view.append(el('h2', { className: 'no-print', textContent: 'Related guides' }));
+    const row = el('div', { className: 'toolbar no-print' });
+    for (const r of rel) {
+      const b = el('button', { className: 'ghost', textContent: r.title });
+      b.onclick = () => {
+        state.guide = r.id;
+        show('guides');
+      };
+      row.append(b);
+    }
+    view.append(row);
+  }
+  view.scrollTop = 0;
+}
+
 async function renderGuides(view) {
   const guides = await api.guides();
   if (state.screen !== 'guides') return;
   const open = guides.find((g) => g.id === state.guide);
-  if (open) {
-    const back = el('button', { className: 'ghost', textContent: 'All guides' });
-    back.onclick = () => {
-      state.guide = null;
-      show('guides');
-    };
-    view.append(el('div', { className: 'toolbar' }, back), el('h1', { textContent: open.title }), el('p', { className: 'lead', textContent: open.summary + (open.systems ? ` Works on: ${open.systems}.` : '') }));
-    for (const sec of open.sections) {
-      view.append(el('h2', { textContent: sec.heading }));
-      const list = el(sec.heading === 'How to run it' ? 'ol' : 'ul', { className: 'guide' });
-      for (const step of sec.steps) list.append(el('li', { textContent: step }));
-      view.append(list);
-    }
-    view.scrollTop = 0;
-    return;
-  }
+  if (open) return renderGuide(view, open, guides);
   view.append(el('h1', { textContent: 'How-To Guides' }), el('p', { className: 'lead', textContent: 'Step-by-step instructions for MendKit and for every tool in the Tools screen.' }));
   const search = el('input', { type: 'text', className: 'text', placeholder: 'Search the guides' });
   const holder = el('div');
@@ -531,12 +607,14 @@ async function renderGuides(view) {
     const q = search.value.trim().toLowerCase();
     holder.replaceChildren();
     for (const group of [...new Set(guides.map((g) => g.group))]) {
-      const hits = guides.filter((g) => g.group === group && (!q || `${g.title} ${g.summary} ${g.sections.map((x) => x.steps.join(' ')).join(' ')}`.toLowerCase().includes(q)));
+      const hits = guides.filter((g) => g.group === group && (!q || guideText(g).toLowerCase().includes(q)));
       if (!hits.length) continue;
       holder.append(el('h2', { textContent: group === 'Tools' ? 'Tool guides' : group }));
+      if (GROUP_LEAD[group]) holder.append(el('p', { className: 'dim', textContent: GROUP_LEAD[group] }));
       const cards = el('div', { className: 'cards' });
       for (const g of hits) {
-        const c = el('div', { className: 'card guide-card' }, el('strong', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary }));
+        const c = el('div', { className: 'card guide-card', tabIndex: 0 }, el('strong', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary }), el('small', { className: 'dim', textContent: [g.systems, g.time, g.level].filter(Boolean).join(', ') }));
+        c.onkeydown = (e) => e.key === 'Enter' && c.onclick();
         c.onclick = () => {
           state.guide = g.id;
           show('guides');
