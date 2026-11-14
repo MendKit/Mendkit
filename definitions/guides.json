@@ -290,6 +290,18 @@
     ]
    },
    {
+    "heading": "Offline installers (Windows, Technician mode)",
+    "steps": [
+     "Use this to install tools on a computer that has no internet, or a broken connection you are there to fix.",
+     "While online, open Tools, tick the tools you want and click Save selected for offline use. Check download sizes shows roughly how much space they need first.",
+     "Saved tools show their version and size in the Offline column. Save them again later to pick up newer versions.",
+     "With no internet, Install and Install selected use the saved copies automatically, and the button reads Install from cache. Run MendKit as administrator for this: without the internet there is nothing to ask for permission part-way through.",
+     "To carry them to other computers, build a technician USB in the ISO Library and tick Offline installers. The portable MendKit on the stick uses them.",
+     "A few tools run without installing; their saved copy is opened straight from the cache folder. Microsoft Store apps cannot be saved.",
+     "On Mac and Linux, offline installers are not available yet."
+    ]
+   },
+   {
     "heading": "If something goes wrong",
     "steps": [
      "A step that sits far past its usual time is usually waiting on Windows Update. Cancel, restart the computer and run it again.",

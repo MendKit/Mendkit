@@ -686,11 +686,12 @@ async function usbCard(view) {
     }
   };
   const appBox = el('input', { type: 'checkbox', checked: info.canCopyApp, disabled: !info.canCopyApp });
+  const cacheBox = el('input', { type: 'checkbox', checked: !!info.cache.count && info.canCopyApp, disabled: !info.cache.count || !info.canCopyApp });
   const list = el('div', { className: 'ticks' });
   let isoBoxes = [];
   const paint = (items) => {
     isoBoxes = items.map((i) => ({ path: i.path, box: el('input', { type: 'checkbox', checked: true }), name: `${i.name} (${i.size})` }));
-    list.replaceChildren(el('label', { className: 'switch' }, appBox, `Portable MendKit (${info.appSize})`), ...isoBoxes.map((b) => el('label', { className: 'switch' }, b.box, b.name)));
+    list.replaceChildren(el('label', { className: 'switch' }, appBox, `Portable MendKit (${info.appSize})`), ...(info.cache.count ? [el('label', { className: 'switch', title: 'The portable MendKit installs these when there is no internet' }, cacheBox, `Offline installers (${info.cache.count} tool${info.cache.count === 1 ? '' : 's'}, ${info.cache.size})`)] : []), ...isoBoxes.map((b) => el('label', { className: 'switch' }, b.box, b.name)));
   };
   paint(info.isos);
   const add = el('button', { className: 'ghost', textContent: 'Add ISO files' });
@@ -698,7 +699,7 @@ async function usbCard(view) {
   const go = el('button', { className: 'run', textContent: 'Copy to the stick' });
   go.onclick = () => {
     if (!chosen) return migSafeStatus('Choose the USB stick first.');
-    run(async () => showResults(await api.usbBuild(appBox.checked, isoBoxes.filter((b) => b.box.checked).map((b) => b.path))), api.usbCancel);
+    run(async () => showResults(await api.usbBuild(appBox.checked, isoBoxes.filter((b) => b.box.checked).map((b) => b.path), appBox.checked && cacheBox.checked)), api.usbCancel);
   };
   box.append(el('div', { className: 'toolbar' }, pick, target), list, el('p', { className: 'lead note', textContent: info.isos.length ? 'ISO files found in your Downloads folder are listed. Nothing already on the stick is removed.' : 'No ISO files were found in your Downloads folder. Download some from the list below, then use Add ISO files.' }), el('div', { className: 'toolbar' }, add, go));
   view.append(box);
@@ -1287,27 +1288,48 @@ api.onStress((e) => {
 });
 api.onShowSummary((s) => showResults(s));
 
+// Size answers arrive one by one while the Tools screen is open; only the current screen's handler gets them.
+let cacheSizeHandler = null;
+api.onCacheSize((e) => cacheSizeHandler && document.querySelector('#view table') && cacheSizeHandler(e));
+
 async function renderTools(view) {
-  const data = await api.tools();
+  cacheSizeHandler = null;
+  const [data, cacheNow] = await Promise.all([api.tools(), api.cacheInfo()]);
   if (state.screen !== 'tools') return;
+  let cache = cacheNow;
   const how = { winget: 'winget, straight from each publisher', brew: 'Homebrew', apt: 'apt', dnf: 'dnf', pacman: 'pacman', zypper: 'zypper' }[data.manager] || '';
   view.append(el('h1', { textContent: 'Tools' }), el('p', { className: 'lead', textContent: data.supported ? `Trusted repair tools, installed through ${how}.` : 'Trusted repair tools.' }));
   if (!data.supported) return view.append(el('div', { className: 'placeholder', textContent: state.info.platform === 'darwin' ? 'Tools on macOS are installed through Homebrew, which is not on this Mac yet. Install it from brew.sh, then reopen MendKit.' : 'No supported package manager (apt, dnf, pacman or zypper) was found on this computer.' }));
   const t = el('table', { className: 'searchable' });
   const allBox = el('input', { type: 'checkbox', title: 'Select all' });
-  t.append(el('tr', {}, el('th', { className: 'chk' }, allBox), el('th', { textContent: 'Tool' }), el('th', { textContent: 'Job' }), el('th', { textContent: 'Status' }), el('th')));
+  t.append(el('tr', {}, el('th', { className: 'chk' }, allBox), el('th', { textContent: 'Tool' }), el('th', { textContent: 'Job' }), el('th', { textContent: 'Status' }), ...(cache.supported ? [el('th', { textContent: 'Offline' })] : []), el('th')));
   const rows = new Map();
   const many = el('button', { className: 'primary', textContent: 'Install selected' });
-  const picked = () => [...rows.values()].filter((r) => r.box.checked && !r.box.disabled).map((r) => r.tool.id);
+  const ticked = () => [...rows.values()].filter((r) => r.box.checked).map((r) => r.tool.id);
+  const picked = () => [...rows.values()].filter((r) => r.box.checked && !(state.toolStatus || []).includes(r.tool.id)).map((r) => r.tool.id);
+
+  const save = el('button', { className: 'run', textContent: 'Save selected for offline use' });
+  const unsave = el('button', { className: 'ghost', textContent: 'Remove selected from the cache' });
+  const saveNote = el('span', { className: 'dim' });
   const count = () => {
     const n = picked().length;
     many.textContent = n ? `Install ${n} selected` : 'Install selected';
+    const t = ticked().filter((id) => cache.cachable.includes(id));
+    let bytes = 0;
+    let unknown = 0;
+    for (const id of t) {
+      const sz = cache.entries[id] ? cache.entries[id].size : cache.sizes[id];
+      if (sz) bytes += sz;
+      else unknown++;
+    }
+    save.textContent = t.length ? `Save ${t.length} for offline use` : 'Save selected for offline use';
+    saveNote.textContent = t.length && bytes ? `About ${fmtSize(bytes)}${unknown ? `, plus ${unknown} of unknown size` : ''}. ${fmtSize(cache.free)} free where the cache is kept.` : '';
   };
   const selAll = el('button', { className: 'ghost', textContent: 'Select all not installed' });
   const selNone = el('button', { className: 'ghost', textContent: 'Clear selection' });
   const setAll = (on) => {
     // Select all only ticks what the search is showing.
-    for (const r of rows.values()) if (!r.box.disabled && (!on || !r.row.hidden)) r.box.checked = on;
+    for (const r of rows.values()) if (!on || (!r.row.hidden && !(state.toolStatus || []).includes(r.tool.id))) r.box.checked = on;
     allBox.checked = on;
     count();
   };
@@ -1320,6 +1342,64 @@ async function renderTools(view) {
     await run(async () => showResults(await api.toolsInstallMany(ids)));
     state.toolStatus = null;
   };
+  // Offline installers (Windows): saved copies that install with no internet.
+  const offCol = cache.supported;
+  if (offCol) {
+    const box = el('div', { className: 'card up' });
+    const paintCard = () => {
+      const n = Object.keys(cache.entries).length;
+      const status = state.online === false ? 'No internet right now: ticked tools install from the offline cache.' : n ? `${n} tool${n === 1 ? '' : 's'} saved (${cache.totalText}).` : 'Nothing saved yet.';
+      const where = el('p', { className: 'lead note', textContent: `Kept in ${cache.dir}. A technician USB can carry them: tick "Offline installers" when you build one in the ISO Library.` });
+      const pick = el('button', { className: 'ghost', textContent: 'Change folder' });
+      pick.onclick = async () => {
+        cache = await api.cachePickDir(false);
+        show('tools');
+      };
+      const open = el('button', { className: 'ghost', textContent: 'Open folder' });
+      open.onclick = () => api.cacheOpenDir();
+      const sizes = el('button', { className: 'ghost', textContent: 'Check download sizes' });
+      sizes.onclick = async () => {
+        sizes.disabled = true;
+        sizes.textContent = 'Checking sizes...';
+        cache.sizes = await api.cacheSizes();
+        sizes.textContent = 'Sizes checked';
+        count();
+      };
+      box.replaceChildren(
+        el('strong', { textContent: 'Offline installers' }),
+        el('p', { className: 'lead', textContent: `Save installers now, install them later on a computer with no internet. ${status}` }),
+        where,
+        el('div', { className: 'toolbar' }, save, unsave, sizes, open, pick, ...(cache.isDefault ? [] : [(() => {
+          const reset = el('button', { className: 'ghost', textContent: 'Use the default folder' });
+          reset.onclick = async () => {
+            cache = await api.cachePickDir(true);
+            show('tools');
+          };
+          return reset;
+        })()])),
+        el('div', { className: 'toolbar' }, saveNote),
+      );
+    };
+    paintCard();
+    save.onclick = async () => {
+      const ids = ticked().filter((id) => cache.cachable.includes(id));
+      if (!ids.length) return migSafeStatus('Tick the tools to save for offline use. Store apps cannot be saved.');
+      await run(async () => showResults(await api.cacheDownload(ids)), api.cacheCancel);
+    };
+    unsave.onclick = async () => {
+      const ids = ticked().filter((id) => cache.entries[id]);
+      if (!ids.length) return migSafeStatus('Tick saved tools to remove them from the cache.');
+      cache = await api.cacheRemove(ids);
+      show('tools');
+    };
+    view.append(box);
+    cacheSizeHandler = ({ id, size }) => {
+      cache.sizes[id] = size;
+      const r = rows.get(id);
+      if (r && !cache.entries[id]) r.off.textContent = size ? `~${fmtSize(size)}` : 'size unknown';
+      count();
+    };
+  }
   view.append(el('div', { className: 'toolbar' }, searchBar(view, 'Search tools by name or job'), selAll, selNone, many), noMatch());
   for (const tool of [...data.tools].sort((a, b) => a.job.localeCompare(b.job) || a.name.localeCompare(b.name))) {
     const name = el('td', {}, el('strong', { textContent: tool.name }), el('span', { className: 'tag', textContent: tool.license === 'open-source' ? 'open source' : 'free' }));
@@ -1335,19 +1415,22 @@ async function renderTools(view) {
       show('guides');
     };
     name.append(' ', guide);
-    const row = el('tr', { className: 'searchable' }, el('td', { className: 'chk' }, box), name, el('td', { textContent: tool.job }), status, el('td', { className: 'act' }, btn));
-    rows.set(tool.id, { status, btn, tool, box, row });
+    const e = cache.entries[tool.id];
+    const off = el('td', { className: e ? 'good' : 'dim' });
+    if (e) off.textContent = `Saved ${e.version}, ${fmtSize(e.size)}${e.support === 'portable' ? ' (runs without installing)' : e.support === 'unsupported' ? ' (run by hand)' : ''}`;
+    else if (!cache.cachable.includes(tool.id)) off.textContent = cache.supported ? 'Cannot be saved' : '';
+    else if (cache.sizes[tool.id]) off.textContent = `~${fmtSize(cache.sizes[tool.id])}`;
+    const row = el('tr', { className: 'searchable' }, el('td', { className: 'chk' }, box), name, el('td', { textContent: tool.job }), status, ...(cache.supported ? [off] : []), el('td', { className: 'act' }, btn));
+    rows.set(tool.id, { status, btn, tool, box, row, off });
     t.append(row);
   }
   view.append(t);
   const paint = (installed) => {
     for (const { status, btn, tool, box } of rows.values()) {
       const has = installed.includes(tool.id);
-      box.disabled = has;
-      if (has) box.checked = false;
       status.textContent = has ? 'Installed' : 'Not installed';
       status.className = has ? 'good' : '';
-      btn.textContent = has ? 'Remove' : 'Install';
+      btn.textContent = has ? 'Remove' : state.online === false && cache.entries[tool.id] ? 'Install from cache' : 'Install';
       btn.disabled = state.running;
       btn.onclick = async () => {
         await run(() => api.toolAction(tool.id, has ? 'remove' : 'install'));

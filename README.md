@@ -160,6 +160,7 @@ An installed build behaves like the source copy. A file named `portable` beside 
 - **Offline awareness:** the connection is checked every minute; a "No internet" badge shows and install, update and download screens carry a notice.
 - **Reinstall assistant (Technician mode, Repair):** readiness checks (administrator, free space, power, BitLocker), then Windows 11 "Reinstall now" through Recovery settings, or a repair install that mounts a chosen Windows ISO and starts Setup. macOS and Linux get the steps to follow.
 - **Weekly backup (Migrate):** schedules the drive backup every Friday at 12:30 through the system scheduler (`--backup --unattended`), silent unless the drive is missing or files failed; also opens File History or Time Machine.
+- **Offline installers (Windows, Technician mode, Tools):** saves chosen tools' installers with `winget download` (installer, manifest and checksum) into a cache folder, by default inside MendKit's data folder, so on a technician USB it travels on the stick. With no internet, installs run the saved installer silently using the manifest's switches (or winget's defaults per installer type), after re-checking the file's SHA-256. Tools that run without installing are opened from the folder. Logic in `src/engine/offline.ts` and `src/main/offline.ts`.
 - **Reports:** every run saves a full log and a summary.
 
 ## Administrator rights

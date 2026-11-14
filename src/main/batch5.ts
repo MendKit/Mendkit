@@ -10,6 +10,7 @@ import { onPath } from '../engine/catalog';
 import { ActionStep, Engine } from '../engine/runner';
 import { RunSummary } from '../engine/types';
 import { isElevated, powershellScript } from './system';
+import { cacheSummary } from './offline';
 
 /** Portable copy, technician USB, offline detection, the reinstall assistant and scheduled jobs. */
 
@@ -207,7 +208,8 @@ export function registerBatch5(ctx: { engine: Engine; getWin: () => BrowserWindo
   ipcMain.handle('usb-info', () => {
     if (!isoFiles.length) isoFiles = downloadsIsos();
     appSize ??= gb(treeSize(appRoot, skipApp));
-    return { portable: ctx.portable, canCopyApp: packaged ? !mac && !process.env.PORTABLE_EXECUTABLE_DIR && !process.env.APPIMAGE : fs.existsSync(electronDist) && fs.existsSync(path.join(appRoot, 'dist')), appSize, system: win32 ? 'Windows' : mac ? 'macOS' : 'Linux', isos: isoInfo(), dataDir: app.getPath('userData') };
+    const cs = cacheSummary();
+    return { cache: { count: cs.count, size: cs.size ? gb(cs.size) : '' }, portable: ctx.portable, canCopyApp: packaged ? !mac && !process.env.PORTABLE_EXECUTABLE_DIR && !process.env.APPIMAGE : fs.existsSync(electronDist) && fs.existsSync(path.join(appRoot, 'dist')), appSize, system: win32 ? 'Windows' : mac ? 'macOS' : 'Linux', isos: isoInfo(), dataDir: app.getPath('userData') };
   });
   ipcMain.handle('usb-add-isos', async () => {
     const r = await dialog.showOpenDialog(ctx.getWin()!, { title: 'Choose ISO files to put on the stick', defaultPath: app.getPath('downloads'), properties: ['openFile', 'multiSelections'], filters: [{ name: 'Disc images', extensions: ['iso', 'img'] }] });
@@ -235,7 +237,7 @@ export function registerBatch5(ctx: { engine: Engine; getWin: () => BrowserWindo
     }
     return { dir, free: gb(free), freeBytes: free, ventoy: /^ventoy$/i.test(label) };
   });
-  ipcMain.handle('usb-build', async (_e, withApp: boolean, isoNames: string[]): Promise<RunSummary> => {
+  ipcMain.handle('usb-build', async (_e, withApp: boolean, isoNames: string[], withCache?: boolean): Promise<RunSummary> => {
     if (!usbDir || !fs.existsSync(usbDir)) throw new Error('Choose the USB stick first');
     const dir = usbDir;
     const want = new Set(Array.isArray(isoNames) ? isoNames.map(String) : []);
@@ -292,6 +294,23 @@ export function registerBatch5(ctx: { engine: Engine; getWin: () => BrowserWindo
           write(`${r.files} files (${gb(r.bytes)}) copied to ${base}\n`);
           const sys = win32 ? 'Windows' : mac ? 'macOS' : 'Linux';
           return { ok: !r.failed.length, note: r.failed.length ? `${r.failed.length} files could not be copied${mac ? ' (a Mac copy needs a Mac-formatted drive, not FAT or exFAT)' : ''}. The full log lists them.` : `Open the MendKit folder on the drive and start "${starter}". This copy runs on ${sys} computers, with nothing to install, and keeps its logs on the drive.` };
+        },
+      });
+    }
+    const cs = cacheSummary();
+    if (withApp === true && withCache === true && cs.count) {
+      steps.push({
+        id: 'usb-cache',
+        name: `Copy ${cs.count} offline installers`,
+        admin: false,
+        ok: 'The offline installers are on the drive.',
+        problem: 'Some offline installers could not be copied.',
+        action: async (write) => {
+          const dest = path.join(dir, 'MendKit', 'MendKitData', 'tool-cache');
+          if (path.resolve(dest).toLowerCase() === path.resolve(cs.dir).toLowerCase()) return { ok: true, note: 'The offline installers are already on this drive.' };
+          const r = await copyTree(cs.dir, dest, (_rel, name) => name.endsWith('.partial'), progress(write, cs.size), () => stop);
+          for (const f of r.failed.slice(0, 20)) write(`Could not copy ${f}\n`);
+          return { ok: !r.failed.length && !stop, note: r.failed.length ? `${r.failed.length} files could not be copied.` : `${cs.count} offline installers (${gb(r.bytes)}) copied. The portable MendKit on the stick installs them when there is no internet.` };
         },
       });
     }

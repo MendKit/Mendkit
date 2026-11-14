@@ -489,6 +489,35 @@ async function main(): Promise<void> {
     console.log('self-update: feed, version compare and latest file parsing OK');
   }
 
+  {
+    const { parseWingetManifest, splitArgs, offlineInstallCommand, offlineSupport, cacheable } = await import('../engine/offline');
+    const exeMan = `# Created with WinGet\nPackageIdentifier: 7zip.7zip\nPackageVersion: 24.09\nPackageName: 7-Zip\nInstallerType: exe\nInstallers:\n- Architecture: x64\n  InstallerUrl: https://www.7-zip.org/a/7z2409-x64.exe\n  InstallerSha256: AB12CD\n  InstallerSwitches:\n    Silent: /S\n    SilentWithProgress: /S\nManifestType: merged\nManifestVersion: 1.9.0\n`;
+    const m1 = parseWingetManifest(exeMan);
+    assert(m1.version === '24.09' && m1.installerType === 'exe' && m1.silent === '/S' && m1.sha256 === 'ab12cd', `exe manifest not read: ${JSON.stringify(m1)}`);
+    const msiMan = "PackageVersion: '3.1.0'\r\nInstallerType: inno\r\nInstallerSwitches:\r\n  Custom: /MERGETASKS=!runcode\r\nInstallers:\r\n- Architecture: x64\r\n  InstallerType: msi\r\n  Scope: machine\r\n  InstallerSha256: FF00\r\n";
+    const m2 = parseWingetManifest(msiMan);
+    assert(m2.installerType === 'msi' && m2.scope === 'machine' && m2.custom === '/MERGETASKS=!runcode' && !m2.silent && m2.version === '3.1.0', `installer-level values should win: ${JSON.stringify(m2)}`);
+    assert(JSON.stringify(splitArgs('/S /D="C:\\Program Files\\X" -q')) === JSON.stringify(['/S', '/D=C:\\Program Files\\X', '-q']) && splitArgs(undefined).length === 0, 'switches not split');
+    const tool = { id: 'demo', name: 'Demo', job: '', description: '', license: 'free' as const, packages: { winget: 'Demo.Demo' } };
+    const base = { tool: 'demo', wingetId: 'Demo.Demo', version: '1.0', size: 1, sha256: 'x', downloaded: '' };
+    const msi = offlineInstallCommand(tool, { ...base, file: 'demo.msi', installerType: 'msi', scope: 'machine' }, 'C:\\cache\\demo');
+    assert(msi.exec === 'msiexec.exe' && msi.args[0] === '/i' && msi.args.includes('/quiet') && msi.admin && msi.okExitCodes!.includes(3010), 'msi offline command wrong');
+    const inno = offlineInstallCommand(tool, { ...base, file: 'demo.exe', installerType: 'inno', custom: '/MERGETASKS=!runcode' }, '/c');
+    assert(inno.exec.endsWith('demo.exe') && inno.args.includes('/VERYSILENT') && inno.args.includes('/MERGETASKS=!runcode'), 'inno offline command wrong');
+    const appx = offlineInstallCommand(tool, { ...base, file: "it's.msix", installerType: 'msix' }, '/c');
+    assert(appx.exec === 'powershell.exe' && appx.args[4].includes("it''s.msix") && !appx.admin, 'msix offline command wrong');
+    assert(offlineSupport({ installerType: 'exe' }) === 'unsupported' && offlineSupport({ installerType: 'exe', silent: '/S' }) === 'install' && offlineSupport({ installerType: 'portable' }) === 'portable' && offlineSupport({ installerType: 'zip' }) === 'portable', 'offline support wrong');
+    let threw = false;
+    try {
+      offlineInstallCommand(tool, { ...base, file: 'x.zip', installerType: 'zip' }, '/c');
+    } catch {
+      threw = true;
+    }
+    assert(threw, 'a zip should not get a silent install command');
+    assert(cacheable('7zip.7zip') && !cacheable('9NBLGGH4NNS1') && !cacheable(undefined), 'store apps should not be cacheable');
+    console.log('offline cache: manifest reading, silent switches and install commands OK');
+  }
+
   console.log(`Smoke test passed. Log: ${summary.logFile}`);
 }
 

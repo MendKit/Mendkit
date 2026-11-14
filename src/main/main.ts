@@ -18,6 +18,7 @@ import { gsettings, loadTweaks, macDefaults, memoryRegistry, TweakManager, windo
 import { findProfiles, oldApps, oldItems, OldProfile } from '../engine/olddrive';
 import { registerBatch4 } from './batch4';
 import { registerUpdater } from './updater';
+import { offlineInstallSteps, quickOnline, readCache, registerOffline } from './offline';
 import { applyPortableMode, jobScheduled, jobsSupported, registerBatch5, scheduleJob, Job } from './batch5';
 import { DestinationHandle, discover, ItemSpec, localAddresses, MigrateEvent, MigrateSummary, runSource, scanItems, SourceHandle, startDestination } from '../engine/migrate';
 import { getSpecs, getDrives, getSystemInfo, getTemps, isElevated } from './system';
@@ -187,14 +188,21 @@ function registerIpc(): void {
     if (settings.mode !== 'technician') throw new Error('Installing tools needs Technician mode');
     const list = [...new Set((Array.isArray(ids) ? ids : []).map(String))];
     if (!list.length) throw new Error('Tick at least one tool');
-    return engine.runToolInstalls(list, { elevated: isElevated() }).then((s) => (extras.noteToolRun(s), s));
+    return installTools(list).then((s) => (extras.noteToolRun(s), s));
   });
+  // With no internet on Windows, tools in the offline cache are installed from there instead of through winget.
+  const installTools = async (ids: string[]): Promise<RunSummary> => {
+    if (process.platform === 'win32' && readCache().size && !(await quickOnline())) {
+      return engine.runSteps('install-tools', `Install ${ids.length} tool${ids.length === 1 ? '' : 's'} from the offline cache`, 'tool', await offlineInstallSteps(catalog, ids), { elevated: isElevated() });
+    }
+    return ids.length === 1 ? engine.runTool(ids[0], 'install', { elevated: isElevated() }) : engine.runToolInstalls(ids, { elevated: isElevated() });
+  };
   ipcMain.handle('app-version', () => app.getVersion());
   ipcMain.handle('guides', () => JSON.parse(fs.readFileSync(path.join(app.getAppPath(), 'definitions', 'guides.json'), 'utf8')));
   ipcMain.handle('tool-action', (_e, id: string, action: string) => {
     if (settings.mode !== 'technician') throw new Error('Installing tools needs Technician mode');
     if (action !== 'install' && action !== 'remove') throw new Error('Bad action');
-    return engine.runTool(id, action, { elevated: isElevated() }).then((s) => (extras.noteToolRun(s), s));
+    return (action === 'install' ? installTools([String(id)]) : engine.runTool(id, action, { elevated: isElevated() })).then((s) => (extras.noteToolRun(s), s));
   });
 
   // ----- Tweaks -----
@@ -317,6 +325,7 @@ function registerIpc(): void {
   registerBatch3({ engine, catalog, tweakMgr, presets: tweakData.presets, appTable, hasFlatpak, getWin: () => win, logDir, noteToolRun: extras.noteToolRun });
   registerBatch4({ engine, getWin: () => win, logDir });
   registerUpdater({ getWin: () => win, busy: () => engine.isBusy() || job !== null });
+  registerOffline({ engine, catalog, getWin: () => win });
   registerBatch5({ engine, getWin: () => win, portable });
   const receivedApps = (): AppList | null => {
     try {
