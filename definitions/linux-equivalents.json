@@ -1,0 +1,279 @@
+[
+ {
+  "match": [
+   "microsoft office",
+   "microsoft 365",
+   "office 16",
+   "word",
+   "excel",
+   "powerpoint"
+  ],
+  "name": "Microsoft Office",
+  "linux": "LibreOffice (opens and saves Word, Excel and PowerPoint files), or Office on the web at office.com",
+  "app": "libreoffice"
+ },
+ {
+  "match": [
+   "outlook"
+  ],
+  "name": "Outlook",
+  "linux": "Thunderbird, or Outlook on the web at outlook.com",
+  "app": "thunderbird"
+ },
+ {
+  "match": [
+   "onedrive"
+  ],
+  "name": "OneDrive",
+  "linux": "OneDrive on the web, or the free OneDriver app for a synced folder"
+ },
+ {
+  "match": [
+   "icloud"
+  ],
+  "name": "iCloud",
+  "linux": "iCloud on the web at icloud.com"
+ },
+ {
+  "match": [
+   "google drive"
+  ],
+  "name": "Google Drive",
+  "linux": "Google Drive on the web, or GNOME Online Accounts for a linked folder"
+ },
+ {
+  "match": [
+   "dropbox"
+  ],
+  "name": "Dropbox",
+  "linux": "Dropbox has its own Linux app"
+ },
+ {
+  "match": [
+   "adobe acrobat",
+   "acrobat reader",
+   "adobe reader",
+   "foxit"
+  ],
+  "name": "PDF reader",
+  "linux": "The built-in Document Viewer, or Okular; Firefox opens and fills in PDF forms"
+ },
+ {
+  "match": [
+   "photoshop",
+   "lightroom"
+  ],
+  "name": "Adobe Photoshop or Lightroom",
+  "linux": "GIMP or Krita for editing, darktable for raw photos, or Photopea in the browser. Adobe apps do not run on Linux.",
+  "app": "gimp"
+ },
+ {
+  "match": [
+   "illustrator",
+   "coreldraw"
+  ],
+  "name": "Illustrator or CorelDRAW",
+  "linux": "Inkscape",
+  "app": "inkscape"
+ },
+ {
+  "match": [
+   "premiere",
+   "vegas",
+   "davinci"
+  ],
+  "name": "Video editing",
+  "linux": "Kdenlive or Shotcut. DaVinci Resolve has a Linux version"
+ },
+ {
+  "match": [
+   "itunes",
+   "apple music"
+  ],
+  "name": "iTunes",
+  "linux": "Rhythmbox for music; Apple Music on the web at music.apple.com"
+ },
+ {
+  "match": [
+   "windows media player",
+   "media player",
+   "groove"
+  ],
+  "name": "Windows Media Player",
+  "linux": "VLC",
+  "app": "vlc"
+ },
+ {
+  "match": [
+   "paint.net",
+   "paint 3d"
+  ],
+  "name": "Paint.NET",
+  "linux": "Pinta, which looks and works much the same"
+ },
+ {
+  "match": [
+   "notepad++"
+  ],
+  "name": "Notepad++",
+  "linux": "The built-in Text Editor, or Notepadqq"
+ },
+ {
+  "match": [
+   "winrar",
+   "winzip",
+   "peazip"
+  ],
+  "name": "WinRAR or WinZip",
+  "linux": "The built-in archive manager opens zip, rar and 7z files"
+ },
+ {
+  "match": [
+   "quickbooks"
+  ],
+  "name": "QuickBooks Desktop",
+  "linux": "QuickBooks Online in the browser. The desktop version does not run on Linux"
+ },
+ {
+  "match": [
+   "quicken"
+  ],
+  "name": "Quicken",
+  "linux": "Quicken Simplifi in the browser, or GnuCash or KMyMoney. Desktop Quicken does not run on Linux"
+ },
+ {
+  "match": [
+   "turbotax",
+   "h&r block",
+   "taxact"
+  ],
+  "name": "Tax software",
+  "linux": "The browser versions (TurboTax Online and others)"
+ },
+ {
+  "match": [
+   "teams"
+  ],
+  "name": "Microsoft Teams",
+  "linux": "Teams in the browser at teams.microsoft.com"
+ },
+ {
+  "match": [
+   "skype"
+  ],
+  "name": "Skype",
+  "linux": "Skype has closed; Microsoft Teams in the browser replaces it"
+ },
+ {
+  "match": [
+   "whatsapp"
+  ],
+  "name": "WhatsApp",
+  "linux": "WhatsApp Web at web.whatsapp.com"
+ },
+ {
+  "match": [
+   "edge"
+  ],
+  "name": "Microsoft Edge",
+  "linux": "Microsoft Edge has a Linux version; Firefox and Chrome also sync bookmarks"
+ },
+ {
+  "match": [
+   "norton",
+   "mcafee",
+   "avast",
+   "avg",
+   "kaspersky",
+   "bitdefender",
+   "malwarebytes",
+   "webroot",
+   "eset"
+  ],
+  "name": "Antivirus",
+  "linux": "Not needed on Linux. Keep updates on; ClamAV scans files if wanted"
+ },
+ {
+  "match": [
+   "ccleaner",
+   "advanced systemcare",
+   "driver booster",
+   "iobit"
+  ],
+  "name": "PC cleaner",
+  "linux": "Not needed. MendKit's Free up space tool covers it"
+ },
+ {
+  "match": [
+   "hp smart",
+   "epson",
+   "canon",
+   "brother"
+  ],
+  "name": "Printer software",
+  "linux": "Most printers work without it. Brother and Epson publish Linux drivers; HP uses HPLIP (MendKit: Install HP printer drivers)"
+ },
+ {
+  "match": [
+   "garmin",
+   "fitbit",
+   "tomtom"
+  ],
+  "name": "Device updater",
+  "linux": "No Linux version. Keep a Windows or Mac computer, or use the phone app, for device updates"
+ },
+ {
+  "match": [
+   "sketchup",
+   "autocad",
+   "solidworks",
+   "fusion 360",
+   "revit"
+  ],
+  "name": "CAD software",
+  "linux": "FreeCAD, or SketchUp and Onshape in the browser. Most Windows CAD apps do not run on Linux"
+ },
+ {
+  "match": [
+   "minecraft"
+  ],
+  "name": "Minecraft",
+  "linux": "Minecraft Java Edition runs on Linux (Prism Launcher). Bedrock Edition does not"
+ },
+ {
+  "match": [
+   "epic games",
+   "ea app",
+   "ubisoft",
+   "battle.net",
+   "riot",
+   "valorant",
+   "fortnite"
+  ],
+  "name": "Games launchers",
+  "linux": "Many games run through Steam's Proton or the Heroic and Lutris launchers. Games with anti-cheat (Valorant, Fortnite and others) do not"
+ },
+ {
+  "match": [
+   "kindle"
+  ],
+  "name": "Kindle",
+  "linux": "Kindle Cloud Reader in the browser, or Calibre for your own e-books"
+ },
+ {
+  "match": [
+   "visio",
+   "project"
+  ],
+  "name": "Visio or Project",
+  "linux": "draw.io for diagrams, ProjectLibre for projects"
+ },
+ {
+  "match": [
+   "zoom"
+  ],
+  "name": "Zoom",
+  "linux": "Zoom has a Linux app",
+  "app": "zoom"
+ }
+]

@@ -69,6 +69,9 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
+      - name: Tools for building .rpm packages
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq rpm
       - name: Set the version
         shell: bash
         run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version --allow-same-version
@@ -109,6 +112,8 @@ jobs:
             release/*.dmg
             release/*.AppImage
             release/*.tar.gz
+            release/*.deb
+            release/*.rpm
             release/*.yml
             release/*.blockmap
             !release/builder-debug.yml

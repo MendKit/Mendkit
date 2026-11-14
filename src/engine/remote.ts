@@ -80,7 +80,7 @@ export function matchScan(raw: RawScan, defs: RemoteToolDef[]): RemoteFinding[] 
       .map((s) => ({ name: String(s.Name), display: String(s.DisplayName ?? s.Name), state: String(s.State ?? ''), start: String(s.StartMode ?? '') }));
     // Files inside an installed copy go when it is uninstalled; only list the ones outside.
     const inside = (f: string) => installed.some((i) => i.location && lower(f).startsWith(lower(i.location) + '\\'));
-    const files = [...new Set(raw.files.filter((f) => isExe(f) && !inside(f)))];
+    const files = [...new Set(raw.files.filter((f) => (isExe(f) || (f.startsWith('/') && hits(lower(base(f))))) && !inside(f)))];
     if (installed.length || running.length || services.length || files.length) out.push({ id: d.id, name: d.name, note: d.note, builtin: !!d.builtin, installed, running, services, files });
   }
   return out;

@@ -662,7 +662,14 @@
   "friendly": {
    "title": "Battery",
    "ok": "Battery status was read.",
-   "problem": "Battery status could not be read."
+   "problem": "Battery status could not be read.",
+   "notes": [
+    {
+     "pattern": "capacity:\\s+([1-7]\\d)(\\.\\d+)?%",
+     "level": "attention",
+     "message": "The battery holds only $1% of its original charge. It is due for replacement."
+    }
+   ]
   }
  },
  {
@@ -1152,6 +1159,1029 @@
    "title": "Firmware updates",
    "ok": "Firmware updates were installed. Restart the computer to finish.",
    "problem": "Firmware updates could not be installed."
+  }
+ },
+ {
+  "id": "apt-locks",
+  "name": "Clear stuck updates (apt)",
+  "description": "Fixes \"could not get lock\" errors: waits for any update already running, clears locks left by a crashed update, and finishes half-installed packages.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "for f in /var/lib/dpkg/lock-frontend /var/lib/dpkg/lock /var/lib/apt/lists/lock /var/cache/apt/archives/lock; do\n  p=$(fuser \"$f\" 2>/dev/null | tr -s ' '); if [ -n \"$p\" ]; then echo \"LOCK_HELD: $f by $(ps -o comm= -p $p | tr '\\n' ' ')\"; held=1; fi\ndone\nif [ -n \"$held\" ]; then echo \"Waiting up to 10 minutes for the running update to finish...\"; for i in $(seq 1 60); do fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1 || break; sleep 10; done; fi\nif fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; then echo STILL_BUSY; exit 1; fi\nDEBIAN_FRONTEND=noninteractive dpkg --configure -a && echo PACKAGES_FINISHED"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Package locks",
+   "ok": "Nothing is blocking updates now.",
+   "problem": "Another program is still installing updates. Let it finish (or restart the computer), then try again.",
+   "notes": [
+    {
+     "pattern": "LOCK_HELD: .* by (\\S+)",
+     "level": "info",
+     "message": "An update ($1) was already running. MendKit waited for it to finish."
+    },
+    {
+     "pattern": "PACKAGES_FINISHED",
+     "level": "good",
+     "message": "Half-installed packages were finished off."
+    }
+   ]
+  },
+  "requires": "dpkg"
+ },
+ {
+  "id": "apt-bad-sources",
+  "name": "Find broken software sources (apt)",
+  "description": "Refreshes the package lists and names each extra software source (PPA or third-party repository) that fails, which makes every update fail.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "out=$(LC_ALL=C apt-get update 2>&1); echo \"$out\" | grep -E \"^(Err|W:|E:)\" | head -30\nn=$(echo \"$out\" | grep -cE \"does not have a Release file|NO_PUBKEY|EXPKEYSIG|404 +Not Found|is not signed|Could not resolve\"); echo \"BAD_SOURCES: $n\""
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Software sources",
+   "ok": "Every software source was checked.",
+   "problem": "The software sources could not be checked.",
+   "notes": [
+    {
+     "pattern": "BAD_SOURCES: [1-9]",
+     "level": "attention",
+     "message": "Some extra software sources are broken (gone, moved, or with an expired key). Run \"Turn off broken software sources\" to set them aside so updates work again."
+    },
+    {
+     "pattern": "BAD_SOURCES: 0",
+     "level": "good",
+     "message": "All software sources are working."
+    }
+   ]
+  },
+  "requires": "apt-get"
+ },
+ {
+  "id": "apt-disable-bad-sources",
+  "name": "Turn off broken software sources (apt)",
+  "description": "Moves the extra source files that fail (never the system's main sources) into a backup folder, so updates work again.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "out=$(LC_ALL=C apt-get update 2>&1); bk=/etc/apt/sources.list.d/disabled-by-mendkit; n=0\nfor host in $(echo \"$out\" | grep -E \"does not have a Release file|NO_PUBKEY|EXPKEYSIG|404 +Not Found|is not signed\" -B2 | grep -oE \"https?://[^ ]+\" | sed -E 's#https?://([^/]+)(/[^ ]*)?#\\1\\2#' | cut -d/ -f1-3 | sort -u); do\n  for f in /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do [ -e \"$f\" ] || continue\n    if grep -q \"$host\" \"$f\"; then mkdir -p \"$bk\"; mv \"$f\" \"$bk/\" && echo \"SET_ASIDE: $(basename \"$f\")\" && n=$((n+1)); fi; done; done\necho \"TOTAL: $n\"; apt-get update -qq 2>&1 | tail -3"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Software sources",
+   "ok": "Broken software sources were set aside. They are in /etc/apt/sources.list.d/disabled-by-mendkit.",
+   "problem": "Broken software sources could not be set aside.",
+   "notes": [
+    {
+     "pattern": "TOTAL: 0",
+     "level": "info",
+     "message": "No broken extra sources were found to set aside. If updates still fail, the problem is in the main sources: run \"Find broken software sources\" and pass the result to a technician."
+    },
+    {
+     "pattern": "TOTAL: ([1-9]\\d*)",
+     "level": "good",
+     "message": "$1 broken source files were set aside. Programs installed from them stay installed but no longer update; reinstall them from their maker if needed."
+    }
+   ]
+  },
+  "requires": "apt-get"
+ },
+ {
+  "id": "apt-held",
+  "name": "Held-back packages (apt)",
+  "description": "Lists packages held at their current version, which stops them updating.",
+  "exec": "apt-mark",
+  "args": [
+   "showhold"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Held packages",
+   "ok": "Held packages were listed.",
+   "problem": "Held-back packages (apt) did not work.",
+   "notes": [
+    {
+     "pattern": "^\\S+",
+     "level": "info",
+     "message": "Some packages are held and will not update. If that was not deliberate, release them with: sudo apt-mark unhold name"
+    }
+   ]
+  },
+  "requires": "apt-mark"
+ },
+ {
+  "id": "dnf-undo-last",
+  "name": "Undo the last update (dnf)",
+  "description": "Rolls back the most recent dnf transaction, for when an update broke something.",
+  "exec": "dnf",
+  "args": [
+   "-y",
+   "history",
+   "undo",
+   "last"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Last update",
+   "ok": "The last update was rolled back. Restart the computer.",
+   "problem": "The last update could not be rolled back; older versions may no longer be available. Start the previous kernel from the startup menu instead."
+  },
+  "requires": "dnf"
+ },
+ {
+  "id": "dnf-old-kernels",
+  "name": "Remove old kernels (dnf)",
+  "description": "Keeps the running kernel and one spare, and removes older ones to free space in /boot.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "old=$(dnf repoquery --installonly --latest-limit=-2 -q 2>/dev/null); if [ -z \"$old\" ]; then echo NOTHING_TO_REMOVE; exit 0; fi; echo \"$old\"; dnf remove -y $old"
+  ],
+  "admin": true,
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Old kernels",
+   "ok": "Old kernels were removed.",
+   "problem": "Remove old kernels (dnf) did not work.",
+   "notes": [
+    {
+     "pattern": "NOTHING_TO_REMOVE",
+     "level": "good",
+     "message": "Only the current kernel and one spare are installed."
+    }
+   ]
+  },
+  "requires": "dnf"
+ },
+ {
+  "id": "pacman-keyring",
+  "name": "Fix package signing keys (pacman)",
+  "description": "Refreshes Arch's signing keys and clears a stale database lock. Fixes \"invalid or corrupted package (PGP signature)\" errors.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if [ -e /var/lib/pacman/db.lck ] && ! pgrep -x pacman >/dev/null; then rm -f /var/lib/pacman/db.lck && echo STALE_LOCK_REMOVED; fi\npacman -Sy --noconfirm archlinux-keyring && pacman-key --populate archlinux"
+  ],
+  "admin": true,
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Signing keys",
+   "ok": "Package signing keys were refreshed. Run the updates again.",
+   "problem": "The signing keys could not be refreshed.",
+   "notes": [
+    {
+     "pattern": "STALE_LOCK_REMOVED",
+     "level": "info",
+     "message": "A database lock left by a crashed update was removed."
+    }
+   ]
+  },
+  "requires": "pacman-key"
+ },
+ {
+  "id": "snap-updates-list",
+  "name": "Snap updates available",
+  "description": "Lists Snap apps with updates waiting.",
+  "exec": "snap",
+  "args": [
+   "refresh",
+   "--list"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Snap updates",
+   "ok": "Snap apps were checked.",
+   "problem": "Snap updates available did not work.",
+   "notes": [
+    {
+     "pattern": "All snaps up to date",
+     "level": "good",
+     "message": "Snap apps are up to date."
+    },
+    {
+     "pattern": "^Name",
+     "level": "attention",
+     "message": "Some Snap apps have updates waiting."
+    }
+   ]
+  },
+  "requires": "snap",
+  "okExitCodes": [
+   0,
+   1
+  ]
+ },
+ {
+  "id": "snap-refresh",
+  "name": "Update Snap apps",
+  "description": "Updates every Snap app now.",
+  "exec": "snap",
+  "args": [
+   "refresh"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Snap apps",
+   "ok": "Snap apps are up to date.",
+   "problem": "Snap apps could not be updated. Close any Snap app that is open (such as Firefox) and try again."
+  },
+  "requires": "snap"
+ },
+ {
+  "id": "snap-clean",
+  "name": "Remove old Snap versions",
+  "description": "Snap keeps old copies of every app. Removes the disabled ones and keeps only two in future. Often frees several gigabytes on Ubuntu.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "before=$(du -sm /var/lib/snapd/snaps 2>/dev/null | cut -f1); snap set system refresh.retain=2\nLANG=C snap list --all | awk '/disabled/{print $1, $3}' | while read n r; do snap remove \"$n\" --revision=\"$r\"; done\nafter=$(du -sm /var/lib/snapd/snaps 2>/dev/null | cut -f1); echo \"FREED_MB: $(( ${before:-0} - ${after:-0} ))\""
+  ],
+  "admin": true,
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Old Snap versions",
+   "ok": "Old Snap versions were removed.",
+   "problem": "Remove old Snap versions did not work.",
+   "notes": [
+    {
+     "pattern": "FREED_MB: ([1-9]\\d*)",
+     "level": "good",
+     "message": "Freed $1 MB from old Snap versions."
+    },
+    {
+     "pattern": "FREED_MB: (0|-)",
+     "level": "good",
+     "message": "There were no old Snap versions to remove."
+    }
+   ]
+  },
+  "requires": "snap"
+ },
+ {
+  "id": "drivers-missing",
+  "name": "Devices without a driver",
+  "description": "Lists hardware with no driver in use and firmware files the system could not load.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "lspci -k 2>/dev/null | awk '/^[0-9a-f]/{if(dev && !drv) {print \"NO_DRIVER: \" dev; n++} dev=$0; drv=0} /Kernel driver in use/{drv=1} END{if(dev && !drv){print \"NO_DRIVER: \" dev; n++} print \"MISSING_COUNT: \" n+0}'\nfw=$(journalctl -k -b --no-pager 2>/dev/null | grep -iE \"firmware: failed|Direct firmware load.*failed|firmware.*not found\" | sed -E 's/.*(firmware[^ ]* [^ ]+).*/\\1/' | sort -u); [ -n \"$fw\" ] && echo \"$fw\" && echo \"FIRMWARE_MISSING\"\nlspci -nn 2>/dev/null | grep -iE \"vga|3d|network|wireless\" "
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Drivers",
+   "ok": "Drivers were checked.",
+   "problem": "Drivers could not be checked.",
+   "notes": [
+    {
+     "pattern": "NO_DRIVER: .*(Network|Wireless).*Broadcom",
+     "level": "attention",
+     "message": "The Broadcom Wi-Fi card has no driver. Run \"Install the Broadcom Wi-Fi driver\" (needs a network cable or phone tethering)."
+    },
+    {
+     "pattern": "NO_DRIVER: .*(VGA|3D).*NVIDIA",
+     "level": "attention",
+     "message": "The NVIDIA graphics card has no driver. Run \"Install recommended drivers\" (Ubuntu and Mint) or \"Install the NVIDIA driver\" (Fedora)."
+    },
+    {
+     "pattern": "MISSING_COUNT: [1-9]",
+     "level": "attention",
+     "message": "Some devices have no driver. Run \"Install recommended drivers\" and \"Install missing firmware\", then restart."
+    },
+    {
+     "pattern": "FIRMWARE_MISSING",
+     "level": "attention",
+     "message": "Some firmware could not be loaded. Run \"Install missing firmware\"."
+    },
+    {
+     "pattern": "MISSING_COUNT: 0",
+     "level": "good",
+     "message": "Every device has a driver."
+    }
+   ]
+  },
+  "requires": "lspci"
+ },
+ {
+  "id": "drivers-recommended",
+  "name": "Recommended drivers (Ubuntu and Mint)",
+  "description": "Lists the extra drivers Ubuntu recommends for this hardware, such as NVIDIA graphics and Broadcom Wi-Fi.",
+  "exec": "ubuntu-drivers",
+  "args": [
+   "devices"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Recommended drivers",
+   "ok": "Driver recommendations were read.",
+   "problem": "Recommended drivers (Ubuntu and Mint) did not work.",
+   "notes": [
+    {
+     "pattern": "recommended",
+     "level": "attention",
+     "message": "Recommended drivers are available. Run \"Install recommended drivers\"."
+    },
+    {
+     "pattern": "^\\s*$",
+     "level": "good",
+     "message": "No extra drivers are needed."
+    }
+   ]
+  },
+  "requires": "ubuntu-drivers"
+ },
+ {
+  "id": "drivers-install",
+  "name": "Install recommended drivers (Ubuntu and Mint)",
+  "description": "Installs the drivers Ubuntu recommends for this hardware.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "ubuntu-drivers install 2>/dev/null || ubuntu-drivers autoinstall"
+  ],
+  "admin": true,
+  "typicalMinutes": 10,
+  "friendly": {
+   "title": "Drivers",
+   "ok": "The recommended drivers were installed. Restart the computer.",
+   "problem": "The drivers could not be installed.",
+   "notes": [
+    {
+     "pattern": "All the available drivers are already installed",
+     "level": "good",
+     "message": "The recommended drivers were already installed."
+    }
+   ]
+  },
+  "requires": "ubuntu-drivers",
+  "heavy": true,
+  "needsRestart": true
+ },
+ {
+  "id": "nvidia-fedora",
+  "name": "Install the NVIDIA driver (Fedora)",
+  "description": "Adds the RPM Fusion repositories and installs NVIDIA's driver, which builds itself for each kernel.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "lspci | grep -qi nvidia || { echo NO_NVIDIA; exit 0; }\nv=$(rpm -E %fedora); rpm -q rpmfusion-nonfree-release >/dev/null || dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$v.noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$v.noarch.rpm\ndnf install -y akmod-nvidia xorg-x11-drv-nvidia-cuda && echo \"Building the driver; this can take 5 minutes\" && akmods --force && echo INSTALLED\nmokutil --sb-state 2>/dev/null"
+  ],
+  "admin": true,
+  "typicalMinutes": 15,
+  "friendly": {
+   "title": "NVIDIA driver",
+   "ok": "The NVIDIA driver was installed. Restart the computer.",
+   "problem": "The NVIDIA driver could not be installed.",
+   "notes": [
+    {
+     "pattern": "NO_NVIDIA",
+     "level": "info",
+     "message": "This computer has no NVIDIA graphics card."
+    },
+    {
+     "pattern": "SecureBoot enabled",
+     "level": "attention",
+     "message": "Secure Boot is on, so the driver must be approved at the next start: a blue screen (MOK Manager) appears; choose Enroll MOK, Continue, Yes, and type the password set during install. See the NVIDIA section of the Linux drivers guide."
+    }
+   ]
+  },
+  "requires": "dnf",
+  "heavy": true,
+  "needsRestart": true
+ },
+ {
+  "id": "broadcom-wifi",
+  "name": "Install the Broadcom Wi-Fi driver",
+  "description": "Installs the driver many Broadcom Wi-Fi cards need. Needs internet through a cable or phone tethering.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "lspci -nn | grep -iE \"network|wireless\" | grep -qi broadcom || { echo NO_BROADCOM; exit 0; }\nif command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y bcmwl-kernel-source || DEBIAN_FRONTEND=noninteractive apt-get install -y broadcom-sta-dkms\nelif command -v dnf >/dev/null; then dnf install -y broadcom-wl\nelif command -v pacman >/dev/null; then pacman -S --noconfirm --needed broadcom-wl-dkms; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Broadcom Wi-Fi",
+   "ok": "The Broadcom Wi-Fi driver was installed. Restart the computer.",
+   "problem": "The driver could not be installed. It needs the internet through a cable or phone tethering, and on Fedora the RPM Fusion repositories.",
+   "notes": [
+    {
+     "pattern": "NO_BROADCOM",
+     "level": "info",
+     "message": "This computer does not have a Broadcom Wi-Fi card."
+    }
+   ]
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "firmware-install",
+  "name": "Install missing firmware",
+  "description": "Installs the firmware package that most Wi-Fi, Bluetooth and graphics chips need.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "pm_install(){ if command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y \"$@\"; elif command -v dnf >/dev/null; then dnf install -y \"$@\"; elif command -v pacman >/dev/null; then pacman -S --noconfirm --needed \"$@\"; elif command -v zypper >/dev/null; then zypper --non-interactive install \"$@\"; else echo NO_PACKAGE_MANAGER; return 1; fi; }\nif command -v apt-get >/dev/null && grep -qi debian /etc/os-release && ! grep -qi ubuntu /etc/os-release; then pm_install firmware-linux firmware-misc-nonfree firmware-iwlwifi firmware-realtek || echo \"NEEDS_NONFREE\"; else pm_install linux-firmware; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Firmware",
+   "ok": "Firmware packages are installed. Restart the computer.",
+   "problem": "The firmware could not be installed.",
+   "notes": [
+    {
+     "pattern": "NEEDS_NONFREE",
+     "level": "attention",
+     "message": "On Debian, turn on the \"non-free-firmware\" component in Software & Updates first, then run this again."
+    }
+   ]
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "kernels-list",
+  "name": "Installed kernels",
+  "description": "Lists the installed kernels and which one is running. Older kernels are a fallback if a new one causes trouble.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "echo \"RUNNING: $(uname -r)\"; if command -v dpkg >/dev/null; then dpkg -l 'linux-image-[0-9]*' | awk '/^ii/{print $2}'; elif command -v rpm >/dev/null; then rpm -q kernel-core kernel-default kernel 2>/dev/null | grep -v \"not installed\"; elif command -v pacman >/dev/null; then pacman -Q | grep -E '^linux(-lts|-zen|-hardened)? '; fi; df -h /boot | tail -1 | awk '{print \"BOOT_FREE: \" $4 \" (\" $5 \" used)\"}' "
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Kernels",
+   "ok": "Installed kernels were listed.",
+   "problem": "Installed kernels did not work.",
+   "notes": [
+    {
+     "pattern": "BOOT_FREE: .*\\((9\\d|100)% used",
+     "level": "attention",
+     "message": "The /boot area is nearly full, which makes updates fail. Run Standard service or \"Remove old kernels\"."
+    }
+   ]
+  }
+ },
+ {
+  "id": "grub-update",
+  "name": "Rebuild the startup menu",
+  "description": "Rebuilds the GRUB startup menu so it lists every installed kernel and other systems such as Windows.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if command -v update-grub >/dev/null; then update-grub; elif [ -d /boot/grub2 ]; then grub2-mkconfig -o /boot/grub2/grub.cfg; else grub-mkconfig -o /boot/grub/grub.cfg; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Startup menu",
+   "ok": "The startup menu was rebuilt.",
+   "problem": "The startup menu could not be rebuilt.",
+   "notes": [
+    {
+     "pattern": "Found Windows|Windows Boot Manager",
+     "level": "good",
+     "message": "Windows was found and is in the startup menu."
+    }
+   ]
+  }
+ },
+ {
+  "id": "grub-show-menu",
+  "name": "Always show the startup menu",
+  "description": "Shows the GRUB menu for 5 seconds at every start, so an older kernel or Windows can be chosen. The old settings file is kept as grub.mendkit-backup.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "f=/etc/default/grub; [ -e \"$f\" ] || { echo NO_GRUB; exit 0; }; cp -n \"$f\" \"$f.mendkit-backup\"\nsed -i -E 's/^#?GRUB_TIMEOUT_STYLE=.*/GRUB_TIMEOUT_STYLE=menu/; s/^#?GRUB_TIMEOUT=.*/GRUB_TIMEOUT=5/' \"$f\"; grep -q '^GRUB_TIMEOUT_STYLE' \"$f\" || echo 'GRUB_TIMEOUT_STYLE=menu' >> \"$f\"\ngrep -q '^GRUB_DISABLE_OS_PROBER' \"$f\" || echo 'GRUB_DISABLE_OS_PROBER=false' >> \"$f\"\nif command -v update-grub >/dev/null; then update-grub; elif [ -d /boot/grub2 ]; then grub2-mkconfig -o /boot/grub2/grub.cfg; else grub-mkconfig -o /boot/grub/grub.cfg; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Startup menu",
+   "ok": "The startup menu now shows for 5 seconds at every start.",
+   "problem": "Always show the startup menu did not work.",
+   "notes": [
+    {
+     "pattern": "NO_GRUB",
+     "level": "info",
+     "message": "This computer does not use GRUB, so there is nothing to change."
+    }
+   ]
+  }
+ },
+ {
+  "id": "initramfs-rebuild",
+  "name": "Rebuild the startup files (initramfs)",
+  "description": "Rebuilds the small startup image each kernel loads first. Fixes some \"cannot start\" problems after an interrupted update.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if command -v update-initramfs >/dev/null; then update-initramfs -u -k all; elif command -v dracut >/dev/null; then dracut -f --regenerate-all; elif command -v mkinitcpio >/dev/null; then mkinitcpio -P; else echo NO_TOOL; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Startup files",
+   "ok": "The startup files were rebuilt.",
+   "problem": "The startup files could not be rebuilt."
+  },
+  "heavy": true
+ },
+ {
+  "id": "desktop-restart",
+  "name": "Restart the desktop",
+  "description": "Restarts the panel and desktop when they freeze or disappear, without signing out. Open windows stay open.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "d=$(echo \"${XDG_CURRENT_DESKTOP:-}\" | tr '[:upper:]' '[:lower:]'); echo \"DESKTOP: $d ($XDG_SESSION_TYPE)\"\ncase \"$d\" in\n *cinnamon*) cinnamon-dbus-command RestartCinnamon 1 2>/dev/null || (setsid -f cinnamon --replace >/dev/null 2>&1) ;;\n *kde*) systemctl --user restart plasma-plasmashell 2>/dev/null || (kquitapp6 plasmashell 2>/dev/null || kquitapp5 plasmashell; setsid -f plasmashell >/dev/null 2>&1) ;;\n *xfce*) xfce4-panel -r; (setsid -f xfdesktop --replace >/dev/null 2>&1) ;;\n *mate*) setsid -f mate-panel --replace >/dev/null 2>&1 ;;\n *gnome*|*unity*) if [ \"$XDG_SESSION_TYPE\" = x11 ]; then busctl --user call org.gnome.Shell /org/gnome/Shell org.gnome.Shell Eval s 'Meta.restart(\"Restarting\u2026\")' >/dev/null 2>&1 || echo GNOME_WAYLAND; else echo GNOME_WAYLAND; fi ;;\n *) echo UNKNOWN_DESKTOP ;;\nesac"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Desktop",
+   "ok": "The desktop was restarted.",
+   "problem": "Restart the desktop did not work.",
+   "notes": [
+    {
+     "pattern": "GNOME_WAYLAND",
+     "level": "attention",
+     "message": "GNOME on Wayland cannot be restarted without signing out. Save your work, then sign out and back in. If the screen is frozen, press Ctrl, Alt and F3 to reach a text sign-in."
+    },
+    {
+     "pattern": "UNKNOWN_DESKTOP",
+     "level": "info",
+     "message": "MendKit does not know how to restart this desktop. Sign out and back in instead."
+    }
+   ]
+  }
+ },
+ {
+  "id": "session-type",
+  "name": "Screen system (Wayland or X11)",
+  "description": "Shows the desktop in use and whether it runs on Wayland or the older X11.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "echo \"DESKTOP: ${XDG_CURRENT_DESKTOP:-unknown}\"; echo \"SESSION: ${XDG_SESSION_TYPE:-unknown}\"; lspci -k 2>/dev/null | grep -A3 -iE \"vga|3d\" | grep -iE \"vga|3d|in use\"; true"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Screen system",
+   "ok": "The screen system was read.",
+   "problem": "Screen system (Wayland or X11) did not work.",
+   "notes": [
+    {
+     "pattern": "SESSION: wayland",
+     "level": "info",
+     "message": "This desktop runs on Wayland. If an app shows a black screen when sharing the screen, or an older app misbehaves, try the X11 session from the cog on the sign-in screen."
+    },
+    {
+     "pattern": "SESSION: x11",
+     "level": "info",
+     "message": "This desktop runs on X11. Screen tearing in videos is more common on X11; the Wayland session (from the cog on the sign-in screen) often fixes it."
+    }
+   ]
+  }
+ },
+ {
+  "id": "wayland-off",
+  "name": "Use X11 instead of Wayland (GNOME)",
+  "description": "Makes the GNOME sign-in screen start the older X11 session. Fixes some screen sharing, remote support and NVIDIA problems.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "f=/etc/gdm3/custom.conf; [ -e $f ] || f=/etc/gdm/custom.conf; [ -e $f ] || { echo NOT_GDM; exit 0; }; cp -n $f $f.mendkit-backup\nif grep -q '^#\\?WaylandEnable' $f; then sed -i -E 's/^#?WaylandEnable=.*/WaylandEnable=false/' $f; else sed -i '/^\\[daemon\\]/a WaylandEnable=false' $f; fi; grep WaylandEnable $f"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Screen system",
+   "ok": "GNOME will start in X11 after the next restart.",
+   "problem": "Use X11 instead of Wayland (GNOME) did not work.",
+   "notes": [
+    {
+     "pattern": "NOT_GDM",
+     "level": "info",
+     "message": "This computer does not use the GNOME sign-in screen. Choose the session from the menu on its sign-in screen instead."
+    }
+   ]
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "wayland-on",
+  "name": "Use Wayland again (GNOME)",
+  "description": "Lets the GNOME sign-in screen start Wayland again.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "f=/etc/gdm3/custom.conf; [ -e $f ] || f=/etc/gdm/custom.conf; [ -e $f ] || { echo NOT_GDM; exit 0; }; sed -i -E 's/^WaylandEnable=false/#WaylandEnable=false/' $f; grep -i wayland $f"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Screen system",
+   "ok": "GNOME will start in Wayland after the next restart.",
+   "problem": "Use Wayland again (GNOME) did not work."
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "sound-reset",
+  "name": "Reset the sound system completely",
+  "description": "Stops PipeWire, clears its saved device choices (kept as a backup) and starts it fresh. Fixes missing outputs, wrong default device and crackling.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "systemctl --user stop wireplumber pipewire-pulse pipewire pipewire.socket pipewire-pulse.socket 2>/dev/null\nfor d in \"$HOME/.local/state/wireplumber\" \"$HOME/.config/pulse\"; do [ -e \"$d\" ] && mv \"$d\" \"$d.mendkit-backup-$(date +%s)\" && echo \"RESET: $d\"; done\nsystemctl --user start pipewire.socket pipewire-pulse.socket pipewire pipewire-pulse wireplumber 2>/dev/null || pulseaudio --start; sleep 2; pactl info 2>/dev/null | grep -E \"Server Name|Default Sink\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Sound system",
+   "ok": "The sound system was reset. Choose the speakers or headphones again in Sound settings.",
+   "problem": "The sound system could not be reset."
+  }
+ },
+ {
+  "id": "printer-hp",
+  "name": "Install HP printer drivers",
+  "description": "Installs HPLIP, HP's own Linux drivers and setup tool, for HP printers and scanners that do not work on their own.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "pm_install(){ if command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y \"$@\"; elif command -v dnf >/dev/null; then dnf install -y \"$@\"; elif command -v pacman >/dev/null; then pacman -S --noconfirm --needed \"$@\"; elif command -v zypper >/dev/null; then zypper --non-interactive install \"$@\"; else echo NO_PACKAGE_MANAGER; return 1; fi; }\npm_install hplip || true; command -v apt-get >/dev/null && DEBIAN_FRONTEND=noninteractive apt-get install -y hplip-gui >/dev/null 2>&1; command -v hp-setup >/dev/null && echo HPLIP_READY"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "HP printer drivers",
+   "ok": "HP's drivers are installed. Open \"HP Device Manager\" or run hp-setup to add the printer.",
+   "problem": "HP's drivers could not be installed."
+  }
+ },
+ {
+  "id": "printer-find",
+  "name": "Printers on the network",
+  "description": "Lists printers the computer can see on the network that work without a driver (IPP Everywhere and AirPrint).",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "lpinfo --include-schemes dnssd -v 2>/dev/null; lpstat -t 2>/dev/null | head -20"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network printers",
+   "ok": "Network printers were listed.",
+   "problem": "Printers on the network did not work.",
+   "notes": [
+    {
+     "pattern": "dnssd://",
+     "level": "good",
+     "message": "Printers were found on the network. Add one in Settings, Printers: most work straight away without a driver."
+    },
+    {
+     "pattern": "^(?![\\s\\S]*dnssd://)",
+     "level": "attention",
+     "message": "No network printers answered. Check the printer is on and connected to the same network."
+    }
+   ]
+  },
+  "requires": "lpinfo"
+ },
+ {
+  "id": "scanner-setup",
+  "name": "Set up scanners",
+  "description": "Installs scanner support, including driverless network scanners (eSCL/AirScan), then lists the scanners found.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "pm_install(){ if command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y \"$@\"; elif command -v dnf >/dev/null; then dnf install -y \"$@\"; elif command -v pacman >/dev/null; then pacman -S --noconfirm --needed \"$@\"; elif command -v zypper >/dev/null; then zypper --non-interactive install \"$@\"; else echo NO_PACKAGE_MANAGER; return 1; fi; }\nif command -v apt-get >/dev/null; then pm_install sane-utils sane-airscan; elif command -v dnf >/dev/null; then pm_install sane-backends sane-airscan; else pm_install sane sane-airscan; fi; scanimage -L"
+  ],
+  "admin": true,
+  "typicalMinutes": 4,
+  "friendly": {
+   "title": "Scanners",
+   "ok": "Scanner support is installed.",
+   "problem": "Set up scanners did not work.",
+   "notes": [
+    {
+     "pattern": "device `",
+     "level": "good",
+     "message": "A scanner was found. Open Document Scanner (or Simple Scan) to use it."
+    },
+    {
+     "pattern": "No scanners were identified",
+     "level": "attention",
+     "message": "No scanner answered. Check it is switched on and connected. HP scanners may also need \"Install HP printer drivers\"."
+    }
+   ]
+  }
+ },
+ {
+  "id": "keyring-reset",
+  "name": "Reset the password keyring",
+  "description": "Fixes the \"unlock your login keyring\" box that keeps appearing after a password change. The old keyring is kept as a backup, but passwords saved in it (some apps and browsers) will need typing again.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "k=\"$HOME/.local/share/keyrings\"; [ -d \"$k\" ] || { echo NO_KEYRING; exit 0; }; mv \"$k\" \"$k.mendkit-backup-$(date +%s)\" && mkdir -p \"$k\" && echo RESET"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Keyring",
+   "ok": "The keyring was reset. Sign out and back in; a new keyring is made with your current password.",
+   "problem": "Reset the password keyring did not work.",
+   "notes": [
+    {
+     "pattern": "NO_KEYRING",
+     "level": "info",
+     "message": "There is no keyring to reset."
+    }
+   ]
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "boot-time",
+  "name": "Slow startup report",
+  "description": "Shows how long startup took and which services held it up the most.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "LANG=C systemd-analyze 2>&1 | head -2; echo; echo \"Slowest services:\"; systemd-analyze blame --no-pager 2>/dev/null | head -12"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Startup time",
+   "ok": "Startup times were read.",
+   "problem": "Slow startup report did not work.",
+   "notes": [
+    {
+     "pattern": "= (\\d+min [\\d.]+s|([6-9]\\d|\\d{3,})\\.\\d+s)",
+     "level": "attention",
+     "message": "Startup took over a minute. The slowest services are listed; disable ones you do not use from Startup items."
+    },
+    {
+     "pattern": "NetworkManager-wait-online.service",
+     "level": "info",
+     "message": "\"NetworkManager-wait-online\" often delays startup and is safe to disable on a desktop: sudo systemctl disable NetworkManager-wait-online.service"
+    },
+    {
+     "pattern": "Startup finished in .*= (\\d|[1-5]\\d)\\.\\d+s",
+     "level": "good",
+     "message": "Startup time is fine."
+    }
+   ]
+  },
+  "requires": "systemd-analyze"
+ },
+ {
+  "id": "hardware-errors",
+  "name": "Hardware error scan",
+  "description": "Searches this boot's system log for drive read errors, USB devices dropping out, overheating slowdowns, and memory or processor errors.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "j=$(journalctl -k -b --no-pager 2>/dev/null)\nc(){ n=$(echo \"$j\" | grep -ciE \"$2\"); echo \"$1: $n\"; }\nc DRIVE_ERRORS \"I/O error|ata[0-9.]+: (exception|failed command)|blk_update_request|critical medium error|nvme.*(timeout|reset)\"\nc USB_RESETS \"usb .*reset|usb .*disconnect.*device number|over-current\"\nc THERMAL \"temperature above threshold|cpu clock throttled|thermal.*critical\"\nc MEMORY_CPU \"mce:|machine check|EDAC.*error|corrected error\"\nc GPU \"gpu hang|ring.*timeout|amdgpu.*error|nouveau.*error|i915.*error|NVRM: Xid\"\necho; echo \"$j\" | grep -iE \"I/O error|over-current|throttled|mce:|gpu hang|Xid\" | tail -15"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Hardware errors",
+   "ok": "This boot's hardware messages were checked.",
+   "problem": "Hardware error scan did not work.",
+   "notes": [
+    {
+     "pattern": "DRIVE_ERRORS: [1-9]",
+     "level": "problem",
+     "message": "The drive reported read or write errors. Back up now and run the drive health check."
+    },
+    {
+     "pattern": "USB_RESETS: [1-9]\\d",
+     "level": "attention",
+     "message": "USB devices keep dropping out: a loose cable, failing hub or a device drawing too much power."
+    },
+    {
+     "pattern": "THERMAL: [1-9]",
+     "level": "attention",
+     "message": "The processor slowed down because it got too hot. Clean the fans and vents."
+    },
+    {
+     "pattern": "MEMORY_CPU: [1-9]",
+     "level": "problem",
+     "message": "The processor or memory reported hardware errors. Test the memory with Memtest86+ from the ISO Library."
+    },
+    {
+     "pattern": "GPU: [1-9]",
+     "level": "attention",
+     "message": "The graphics driver reported errors. Update or change the graphics driver (see \"Devices without a driver\")."
+    },
+    {
+     "pattern": "DRIVE_ERRORS: 0\\b[\\s\\S]*MEMORY_CPU: 0\\b",
+     "level": "good",
+     "message": "No drive, memory or processor errors since this start."
+    }
+   ]
+  }
+ },
+ {
+  "id": "security-status",
+  "name": "Security checkup",
+  "description": "Checks the firewall, automatic security updates, remote login (SSH), who has administrator rights, disk encryption and which programs accept network connections.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if command -v ufw >/dev/null; then echo \"FIREWALL: $(ufw status | head -1)\"; elif command -v firewall-cmd >/dev/null; then echo \"FIREWALL: firewalld $(firewall-cmd --state 2>&1)\"; else echo \"FIREWALL: none installed\"; fi\nif [ -e /etc/apt/apt.conf.d/20auto-upgrades ] && grep -q 'Unattended-Upgrade \"1\"' /etc/apt/apt.conf.d/20auto-upgrades; then echo \"AUTO_UPDATES: on\"; elif systemctl is-enabled dnf-automatic.timer dnf5-automatic.timer 2>/dev/null | grep -q enabled; then echo \"AUTO_UPDATES: on\"; elif command -v apt-get >/dev/null || command -v dnf >/dev/null; then echo \"AUTO_UPDATES: off\"; else echo \"AUTO_UPDATES: not available\"; fi\nif systemctl is-active -q ssh sshd 2>/dev/null; then echo \"SSH: running, password login $(sshd -T 2>/dev/null | awk '/^passwordauthentication/{print $2}')\"; else echo \"SSH: off\"; fi\necho \"ADMINS: $(getent group sudo wheel | cut -d: -f4 | tr '\\n' ',' | sed 's/,$//')\"\nlsblk -o TYPE | grep -q crypt && echo \"ENCRYPTION: on\" || echo \"ENCRYPTION: off\"\necho \"LISTENING:\"; ss -tulpnH 2>/dev/null | grep -vE \"127\\.0\\.0|\\[::1\\]|%lo\" | awk '{print \"  \" $1, $5, $7}' | head -20"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Security",
+   "ok": "The security settings were read.",
+   "problem": "Security checkup did not work.",
+   "notes": [
+    {
+     "pattern": "FIREWALL: (Status: inactive|firewalld not running|none installed)",
+     "level": "attention",
+     "message": "The firewall is off. Run \"Turn on the firewall\"."
+    },
+    {
+     "pattern": "AUTO_UPDATES: off",
+     "level": "attention",
+     "message": "Security updates are not installed automatically. Run \"Turn on automatic security updates\"."
+    },
+    {
+     "pattern": "SSH: running, password login yes",
+     "level": "attention",
+     "message": "Remote login (SSH) is on and accepts passwords. If nobody logs in remotely, turn it off: sudo systemctl disable --now ssh"
+    },
+    {
+     "pattern": "ENCRYPTION: off",
+     "level": "info",
+     "message": "The drive is not encrypted, so anyone with the computer can read its files. Encryption can only be turned on by reinstalling, with \"Encrypt the disk\" ticked."
+    },
+    {
+     "pattern": "FIREWALL: (Status: active|firewalld running)",
+     "level": "good",
+     "message": "The firewall is on."
+    }
+   ]
+  }
+ },
+ {
+  "id": "firewall-on",
+  "name": "Turn on the firewall",
+  "description": "Turns on the firewall, blocking incoming connections but not outgoing ones. Remote login (SSH) stays allowed if it is in use.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if command -v ufw >/dev/null; then systemctl is-active -q ssh sshd && ufw allow OpenSSH; ufw default deny incoming; ufw default allow outgoing; ufw --force enable; ufw status\nelif command -v firewall-cmd >/dev/null || command -v dnf >/dev/null; then command -v firewall-cmd >/dev/null || dnf install -y firewalld; systemctl enable --now firewalld; firewall-cmd --state\nelif command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y ufw && ufw default deny incoming && ufw --force enable && ufw status\nelif command -v pacman >/dev/null; then pacman -S --noconfirm --needed ufw && systemctl enable --now ufw && ufw --force enable; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Firewall",
+   "ok": "The firewall is on.",
+   "problem": "The firewall could not be turned on."
+  }
+ },
+ {
+  "id": "auto-updates-on",
+  "name": "Turn on automatic security updates",
+  "description": "Installs security updates automatically every day (apt) or every day with dnf-automatic (Fedora).",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y unattended-upgrades && printf 'APT::Periodic::Update-Package-Lists \"1\";\\nAPT::Periodic::Unattended-Upgrade \"1\";\\n' > /etc/apt/apt.conf.d/20auto-upgrades && systemctl enable --now unattended-upgrades && echo ON\nelif command -v dnf >/dev/null; then (dnf install -y dnf-automatic || dnf install -y dnf5-plugin-automatic); f=/etc/dnf/automatic.conf; [ -e $f ] || { [ -e /usr/share/dnf5/dnf5-plugins/automatic.conf ] && cp /usr/share/dnf5/dnf5-plugins/automatic.conf $f; }\n [ -e $f ] && sed -i -E 's/^upgrade_type *=.*/upgrade_type = security/; s/^apply_updates *=.*/apply_updates = yes/' $f; systemctl enable --now dnf-automatic.timer 2>/dev/null || systemctl enable --now dnf5-automatic.timer; echo ON\nelse echo NOT_AVAILABLE; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Automatic updates",
+   "ok": "Security updates will now install automatically every day.",
+   "problem": "Turn on automatic security updates did not work.",
+   "notes": [
+    {
+     "pattern": "NOT_AVAILABLE",
+     "level": "info",
+     "message": "Automatic updates are not set up by MendKit on this distribution. Use its own update settings."
+    }
+   ]
+  }
+ },
+ {
+  "id": "release-check",
+  "name": "Is a new version available?",
+  "description": "Checks whether a newer release of this Linux is available to upgrade to.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   ". /etc/os-release; echo \"INSTALLED: $PRETTY_NAME\"\nif command -v do-release-upgrade >/dev/null && [ \"$ID\" = ubuntu ]; then do-release-upgrade -c 2>&1 | tail -3\nelif [ \"$ID\" = linuxmint ]; then echo \"Mint: open Update Manager, Edit menu, for an \\\"Upgrade to Linux Mint\\\" entry. Major upgrades use mintupgrade.\"\nelif [ \"$ID\" = fedora ]; then echo \"CURRENT_FEDORA: $VERSION_ID\"\nelse echo \"Check the distribution's website for upgrades.\"; fi"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "New version",
+   "ok": "Checked for a newer version.",
+   "problem": "Is a new version available? did not work.",
+   "notes": [
+    {
+     "pattern": "New release '([^']+)' available",
+     "level": "attention",
+     "message": "Version $1 is available. Use Upgrade to the next version in Repair."
+    },
+    {
+     "pattern": "No new release found",
+     "level": "good",
+     "message": "This is the newest release offered for this computer."
+    }
+   ]
+  }
+ },
+ {
+  "id": "codecs",
+  "name": "Install media codecs",
+  "description": "Installs what's needed to play common video and music formats (MP4, MP3, H.264, H.265) and DVDs.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   ". /etc/os-release\nif [ \"$ID\" = linuxmint ]; then DEBIAN_FRONTEND=noninteractive apt-get install -y mint-meta-codecs\nelif command -v apt-get >/dev/null; then echo \"ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true\" | debconf-set-selections; DEBIAN_FRONTEND=noninteractive apt-get install -y ubuntu-restricted-extras || DEBIAN_FRONTEND=noninteractive apt-get install -y ffmpeg gstreamer1.0-plugins-ugly gstreamer1.0-libav\nelif command -v dnf >/dev/null; then v=$(rpm -E %fedora); rpm -q rpmfusion-free-release >/dev/null || dnf install -y https://mirrors.rpmfusion.org/free/fedora/rpmfusion-free-release-$v.noarch.rpm https://mirrors.rpmfusion.org/nonfree/fedora/rpmfusion-nonfree-release-$v.noarch.rpm; dnf swap -y ffmpeg-free ffmpeg --allowerasing; dnf install -y gstreamer1-plugins-bad-freeworld gstreamer1-plugins-ugly gstreamer1-libav\nelif command -v pacman >/dev/null; then pacman -S --noconfirm --needed ffmpeg gst-libav gst-plugins-ugly gst-plugins-bad\nelif command -v zypper >/dev/null; then zypper --non-interactive install ffmpeg gstreamer-plugins-libav; fi"
+  ],
+  "admin": true,
+  "typicalMinutes": 10,
+  "friendly": {
+   "title": "Install media codecs",
+   "ok": "Media codecs are installed. Videos and music should now play.",
+   "problem": "Media codecs could not be installed."
+  }
+ },
+ {
+  "id": "flathub-enable",
+  "name": "Turn on Flathub",
+  "description": "Adds Flathub, the biggest Linux app store, to the Software app, so apps like Spotify, Zoom and Discord can be installed with a click.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "command -v flatpak >/dev/null || { if command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y flatpak gnome-software-plugin-flatpak 2>/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -y flatpak; elif command -v dnf >/dev/null; then dnf install -y flatpak; elif command -v pacman >/dev/null; then pacman -S --noconfirm --needed flatpak; fi; }\nflatpak remote-add --if-not-exists flathub https://dl.flathub.org/repo/flathub.flatpakrepo && flatpak remote-modify --enable flathub && echo FLATHUB_ON"
+  ],
+  "admin": true,
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Turn on Flathub",
+   "ok": "Flathub is on. Apps from it show in the Software app (restart the computer if they do not yet).",
+   "problem": "Flathub could not be turned on."
+  }
+ },
+ {
+  "id": "office-fonts",
+  "name": "Install fonts for Office documents",
+  "description": "Installs fonts that match Microsoft's (Arial, Times New Roman, Calibri, Cambria), so Word and Excel files keep their layout.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if command -v apt-get >/dev/null; then echo \"ttf-mscorefonts-installer msttcorefonts/accepted-mscorefonts-eula select true\" | debconf-set-selections; DEBIAN_FRONTEND=noninteractive apt-get install -y ttf-mscorefonts-installer fonts-crosextra-carlito fonts-crosextra-caladea fonts-liberation\nelif command -v dnf >/dev/null; then dnf install -y google-carlito-fonts google-crosextra-caladea-fonts liberation-fonts\nelif command -v pacman >/dev/null; then pacman -S --noconfirm --needed ttf-carlito ttf-caladea ttf-liberation\nelif command -v zypper >/dev/null; then zypper --non-interactive install google-carlito-fonts liberation-fonts; fi; fc-cache -f >/dev/null 2>&1; echo FONTS_DONE"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Install fonts for Office documents",
+   "ok": "Office-compatible fonts are installed. Reopen documents to see them.",
+   "problem": "The fonts could not be installed."
+  }
+ },
+ {
+  "id": "printer-drivers",
+  "name": "Install printer drivers",
+  "description": "Installs the printing system and the common open drivers (Gutenprint, HP, and driverless printing), which cover most printers.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if command -v apt-get >/dev/null; then DEBIAN_FRONTEND=noninteractive apt-get install -y cups cups-filters printer-driver-gutenprint hplip system-config-printer ipp-usb\nelif command -v dnf >/dev/null; then dnf install -y cups cups-filters gutenprint-cups hplip system-config-printer ipp-usb\nelif command -v pacman >/dev/null; then pacman -S --noconfirm --needed cups cups-filters gutenprint hplip system-config-printer ipp-usb\nelif command -v zypper >/dev/null; then zypper --non-interactive install cups cups-filters gutenprint hplip system-config-printer; fi\nsystemctl enable --now cups 2>/dev/null; echo PRINTING_READY"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Install printer drivers",
+   "ok": "Printer drivers are installed. Add the printer in Settings, Printers.",
+   "problem": "Printer drivers could not be installed."
   }
  }
 ]

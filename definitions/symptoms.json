@@ -63,5 +63,25 @@
   "id": "low-space",
   "label": "It is out of space",
   "recipe": "free-space"
+ },
+ {
+  "id": "desktop-frozen",
+  "label": "The desktop froze or the panel vanished",
+  "recipe": "desktop-frozen"
+ },
+ {
+  "id": "missing-drivers",
+  "label": "Graphics or Wi-Fi not working right",
+  "recipe": "linux-drivers"
+ },
+ {
+  "id": "slow-startup",
+  "label": "It takes ages to start",
+  "recipe": "slow-startup"
+ },
+ {
+  "id": "scanner",
+  "label": "The scanner does not work",
+  "recipe": "scanner-fix"
  }
 ]

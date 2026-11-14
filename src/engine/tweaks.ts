@@ -1,4 +1,4 @@
-import { execFile } from 'child_process';
+import { execFile, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import { ActionStep } from './runner';
@@ -44,6 +44,8 @@ export interface TweakDef {
   detectOnly?: boolean;
   applyCmd?: string[];
   revertCmd?: string[];
+  /** Linux: the desktops this tweak is for (matched against XDG_CURRENT_DESKTOP, lower case). Missing means every desktop. */
+  desktops?: string[];
 }
 
 export interface TweakPreset {
@@ -172,7 +174,7 @@ export const macDefaults: RegBackend = {
   run: runCmd,
 };
 
-/** GNOME: "path" is the schema and "name" is the key; values are written the way gsettings prints them. */
+/** GNOME and Cinnamon: "path" is the schema and "name" is the key; values are written the way gsettings prints them. */
 export const gsettings: RegBackend = {
   async get(schema, key) {
     const r = await tool('gsettings', ['get', schema, key]);
@@ -190,6 +192,78 @@ export const gsettings: RegBackend = {
   },
   run: runCmd,
 };
+
+const kde = (base: string): string => (spawnSync('sh', ['-c', `command -v ${base}6`]).status === 0 ? `${base}6` : `${base}5`);
+/** "kde:file|group" paths: KDE Plasma settings files through kreadconfig and kwriteconfig. */
+const kdeConfig = {
+  split: (p: string) => {
+    const [file, group] = p.slice(4).split('|');
+    return { file, group };
+  },
+  async get(p: string, key: string): Promise<RegValue> {
+    const { file, group } = kdeConfig.split(p);
+    const r = await tool(kde('kreadconfig'), ['--file', file, '--group', group, '--key', key]);
+    const v = r.out.trim();
+    return r.code === 0 && v !== '' ? { exists: true, data: v } : { exists: false };
+  },
+  async set(p: string, key: string, type: string, data: string) {
+    const { file, group } = kdeConfig.split(p);
+    const r = await tool(kde('kwriteconfig'), ['--file', file, '--group', group, '--key', key, ...(type === 'bool' ? ['--type', 'bool'] : []), data]);
+    if (r.code !== 0) throw new Error(r.out.trim() || `Could not set ${key}`);
+  },
+  async del(p: string, key: string) {
+    const { file, group } = kdeConfig.split(p);
+    await tool(kde('kwriteconfig'), ['--file', file, '--group', group, '--key', key, '--delete']);
+  },
+};
+/** "xfconf:channel" paths: XFCE settings, where "name" is the property path. */
+const xfconf = {
+  async get(p: string, prop: string): Promise<RegValue> {
+    const r = await tool('xfconf-query', ['-c', p.slice(7), '-p', prop]);
+    return r.code === 0 ? { exists: true, data: r.out.trim() } : { exists: false };
+  },
+  async set(p: string, prop: string, type: string, data: string) {
+    const r = await tool('xfconf-query', ['-c', p.slice(7), '-p', prop, '--create', '-t', type === 'bool' ? 'bool' : type === 'int' ? 'int' : 'string', '-s', data]);
+    if (r.code !== 0) throw new Error(r.out.trim() || `Could not set ${prop}`);
+  },
+  async del(p: string, prop: string) {
+    await tool('xfconf-query', ['-c', p.slice(7), '-p', prop, '-r']);
+  },
+};
+/** Linux: routes each entry to gsettings, KDE config files or xfconf by the start of its path. */
+export const linuxDesktop: RegBackend = {
+  get: (p, n) => (p.startsWith('kde:') ? kdeConfig.get(p, n) : p.startsWith('xfconf:') ? xfconf.get(p, n) : gsettings.get(p, n)),
+  set: (p, n, t, d) => (p.startsWith('kde:') ? kdeConfig.set(p, n, t, d) : p.startsWith('xfconf:') ? xfconf.set(p, n, t, d) : gsettings.set(p, n, t, d)),
+  del: (p, n) => (p.startsWith('kde:') ? kdeConfig.del(p, n) : p.startsWith('xfconf:') ? xfconf.del(p, n) : gsettings.del(p, n)),
+  async delKey() {
+    /* not used on Linux */
+  },
+  run: runCmd,
+};
+
+/** The desktop names in XDG_CURRENT_DESKTOP, lower case ("X-Cinnamon" becomes "cinnamon"). */
+export function currentDesktops(env = process.env.XDG_CURRENT_DESKTOP ?? ''): string[] {
+  return env
+    .toLowerCase()
+    .split(':')
+    .map((d) => d.replace(/^x-/, '').trim())
+    .filter(Boolean);
+}
+
+/** Linux: keeps the tweaks this desktop can actually apply (its settings key or tool exists). */
+export function linuxTweaksAvailable(defs: TweakDef[], desktops: string[], has: (entry: TweakEntry) => boolean = linuxEntryExists): TweakDef[] {
+  return defs.filter((d) => (!d.desktops || d.desktops.some((x) => desktops.includes(x))) && d.entries.every(has));
+}
+const schemaKeys = new Map<string, Set<string>>();
+function linuxEntryExists(e: TweakEntry): boolean {
+  if (e.path.startsWith('kde:')) return spawnSync('sh', ['-c', 'command -v kwriteconfig6 || command -v kwriteconfig5']).status === 0;
+  if (e.path.startsWith('xfconf:')) return spawnSync('sh', ['-c', 'command -v xfconf-query']).status === 0;
+  if (!schemaKeys.has(e.path)) {
+    const r = spawnSync('gsettings', ['list-keys', e.path], { encoding: 'utf8' });
+    schemaKeys.set(e.path, new Set(r.status === 0 ? r.stdout.split('\n').map((k) => k.trim()) : []));
+  }
+  return schemaKeys.get(e.path)!.has(e.name);
+}
 
 /** Reads tweak states, applies and reverts tweaks, and keeps a journal of the previous values for undo. */
 export class TweakManager {
@@ -304,7 +378,7 @@ export class TweakManager {
   }
 }
 
-export function loadTweaks(definitionsDir: string, platform: string = 'win32'): { tweaks: TweakDef[]; presets: TweakPreset[] } {
+export function loadTweaks(definitionsDir: string, platform: string = 'win32', keep?: (all: TweakDef[]) => TweakDef[]): { tweaks: TweakDef[]; presets: TweakPreset[] } {
   const file = `${definitionsDir}/tweaks.${platform}.json`;
   const tweaks = fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, 'utf8')) as TweakDef[]) : [];
   const rawPresets = JSON.parse(fs.readFileSync(`${definitionsDir}/tweak-presets.json`, 'utf8')) as (Omit<TweakPreset, 'tweaks'> & { tweaks: Record<string, string[]> })[];
@@ -330,5 +404,8 @@ export function loadTweaks(definitionsDir: string, platform: string = 'win32'): 
     for (const id of list) if (!ids.has(id)) throw new Error(`Preset "${p.id}" uses unknown ${platform} tweak "${id}"`);
     if (list.length) presets.push({ ...p, tweaks: list });
   }
-  return { tweaks, presets };
+  if (!keep) return { tweaks, presets };
+  const kept = keep(tweaks);
+  const keptIds = new Set(kept.map((t) => t.id));
+  return { tweaks: kept, presets: presets.map((p) => ({ ...p, tweaks: p.tweaks.filter((id) => keptIds.has(id)) })).filter((p) => p.tweaks.length) };
 }

@@ -922,7 +922,7 @@
   "group": "Using MendKit",
   "title": "Offline installers",
   "summary": "Saving tool installers while online, so they can be installed on a computer with no internet.",
-  "systems": "Windows",
+  "systems": "Windows, Linux",
   "time": "10 to 30 minutes to download",
   "level": "Easy",
   "screen": "tools",
@@ -963,7 +963,7 @@
       "tip": "See \"ISO Library and technician USB\"."
      },
      "A few tools run without installing; their saved copy opens straight from the cache. Microsoft Store apps cannot be saved.",
-     "Offline installers are Windows only for now."
+     "On Linux (apt, dnf or pacman) each tool is saved with the packages it needs that this computer lacks, so install them on the same Linux version. Not available on a Mac yet."
     ]
    }
   ]
@@ -1257,6 +1257,7 @@
     "heading": "If a tweak will not change",
     "steps": [
      "On Windows, run MendKit as administrator for tweaks that affect the whole computer. Some are locked by a work or school account.",
+     "On Linux, the tweaks shown depend on the desktop: GNOME, Cinnamon (Linux Mint), KDE Plasma or XFCE. Settings that do not exist on this computer are hidden.",
      "On a Mac, a few need MendKit to have Full Disk Access (see \"Permissions setup\")."
     ]
    }
@@ -1831,7 +1832,7 @@
      "\"Program file\" lines are loose copies, usually in Downloads or on the Desktop, run without installing.",
      "Quick Assist is part of Windows and listed for information only. It only connects when someone opens it and types a code.",
      "The audit knows a fixed list of well-known products, so a clean result is not a guarantee.",
-     "Removal is built for Windows. On a Mac and Linux it reports what it finds; use Startup items (Mac) or the system's uninstaller."
+     "Removal works on Windows and Linux. On a Mac it reports what it finds; remove those with Startup items and the app's own uninstaller."
     ]
    },
    {
@@ -1937,6 +1938,60 @@
      }
     ],
     "kind": "steps"
+   }
+  ]
+ },
+ {
+  "id": "mk-linux-tools",
+  "group": "Using MendKit",
+  "title": "Linux tools: startup items and free up space",
+  "summary": "The Linux tools on the Repair screen, step by step.",
+  "systems": "Linux",
+  "time": "10 minutes",
+  "level": "Takes care",
+  "screen": "repair",
+  "related": [
+   "linux-boot-repair",
+   "linux-upgrade",
+   "linux-everyday"
+  ],
+  "sections": [
+   {
+    "heading": "Startup items",
+    "steps": [
+     {
+      "t": "Tick Technician mode, open Repair, and click Open beside Startup items, then Scan.",
+      "see": "Programs that start when you sign in and services that start with the computer. Ones the system needs are marked and cannot be ticked."
+     },
+     {
+      "t": "Tick the ones you do not use and click Turn off selected. Services for the whole computer ask for your password.",
+      "tip": "Search a name you do not know before turning it off."
+     },
+     "Turned-off items are listed under Turned off by MendKit with Turn back on.",
+     "Restart and check everything still works."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Free up space",
+    "steps": [
+     {
+      "t": "Click Open beside Free up space, then Measure.",
+      "see": "Free space, then each kind of clearable file with its size. Safe ones are ticked."
+     },
+     {
+      "t": "Tick what to delete and click Delete selected. Items for the whole computer ask for your password.",
+      "warn": "Deleted files do not go to the Trash."
+     },
+     "Large files are listed with Show in folder. Decide about them yourself."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Also here",
+    "steps": [
+     "Repair a system that will not start, and Upgrade to the next version, have their own guides."
+    ]
    }
   ]
  },
@@ -2225,6 +2280,554 @@
       "warn": "Stop using and charging the Mac and have the battery replaced right away. Swollen batteries can catch fire. Do not press on it."
      },
      "Sudden shutdowns at 20 to 40% charge mean a worn battery. \"Why did it shut down?\" in MendKit confirms it."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "linux-install-mendkit",
+  "group": "Linux",
+  "title": "Installing MendKit on Linux",
+  "summary": "Which download to pick for each Linux, and how to install it.",
+  "systems": "Linux",
+  "time": "5 minutes",
+  "level": "Easy",
+  "related": [
+   "mendkit",
+   "basics-terminal"
+  ],
+  "sections": [
+   {
+    "heading": "Pick the right file",
+    "steps": [
+     "Ubuntu, Linux Mint, Debian, Pop!_OS, Zorin OS, elementary OS: the .deb package.",
+     "Fedora, openSUSE, Nobara: the .rpm package.",
+     "Anything else (Arch, Manjaro, Void and others): the AppImage, which runs without installing."
+    ]
+   },
+   {
+    "heading": "Install the .deb (Ubuntu, Mint and similar)",
+    "steps": [
+     "Download the .deb from the MendKit website.",
+     {
+      "t": "Open the Downloads folder and double-click the file.",
+      "see": "The Software app (or Package Installer on Mint) with an Install button."
+     },
+     {
+      "t": "Click Install and type your password.",
+      "tip": "Or in Terminal: sudo apt install ./Downloads/MendKit-*.deb"
+     },
+     "Open MendKit from the applications menu."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Install the .rpm (Fedora, openSUSE)",
+    "steps": [
+     "Download the .rpm and double-click it, then click Install. Or in Terminal: sudo dnf install ./Downloads/MendKit-*.rpm (openSUSE: sudo zypper install ./Downloads/MendKit-*.rpm)."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Run the AppImage",
+    "steps": [
+     "Download the AppImage. Right-click it, choose Properties, then Permissions, and tick \"Allow executing file as program\" (or run chmod +x on it).",
+     {
+      "t": "Double-click it.",
+      "warn": "On Ubuntu 22.04 and later the AppImage will not open until one extra package is installed. Run: sudo apt install libfuse2t64 (on 22.04: sudo apt install libfuse2). The .deb does not need this."
+     }
+    ],
+    "kind": "steps"
+   }
+  ]
+ },
+ {
+  "id": "switch-linux",
+  "group": "Linux",
+  "title": "Switching a computer from Windows 10 to Linux",
+  "summary": "Moving a Windows 10 computer that cannot run Windows 11 to Linux Mint, from the first check to the restored files.",
+  "systems": "Windows 10, Linux Mint",
+  "time": "2 to 3 hours",
+  "level": "Takes care",
+  "need": [
+   "A USB stick of 8 GB or more",
+   "An external drive for the backup",
+   "A network cable if the Wi-Fi card is Broadcom"
+  ],
+  "screen": "switch",
+  "related": [
+   "linux-first-setup",
+   "linux-install-mendkit",
+   "basics-boot",
+   "mk-drive-backup"
+  ],
+  "sections": [
+   {
+    "heading": "Why and when",
+    "steps": [
+     "Windows 10 stopped getting security updates in October 2025. Computers that cannot run Windows 11 keep working, but become less safe each month.",
+     "Linux Mint is free, gets updates for years, and looks and works much like Windows: a Start-style menu, a taskbar, a file manager and the usual apps.",
+     "It suits people who mostly use a web browser, email, documents, photos and video calls. It does not suit people who rely on Windows-only programs (some accounting, CAD and games with anti-cheat) unless those work in a browser."
+    ]
+   },
+   {
+    "heading": "1. Check the computer with MendKit",
+    "steps": [
+     {
+      "t": "On the Windows computer, open MendKit. Click Switch to Linux on the Dashboard notice, or open Repair (Technician mode) and click Switch to Linux.",
+      "see": "After a minute or two: a verdict, the hardware checks, and a table of each app and what replaces it on Linux."
+     },
+     "Read every amber and red item. Broadcom Wi-Fi or NVIDIA graphics are fine but need a step after installing; a 32-bit processor or under 2 GB of memory is not worth it.",
+     {
+      "t": "Go through the apps table with the owner.",
+      "tip": "Programs with no Linux version and no browser version are the deal-breakers. Decide now, not after Windows is gone."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "2. Back up everything",
+    "steps": [
+     {
+      "t": "Plug in an external drive. In MendKit, click Back up files to a drive and back up every user.",
+      "tip": "See \"Backing up to a drive and restoring\"."
+     },
+     "Make sure browser passwords are synced to the person's account or exported (Move saved passwords).",
+     "Write down the Wi-Fi password, and any licence keys for programs that will be reinstalled.",
+     "Check the backup: open the drive and open a few documents and photos from it."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "3. Make the USB stick",
+    "steps": [
+     "Open ISO Library and download Linux Mint (Cinnamon edition; the Xfce edition for computers with under 4 GB of memory).",
+     {
+      "t": "Write it to a USB stick of 8 GB or more with Rufus, or copy it onto a Ventoy stick.",
+      "tip": "See the Rufus and Ventoy guides."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "4. Try it before installing",
+    "steps": [
+     {
+      "t": "Plug the stick into the computer and start from it (see \"Starting a computer from a USB stick\").",
+      "see": "The Mint start menu. Choose the first option, Start Linux Mint."
+     },
+     {
+      "t": "Wait for the desktop.",
+      "see": "A full Linux Mint desktop running from the stick. Nothing on the drive has changed yet."
+     },
+     {
+      "t": "Check the things that matter: connect to Wi-Fi (network icon at the bottom right), play a video for sound, check the screen, touchpad and webcam.",
+      "tip": "If Wi-Fi is missing, the card needs a driver: plug in a network cable for the install, and run Missing drivers afterwards."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "5. Install",
+    "steps": [
+     "Double-click Install Linux Mint on the desktop.",
+     "Choose the language and keyboard layout, and click Continue.",
+     "Connect to Wi-Fi if asked. Tick \"Install multimedia codecs\" and click Continue.",
+     {
+      "t": "Installation type: choose \"Erase disk and install Linux Mint\" to replace Windows.",
+      "warn": "This deletes everything on the drive, including Windows and every file. Only continue once the backup is checked. To keep Windows, choose \"Install Linux Mint alongside Windows\" instead; each start then offers a choice."
+     },
+     "Click Install Now, then Continue to confirm the changes.",
+     "Choose the time zone on the map.",
+     {
+      "t": "Type the person's name, the computer's name, a user name and a password. Leave \"Require my password to log in\" selected.",
+      "tip": "This password is also the administrator password Linux asks for when installing updates. Write it down for the owner."
+     },
+     {
+      "t": "Wait for the installation, about 10 to 20 minutes. Click Restart Now, remove the USB stick when asked and press Enter.",
+      "see": "Linux Mint starts from the drive, with a Welcome Screen."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "6. Finish setting it up",
+    "steps": [
+     "In the Welcome Screen, click First Steps and open Driver Manager to install any recommended drivers (NVIDIA, Broadcom). Restart if it installs any.",
+     "Install MendKit (see \"Installing MendKit on Linux\").",
+     "In MendKit, run the recipe \"First setup after installing Linux\". It installs updates, drivers, codecs, Office-compatible fonts, printer drivers, and turns on the firewall and automatic security updates.",
+     "Open Setup Profiles and apply \"New Linux computer\": Firefox, Thunderbird, LibreOffice, VLC, Timeshift and the Standard tweaks.",
+     "Plug in the backup drive. Open Migrate, Restore from a drive, and restore the files. Then click Reinstall apps from the old computer.",
+     "Set up Timeshift (see its guide) so the system can be rolled back after a bad update.",
+     "Sign in to the browser, email and cloud accounts with the owner, and show them the menu, the Software Manager and the Update Manager."
+    ],
+    "kind": "steps"
+   }
+  ]
+ },
+ {
+  "id": "linux-first-setup",
+  "group": "Linux",
+  "title": "First setup after installing Linux",
+  "summary": "Finishing a fresh Linux install with one recipe and one setup profile.",
+  "systems": "Linux",
+  "time": "30 to 60 minutes",
+  "level": "Easy",
+  "screen": "repair",
+  "related": [
+   "switch-linux",
+   "linux-drivers",
+   "timeshift"
+  ],
+  "sections": [
+   {
+    "heading": "What the recipe does",
+    "steps": [
+     "Installs all updates, finds devices without a driver and installs the recommended drivers and firmware.",
+     "Installs media codecs (MP4, MP3, H.264 and more), turns on Flathub in the Software app, installs fonts that match Microsoft's so Office documents keep their layout, and installs printer drivers.",
+     "Turns on the firewall and automatic security updates, then reports the security settings."
+    ]
+   },
+   {
+    "heading": "How to run it",
+    "steps": [
+     "Install and open MendKit. Tick Technician mode and click Repair.",
+     {
+      "t": "Find \"First setup after installing Linux\" and click Run, then Start. Type your password when asked.",
+      "see": "About 15 to 40 minutes depending on the number of updates."
+     },
+     "Restart when it finishes.",
+     "Open Setup Profiles and click Apply to this computer on \"New Linux computer\".",
+     "Check sound, Wi-Fi, a printer and a video, then restore the files from the backup."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Notes",
+    "steps": [
+     "On Fedora, codecs come from the RPM Fusion repositories, which the recipe adds.",
+     "On Debian, firmware needs the \"non-free-firmware\" component turned on in Software & Updates.",
+     "The Microsoft fonts installer accepts Microsoft's licence for you on Ubuntu and Mint."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "linux-drivers",
+  "group": "Linux",
+  "title": "Linux: missing drivers, NVIDIA graphics and Wi-Fi",
+  "summary": "Finding hardware without a driver and installing the right one, including NVIDIA graphics and Broadcom Wi-Fi.",
+  "systems": "Linux",
+  "time": "10 to 30 minutes",
+  "level": "Takes care",
+  "screen": "repair",
+  "related": [
+   "linux-first-setup",
+   "switch-linux"
+  ],
+  "sections": [
+   {
+    "heading": "Find what is missing",
+    "steps": [
+     {
+      "t": "In MendKit, run the recipe \"Missing drivers\" (or \"Graphics or Wi-Fi not working right\" on the Dashboard).",
+      "see": "Devices with no driver, firmware that failed to load, and the graphics and network chips."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Ubuntu and Linux Mint",
+    "steps": [
+     {
+      "t": "The recipe runs \"Install recommended drivers\", which installs what Ubuntu suggests (NVIDIA, Broadcom and others). Restart afterwards.",
+      "tip": "Mint's own Driver Manager (in the menu) does the same, with a choice of versions."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "NVIDIA on Fedora",
+    "steps": [
+     "Run \"Install the NVIDIA driver (Fedora)\". It adds RPM Fusion and installs the driver, which then builds itself (about 5 minutes).",
+     {
+      "t": "If Secure Boot is on, the results say so. Restart.",
+      "see": "A blue screen, Perform MOK management. Choose Enroll MOK, then Continue, Yes, type the password you were given, and Reboot.",
+      "warn": "If you skip this screen, the NVIDIA driver will not load. Run the command again to get another chance."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Broadcom Wi-Fi",
+    "steps": [
+     "Connect the computer to the internet another way: a network cable, or a phone shared over USB (on the phone, turn on USB tethering).",
+     "Run \"Install the Broadcom Wi-Fi driver\", then restart. Wi-Fi networks appear in the network menu."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Firmware",
+    "steps": [
+     "\"Install missing firmware\" installs the firmware package most Wi-Fi, Bluetooth and graphics chips need. On Debian, turn on the non-free-firmware component first."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "linux-boot-repair",
+  "group": "Linux",
+  "title": "Repairing a Linux system that will not start",
+  "summary": "Using a Linux live USB and MendKit to check the drive and rebuild the startup menu and startup files.",
+  "systems": "Linux",
+  "time": "30 minutes",
+  "level": "Needs care",
+  "need": [
+   "A Linux live USB stick",
+   "Internet on the broken computer"
+  ],
+  "screen": "repair",
+  "related": [
+   "basics-boot",
+   "mk-old-drive",
+   "timeshift"
+  ],
+  "sections": [
+   {
+    "heading": "Try these first",
+    "steps": [
+     {
+      "t": "At power-on, hold Shift (or tap Esc on newer systems) to show the GRUB startup menu. Choose Advanced options and an older kernel.",
+      "tip": "If that works, the newest kernel is the problem: update again later, or run \"Always show the startup menu\" so the older one is always one key away."
+     },
+     "Stuck at a black screen or \"emergency mode\" after an update: restore a Timeshift snapshot, or use the steps below with \"Rebuild the startup files\"."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Start from a live USB",
+    "steps": [
+     "Make a Ubuntu or Linux Mint USB stick (ISO Library and Rufus or Ventoy). It does not have to match the installed Linux.",
+     "Start the broken computer from it and choose Try or Start Linux Mint, not Install.",
+     "Connect to the internet (needed for Fedora, and to download MendKit).",
+     "Download the MendKit AppImage from the website. Open Terminal and type: sudo apt install libfuse2t64 (on 22.04: libfuse2). Then make the AppImage runnable and open it."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Repair with MendKit",
+    "steps": [
+     {
+      "t": "Tick Technician mode, open Repair, and click Open beside Repair a system that will not start.",
+      "see": "The partitions found, and notices for encrypted or LVM drives."
+     },
+     "Encrypted drive: open the Files app, click the encrypted drive and type its password, then reopen the screen. LVM: click Look for LVM partitions.",
+     {
+      "t": "Choose the installed system's partition, usually the largest ext4 or btrfs one.",
+      "tip": "MendKit checks it really holds an installed Linux before changing anything."
+     },
+     "Leave \"Check and repair the file system\" and \"Reinstall and rebuild the startup menu\" ticked. Tick \"Rebuild the startup files\" too if it stopped at a black screen or emergency mode.",
+     {
+      "t": "Click Repair it and type the live system's password if asked (often none: just press Enter).",
+      "see": "Results for the file system check and for the startup repair, naming the installed system."
+     },
+     "Shut down, remove the USB stick and start the computer."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "If it still will not start",
+    "steps": [
+     "The drive itself may be failing: check it with smartmontools from the live session, and copy the files off with MendKit's \"Copy from an old drive\".",
+     "Windows updates sometimes take over the startup order on dual-boot computers: in the computer's startup menu (F12 and similar), choose the Linux entry (ubuntu, Mint or Fedora)."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "linux-upgrade",
+  "group": "Linux",
+  "title": "Upgrading Linux to the next version",
+  "summary": "Moving Ubuntu, Linux Mint or Fedora to its next release safely.",
+  "systems": "Ubuntu, Linux Mint, Fedora",
+  "time": "1 to 2 hours",
+  "level": "Takes care",
+  "screen": "repair",
+  "related": [
+   "timeshift",
+   "mk-updates"
+  ],
+  "sections": [
+   {
+    "heading": "When",
+    "steps": [
+     "MendKit's Dashboard warns when a version is close to or past the end of its security updates.",
+     "Ubuntu LTS and Linux Mint versions get 5 years of updates; Fedora about 13 months, so Fedora needs upgrading every year."
+    ]
+   },
+   {
+    "heading": "Get ready",
+    "steps": [
+     {
+      "t": "Open Repair and click Open beside Upgrade to the next version.",
+      "see": "Checks: free space (15 GB needed), mains power, waiting updates, a Timeshift snapshot, extra software sources, and the end of support date."
+     },
+     "Fix anything red. Install waiting updates in the Updates screen and restart.",
+     {
+      "t": "Take a Timeshift snapshot and back up personal files.",
+      "warn": "Upgrades usually go smoothly, but a power cut or a full drive mid-way can leave the computer unable to start."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Ubuntu and Linux Mint",
+    "steps": [
+     {
+      "t": "Click Start the upgrade.",
+      "see": "Ubuntu: the Software Updater offers the new version; click Upgrade. Mint: the Mint upgrade tool opens."
+     },
+     "Follow its screens. It asks for your password, checks again, downloads (30 to 90 minutes) and asks before replacing settings files: keep the current version unless you know otherwise.",
+     "Restart when it finishes. Extra software sources were turned off: turn them back on in Software & Updates (or Software Sources on Mint) if needed."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Fedora",
+    "steps": [
+     {
+      "t": "Click Download Fedora N.",
+      "see": "MendKit installs current updates, then downloads the new release. The results list any package in the way."
+     },
+     {
+      "t": "Save your work, then click Restart and upgrade.",
+      "see": "The computer restarts into an upgrade screen with a progress bar (30 to 60 minutes) and restarts again into the new Fedora."
+     }
+    ],
+    "kind": "steps"
+   }
+  ]
+ },
+ {
+  "id": "linux-everyday",
+  "group": "Linux",
+  "title": "Everyday Linux fixes",
+  "summary": "Quick fixes for the problems Linux users run into most, and which MendKit recipe or command does each.",
+  "systems": "Linux",
+  "time": "5 to 15 minutes",
+  "level": "Easy",
+  "screen": "dashboard",
+  "related": [
+   "linux-drivers",
+   "mk-linux-tools",
+   "linux-security"
+  ],
+  "sections": [
+   {
+    "heading": "Desktop frozen or panel gone",
+    "steps": [
+     "Dashboard: \"The desktop froze or the panel vanished\". It restarts Cinnamon, KDE Plasma, XFCE or MATE without closing your windows.",
+     "GNOME on Wayland cannot be restarted that way: sign out and back in. If nothing responds, press Ctrl, Alt and F3, sign in, and type: sudo systemctl restart gdm"
+    ]
+   },
+   {
+    "heading": "Updates fail",
+    "steps": [
+     "Recipe \"Updates fail\" handles \"could not get lock\" (waits for a running update, then finishes half-installed packages), broken extra sources (lists them; \"Turn off broken software sources\" sets them aside), held packages, Arch's expired signing keys and Snap updates.",
+     "Fedora: \"Undo the last update (dnf)\" rolls back an update that broke something."
+    ]
+   },
+   {
+    "heading": "No sound or wrong output",
+    "steps": [
+     "Recipe \"No sound\" restarts the sound system, then \"Reset the sound system completely\" clears saved device choices. Afterwards, choose the output in Sound settings."
+    ]
+   },
+   {
+    "heading": "Printer or scanner",
+    "steps": [
+     "Printers: \"Install printer drivers\" and \"Install HP printer drivers\". Most network printers work without a driver: \"Printers on the network\" lists them.",
+     "Scanners: Dashboard \"The scanner does not work\" installs scanner support, including network scanners."
+    ]
+   },
+   {
+    "heading": "Keeps asking to unlock the keyring",
+    "steps": [
+     "Happens after a password change. Run \"Keeps asking to unlock the keyring\" (Repair) and sign out and in.",
+     {
+      "t": "Passwords saved in the old keyring (some apps and Chrome) must be typed again.",
+      "warn": "The old keyring is kept as a backup, but it needs the old password to open."
+     }
+    ]
+   },
+   {
+    "heading": "Screen problems",
+    "steps": [
+     "Screen sharing or remote support shows black, or an older app misbehaves: try the X11 session (cog on the sign-in screen), or \"Use X11 instead of Wayland (GNOME)\".",
+     "Tearing lines in videos on XFCE: the \"Stop screen tearing\" tweak. On other desktops, try the Wayland session.",
+     "Text too small: the \"Larger text\" tweak for your desktop."
+    ]
+   },
+   {
+    "heading": "Slow to start",
+    "steps": [
+     "Dashboard \"It takes ages to start\" shows which services hold startup up. NetworkManager-wait-online is the usual culprit on desktops; turn it off in Startup items."
+    ]
+   },
+   {
+    "heading": "Out of space",
+    "steps": [
+     "Repair, Free up space: caches, downloaded update files, old logs, old kernels, old Snap versions, unused Flatpak parts, Docker and Timeshift snapshots, and large files to look at."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "linux-security",
+  "group": "Linux",
+  "title": "Securing a Linux computer",
+  "summary": "Checking and fixing the firewall, automatic updates, remote login and remote access programs.",
+  "systems": "Linux",
+  "time": "10 minutes",
+  "level": "Easy",
+  "screen": "repair",
+  "related": [
+   "remote-audit",
+   "basics-safety"
+  ],
+  "sections": [
+   {
+    "heading": "Check",
+    "steps": [
+     {
+      "t": "Run the recipe \"Linux security checkup\".",
+      "see": "Firewall, automatic security updates, remote login (SSH), who has administrator rights, disk encryption and which programs accept network connections."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Fix",
+    "steps": [
+     {
+      "t": "Run \"Secure this computer\". It turns on the firewall (blocking incoming connections only) and automatic security updates.",
+      "tip": "If remote login (SSH) is in use, MendKit keeps it allowed through the firewall."
+     },
+     "If SSH is on and nobody logs in remotely, turn it off: sudo systemctl disable --now ssh",
+     "Check the administrators listed are people who should have that power."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Remote access programs",
+    "steps": [
+     "Check for remote access (Dashboard) now removes AnyDesk, TeamViewer, RustDesk and others on Linux too: it stops their services, uninstalls the package or Flatpak and sets loose copies aside."
+    ]
+   },
+   {
+    "heading": "Encryption",
+    "steps": [
+     "Disk encryption can only be turned on by reinstalling, with \"Encrypt the new Linux installation\" ticked in the installer. Worth it for laptops."
     ]
    }
   ]

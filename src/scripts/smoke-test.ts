@@ -6,7 +6,10 @@ import { spawn } from 'child_process';
 import { Engine, toolCheckCommand, toolCommand } from '../engine/runner';
 import { Catalog, CommandDef } from '../engine/types';
 import { hasFullDiskAccess } from '../main/permissions';
-import { loadTweaks, RegBackend, RegValue, TweakManager } from '../engine/tweaks';
+import { eolState, linuxEol, parseOsRelease, windowsEol } from '../engine/eol';
+import { linuxEquivalent, switchAdvice, vendorOf } from '../engine/switch';
+import { linuxDownloadCommand, offlineInstallCommand, offlineSupport } from '../engine/offline';
+import { currentDesktops, linuxTweaksAvailable, loadTweaks, RegBackend, RegValue, TweakManager } from '../engine/tweaks';
 import { runSource, safeTarget, startDestination } from '../engine/migrate';
 import { bookmarksToHtml, countApps, fromWinget, installPlan, loadApps, normalizeAppList, registerMozillaProfiles } from '../engine/apps';
 import { advise, AdvisorFacts } from '../engine/advisor';
@@ -179,6 +182,17 @@ async function testPhase5(defs: string, tmp: string): Promise<void> {
     assert(presets.length === 2, `${platform} presets missing`);
     console.log(`${platform} tweaks: ${tweaks.length} tweaks, apply/detect/undo OK`);
   }
+  // Linux tweaks follow the desktop: Mint (Cinnamon) gets Cinnamon tweaks, KDE gets KDE ones, none leak across.
+  assert(currentDesktops('X-Cinnamon').join() === 'cinnamon' && currentDesktops('ubuntu:GNOME').join() === 'ubuntu,gnome', 'desktop names parsed wrong');
+  const allLinux = loadTweaks(defs, 'linux').tweaks;
+  const forDesk = (d: string) => linuxTweaksAvailable(allLinux, currentDesktops(d), () => true).map((t) => t.id);
+  const mint = forDesk('X-Cinnamon'), plasma = forDesk('KDE'), xf = forDesk('XFCE'), gnome = forDesk('ubuntu:GNOME');
+  assert(mint.includes('cinnamon-hidden-files') && !mint.some((i) => /^(kde|xfce|gnome)-/.test(i)), `Mint tweaks wrong: ${mint}`);
+  assert(plasma.includes('kde-no-indexing') && !plasma.some((i) => /^(cinnamon|xfce|gnome)-/.test(i)), 'KDE tweaks wrong');
+  assert(xf.includes('xfce-no-tearing') && gnome.includes('gnome-min-max') && !gnome.includes('cinnamon-date'), 'XFCE or GNOME tweaks wrong');
+  const mintPresets = loadTweaks(defs, 'linux', (all) => linuxTweaksAvailable(all, ['cinnamon'], () => true)).presets;
+  assert(mintPresets.every((p) => p.tweaks.every((id) => mint.includes(id))), 'a preset offers another desktop\'s tweak');
+  console.log(`linux desktops: Cinnamon ${mint.length}, KDE ${plasma.length}, XFCE ${xf.length}, GNOME ${gnome.length} tweaks OK`);
   console.log('phase 5: single root shell, refused prompt, distro filtering, package manager commands OK');
 }
 
@@ -305,6 +319,28 @@ async function main(): Promise<void> {
   fs.writeFileSync(path.join(fda, 'Library/Safari/Bookmarks.plist'), '');
   assert(hasFullDiskAccess(fda) === 'granted', 'Full Disk Access not detected');
   console.log('permissions: Full Disk Access probe OK');
+
+  // End of support: Windows 10 has ended, Mint 22 is supported, an old Ubuntu has ended.
+  const now = new Date('2026-11-14');
+  assert(eolState(windowsEol(19045), now) === 'ended' && eolState(windowsEol(26100), now) === 'ok', 'Windows end of support wrong');
+  assert(eolState(linuxEol(parseOsRelease('ID=linuxmint\nVERSION_ID="22.1"\n')), now) === 'ok', 'Mint 22 should be supported');
+  assert(eolState(linuxEol(parseOsRelease('ID=ubuntu\nVERSION_ID="20.04"\n')), now) === 'ended', 'Ubuntu 20.04 should have ended');
+  assert(eolState(linuxEol(parseOsRelease('ID=arch\n')), now) === 'ok', 'a rolling release has no end date');
+  // Switch to Linux: verdicts and app replacements.
+  const eqs = JSON.parse(fs.readFileSync(path.join(defs, 'linux-equivalents.json'), 'utf8'));
+  assert(linuxEquivalent('Microsoft Office Home and Business 2021', eqs)?.app === 'libreoffice' && linuxEquivalent('1Password', eqs) === null && linuxEquivalent('Adobe Acrobat Reader DC', eqs)?.name === 'PDF reader', 'app replacements matched wrong');
+  const base = { ramGb: 8, is64: true, uefi: true, secureBoot: true, gpus: [{ name: 'Intel UHD', vendor: vendorOf('PCI\\VEN_8086&DEV_9B41') }], nets: [{ name: 'Intel Wi-Fi 6 AX201', vendor: 'Intel' }], fingerprint: false, driveType: 'SSD', driveGb: 256, bitlocker: false, fastStartup: false, win11Ok: false };
+  assert(switchAdvice(base).verdict === 'good' && switchAdvice(base).distroId === 'mint', 'a plain Intel laptop should suit Linux');
+  assert(switchAdvice({ ...base, nets: [{ name: 'Broadcom 802.11ac Wireless', vendor: 'Broadcom' }] }).verdict === 'extra-steps', 'Broadcom Wi-Fi needs extra steps');
+  assert(switchAdvice({ ...base, ramGb: 3 }).distroId === 'xubuntu' && switchAdvice({ ...base, is64: false }).verdict === 'not-recommended', 'light edition or 32-bit verdict wrong');
+  // Linux offline cache: download and install commands for each package manager.
+  assert(linuxDownloadCommand('apt', 'htop', '/c/htop')!.join(' ').includes("--download-only --reinstall -o Dir::Cache::archives='/c/htop' 'htop'") && linuxDownloadCommand('zypper', 'x', '/c') === null, 'Linux download command wrong');
+  const le = { tool: 'htop', wingetId: '', version: '3', file: 'pkgs', size: 1, sha256: 'x', installerType: 'linux-dnf', downloaded: '' };
+  assert(offlineSupport(le) === 'install' && offlineInstallCommand({ id: 'htop', name: 'htop', job: '', description: '', license: 'free', packages: {} }, le, '/c/htop').args[1].includes("dnf install -y --disablerepo='*' '/c/htop/pkgs'/*.rpm"), 'Linux offline install command wrong');
+  // Remote access audit on Linux: packages, Flatpaks, services and loose copies are recognised.
+  const lf = matchScan({ programs: [{ DisplayName: 'anydesk', UninstallString: 'pkg:apt:anydesk' }, { DisplayName: 'com.rustdesk.RustDesk', UninstallString: 'flatpak:system:com.rustdesk.RustDesk' }], processes: [], services: [{ Name: 'anydesk.service', DisplayName: 'anydesk.service', PathName: '', State: 'enabled', StartMode: 'Auto' }], files: ['/home/a/Downloads/TeamViewer_x64.AppImage', '/home/a/Downloads/photos'] }, loadRemoteTools(defs));
+  assert(['anydesk', 'rustdesk', 'teamviewer'].every((id) => lf.some((f) => f.id === id)) && lf.find((f) => f.id === 'anydesk')!.services.length === 1, `Linux remote access findings wrong: ${lf.map((f) => f.id)}`);
+  console.log('Linux batch: end of support, switch assistant, offline packages and remote access on Linux OK');
 
   // Symptoms point at real recipes on every system that lists them; advisor verdicts.
   const symptoms = JSON.parse(fs.readFileSync(path.join(defs, 'symptoms.json'), 'utf8')) as { id: string; recipe: string }[];

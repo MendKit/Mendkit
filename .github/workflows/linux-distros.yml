@@ -1,0 +1,40 @@
+name: Linux distributions
+# Runs MendKit's Linux checks inside real distributions: shell syntax with each one's own /bin/sh,
+# package manager detection, and the read-only commands. Runs on every change to the definitions or engine.
+on:
+  push:
+    paths: ['definitions/**', 'src/**', '.github/workflows/linux-distros.yml']
+  pull_request:
+    paths: ['definitions/**', 'src/**']
+  workflow_dispatch:
+
+jobs:
+  distro:
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['ubuntu:24.04', 'ubuntu:22.04', 'debian:stable', 'linuxmintd/mint22-amd64', 'fedora:latest', 'archlinux:latest', 'opensuse/tumbleweed']
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - name: Basic tools
+        shell: sh
+        run: |
+          if command -v apt-get >/dev/null; then apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq curl ca-certificates xz-utils pciutils procps git >/dev/null
+          elif command -v dnf >/dev/null; then dnf install -y -q curl xz pciutils procps-ng git tar
+          elif command -v pacman >/dev/null; then pacman -Sy --noconfirm --needed curl xz pciutils procps-ng git tar
+          elif command -v zypper >/dev/null; then zypper --non-interactive install curl xz pciutils procps git tar gzip; fi
+      - uses: actions/checkout@v5
+      - name: Node.js
+        shell: sh
+        run: |
+          curl -fsSL https://nodejs.org/dist/v22.12.0/node-v22.12.0-linux-x64.tar.xz | tar -xJ -C /opt
+          echo /opt/node-v22.12.0-linux-x64/bin >> "$GITHUB_PATH"
+      - name: Build
+        shell: sh
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+        run: npm ci --ignore-scripts && npx tsc -p tsconfig.json
+      - name: Check MendKit's Linux commands on this distribution
+        shell: sh
+        run: node dist/scripts/distro-check.js

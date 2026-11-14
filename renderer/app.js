@@ -19,6 +19,7 @@ const SCREENS = [
   { id: 'setup', name: 'Setup Profiles', simple: false },
   { id: 'drive', name: 'Backup & Erase', simple: false },
   { id: 'reinstall', name: 'Reinstall assistant', simple: false, hidden: true },
+  { id: 'switch', name: 'Switch to Linux', simple: true, hidden: true },
   { id: 'isos', name: 'ISO Library', simple: true },
   { id: 'undo', name: 'Undo Center', simple: true },
   { id: 'guides', name: 'How-To Guides', simple: true },
@@ -75,6 +76,7 @@ function show(id) {
   else if (cur.id === 'tweaks') renderTweaks(view);
   else if (cur.id === 'migrate') renderMigrate(view);
   else if (cur.id === 'permissions') renderPermissions(view);
+  else if (cur.id === 'switch') renderSwitch(view);
   else if (cur.id === 'reports') renderReports(view);
   if (state.online === false && ['tools', 'updates', 'isos', 'setup'].includes(state.screen)) view.prepend(el('div', { className: 'notice offline' }, el('span', { textContent: 'This computer has no internet connection. Installs, updates and downloads will fail until it is back. Repairs, hardware tests, migration, tweaks and erasing still work.' })));
 }
@@ -99,6 +101,33 @@ function adminNotice() {
 function renderDashboard(view) {
   const i = state.info;
   view.append(el('h1', { textContent: 'Dashboard' }), el('p', { className: 'lead', textContent: 'A quick look at this computer.' }));
+  if (i.platform === 'win32') {
+    const slot = el('div');
+    view.append(slot);
+    api.windowsEol().then((e) => {
+      if (!e || e.state !== 'ended' || !slot.isConnected) return;
+      const b = el('button', { className: 'ghost', textContent: 'Switch to Linux' });
+      b.onclick = () => show('switch');
+      slot.append(el('div', { className: 'notice' }, el('span', { textContent: `Windows 10 stopped getting security updates on ${new Date(e.ends + 'T12:00:00').toLocaleDateString()}. Upgrade to Windows 11 if this computer qualifies ("Is this computer worth fixing?" checks), or switch it to Linux.` }), b));
+    }).catch(() => {});
+  }
+  if (i.platform === 'linux') {
+    const slot = el('div');
+    view.append(slot);
+    api.linuxEol().then((e) => {
+      if (!e || e.state === 'ok' || !slot.isConnected) return;
+      const b = el('button', { className: 'ghost', textContent: 'Upgrade' });
+      b.onclick = () => {
+        if (state.mode !== 'technician') {
+          state.mode = 'technician';
+          api.setMode('technician');
+        }
+        show('repair');
+        showLinuxUpgrade();
+      };
+      slot.append(el('div', { className: 'notice' }, el('span', { textContent: `${e.name} ${e.state === 'ended' ? 'no longer gets security updates (support ended' : 'stops getting security updates soon (on'} ${new Date(e.ends + 'T12:00:00').toLocaleDateString()}). ${e.advice}` }), b));
+    }).catch(() => {});
+  }
   if (i.platform === 'darwin') {
     const slot = el('div');
     view.append(slot);
@@ -231,6 +260,11 @@ function renderRepair(view) {
   const reBtn = el('button', { className: 'ghost', textContent: 'Reinstall assistant' });
   reBtn.onclick = () => show('reinstall');
   view.append(el('div', { className: 'notice' }, el('span', { textContent: 'Reinstall assistant: when repairs do not hold, reinstall the system over itself and keep files, apps and settings. MendKit checks the computer is ready and walks you through it.' }), reBtn));
+  if (state.info.platform === 'win32') {
+    const swBtn = el('button', { className: 'ghost', textContent: 'Switch to Linux' });
+    swBtn.onclick = () => show('switch');
+    view.append(el('div', { className: 'notice' }, el('span', { textContent: 'Switch to Linux: for computers that cannot run Windows 11. Checks the hardware, lists what replaces each app, and walks through backing up and installing Linux Mint.' }), swBtn));
+  }
   if (state.info.platform === 'darwin') {
     view.append(el('h2', { textContent: 'Mac tools' }));
     const mt = el('table');
@@ -245,6 +279,21 @@ function renderRepair(view) {
       mt.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, b)));
     }
     view.append(mt);
+  }
+  if (state.info.platform === 'linux') {
+    view.append(el('h2', { textContent: 'Linux tools' }));
+    const lt = el('table');
+    for (const [name, desc, fn] of [
+      ['Startup items', 'Programs and services that start with the computer or when you sign in. Turn off the ones you do not need, and back on again later.', showLinuxStartup],
+      ['Free up space', 'Measure caches, downloaded update files, old logs, old kernels and Snap versions, the Trash and large files, then choose what to delete.', showLinuxSpace],
+      ['Repair a system that will not start', 'From a Linux live USB: check the file system and rebuild the startup menu (GRUB) and startup files of the installed system.', showLinuxBoot],
+      ['Upgrade to the next version', 'Checks the computer is ready, then upgrades Ubuntu, Linux Mint or Fedora to the next release.', showLinuxUpgrade],
+    ]) {
+      const b = el('button', { className: 'ghost', textContent: 'Open' });
+      b.onclick = () => fn();
+      lt.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, b)));
+    }
+    view.append(lt);
   }
   view.append(el('h2', { textContent: 'Recipes' }));
   const rt = el('table', { className: 'searchable' });
@@ -508,6 +557,7 @@ const GROUP_LEAD = {
   'Start here': 'New to fixing computers? Read these first. They explain the words and everyday skills the other guides use.',
   'Using MendKit': 'One guide for each part of MendKit, in the order you are most likely to need them.',
   Mac: 'Mac repairs you do yourself, outside MendKit.',
+  Linux: 'Installing MendKit on Linux, switching from Windows, drivers, startup repair, upgrades and everyday fixes.',
   Tools: 'Every tool on the Tools screen: what it is for, how to install it, how to use it step by step, and what the results mean.',
 };
 const stepText = (st) => (typeof st === 'string' ? st : [st.t, st.see, st.tip, st.warn].filter(Boolean).join(' '));
@@ -792,6 +842,257 @@ async function renderPermissions(view) {
     if (!holder.isConnected) return clearInterval(permTimer);
     if (!busy && document.hasFocus()) paint();
   }, 2500);
+}
+
+// ---------- Switch to Linux ----------
+
+async function renderSwitch(view) {
+  const back = el('button', { className: 'ghost', textContent: 'Back to Dashboard' });
+  back.onclick = () => show('dashboard');
+  view.append(el('div', { className: 'toolbar' }, back), el('h1', { textContent: 'Switch to Linux' }), el('p', { className: 'lead', textContent: 'For a computer that cannot run Windows 11, or whose owner wants a free system that keeps getting updates. Linux Mint looks and works much like Windows. Work through the steps in order; nothing changes on this computer until step 4.' }));
+  if (state.info.platform !== 'win32') {
+    view.append(el('p', { className: 'lead', textContent: 'Run this on the Windows computer that will switch. On a computer that already runs Linux, use the "First setup after installing Linux" recipe and the "New Linux computer" setup profile.' }));
+    return;
+  }
+  const status = el('p', { className: 'lead mig-status', textContent: 'Checking the hardware and the installed programs. This takes a minute or two...' });
+  view.append(status);
+  setProgress(0.4);
+  let r;
+  try {
+    r = await api.switchCheck();
+  } catch (err) {
+    status.textContent = errText(err);
+    return setProgress(null);
+  }
+  setProgress(null);
+  if (state.screen !== 'switch') return;
+  const head = { good: ['good', 'This computer is a good fit for Linux'], 'extra-steps': ['attention', 'Linux will run well, with a few extra steps'], 'not-recommended': ['problem', 'Linux is not recommended on this computer'] }[r.verdict];
+  status.replaceWith(el('div', { className: 'result-head ' + head[0] }, el('div', { className: 'icon big ' + head[0], textContent: ICONS[head[0]] }), el('div', {}, el('h1', { textContent: head[1] }), el('p', { className: 'lead', textContent: r.verdict === 'not-recommended' ? 'See the red items below.' : `Recommended: ${r.distro}.` }))));
+  view.append(el('h2', { textContent: '1. The hardware' }));
+  for (const c of r.checks) view.append(el('div', { className: 'result ' + (c.level === 'good' ? '' : c.level) }, el('div', { className: 'icon ' + c.level, textContent: ICONS[c.level] }), el('div', {}, el('strong', { textContent: c.title }), el('p', { textContent: c.text }))));
+
+  view.append(el('h2', { textContent: '2. The apps' }), el('p', { className: 'dim', textContent: 'Windows programs do not run on Linux. Here is what takes their place. Show this list to the owner before going ahead.' }));
+  const t = el('table');
+  t.append(el('tr', {}, el('th', { textContent: 'On Windows' }), el('th', { textContent: 'On Linux' })));
+  for (const a of [...r.apps, ...r.replacements]) t.append(el('tr', {}, el('td', { textContent: a.name }), el('td', { textContent: a.linux, className: a.ok ? '' : 'warn' })));
+  view.append(t);
+  if (r.unknown.length) {
+    const d = el('details', {}, el('summary', { textContent: `${r.unknown.length} other programs (check any the owner relies on)` }), el('ul', { className: 'found' }, ...r.unknown.map((n) => el('li', { textContent: n }))));
+    view.append(d);
+  }
+
+  const btn = (label, fn) => {
+    const b = el('button', { className: 'ghost', textContent: label });
+    b.onclick = fn;
+    return b;
+  };
+  const guide = (id) => () => {
+    state.guide = id;
+    show('guides');
+  };
+  view.append(
+    el('h2', { textContent: '3. Back up the files' }),
+    el('p', { textContent: 'Copy everything to an external drive with MendKit, so it can be restored on Linux. Also note down Wi-Fi passwords and make sure browser passwords are synced or exported (Move saved passwords).' }),
+    el('div', { className: 'toolbar' }, btn('Back up files to a drive', () => show('migrate')), btn('How to back up', guide('mk-drive-backup'))),
+    el('h2', { textContent: '4. Make the Linux USB stick' }),
+    el('p', { textContent: `Download ${r.distro} and write it to a USB stick of 8 GB or more with Rufus or Ventoy.` }),
+    el('div', { className: 'toolbar' }, btn('Open the ISO Library', () => show('isos')), btn('Rufus guide', guide('rufus')), btn('Ventoy guide', guide('ventoy'))),
+    el('h2', { textContent: '5. Install Linux' }),
+    el('p', { textContent: 'Start the computer from the stick, try Linux first to check Wi-Fi, sound and the screen work, then install. The guide walks through every screen.' }),
+    el('div', { className: 'toolbar' }, btn('Open the installation guide', guide('switch-linux'))),
+    el('h2', { textContent: '6. After installing' }),
+    el('p', { textContent: 'Install MendKit on the new Linux system, run the "First setup after installing Linux" recipe, apply the "New Linux computer" setup profile, then Restore from a drive to bring the files and apps back.' }),
+  );
+}
+
+// ---------- Linux tools ----------
+
+async function showLinuxStartup() {
+  const f = macFrame('Startup items', 'Programs that start when you sign in, and services that start with the computer. Ones the system needs are shown but cannot be ticked. Turning something off does not uninstall it.');
+  const scan = el('button', { className: 'big', textContent: 'Scan' });
+  f.bar.append(scan, f.back);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Reading startup programs and services...';
+    let r;
+    try {
+      r = await api.linuxStartupScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return;
+    }
+    scan.disabled = false;
+    scan.textContent = 'Scan again';
+    f.holder.replaceChildren();
+    const optional = r.items.filter((i) => !i.essential);
+    f.status.textContent = `${optional.length} item${optional.length === 1 ? '' : 's'} can be turned off. Tick the ones you do not use.`;
+    const picks = [];
+    for (const [title, kinds] of [['When you sign in', ['autostart', 'user-service']], ['With the computer', ['system-service']]]) {
+      const list = r.items.filter((i) => kinds.includes(i.kind)).sort((a, b) => a.essential - b.essential);
+      if (!list.length) continue;
+      f.holder.append(el('h2', { textContent: title }));
+      for (const it of list) {
+        const box = el('input', { type: 'checkbox', disabled: it.essential });
+        if (!it.essential) picks.push({ id: it.id, box });
+        const body = el('div', {}, el('strong', { textContent: it.name }));
+        if (it.essential) body.append(el('span', { className: 'tag', textContent: 'needed by the system' }));
+        body.append(el('p', { className: 'dim', textContent: it.detail }));
+        f.holder.append(el('div', { className: 'result' }, el('div', { className: 'chk' }, box), body));
+      }
+    }
+    if (picks.length) {
+      const go = el('button', { className: 'big run', textContent: 'Turn off selected' });
+      go.onclick = () => {
+        const ids = picks.filter((p) => p.box.checked).map((p) => p.id);
+        if (!ids.length) return migSafeStatus('Tick at least one item.');
+        run(async () => showResults(await api.linuxStartupOff(ids)));
+      };
+      f.holder.append(el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: 'Services for the whole computer ask for your password. If you are not sure what something does, search its name before turning it off.' }));
+    }
+    if (r.off.length) {
+      f.holder.append(el('h2', { textContent: 'Turned off by MendKit' }));
+      const t = el('table');
+      for (const o of r.off) {
+        const b = el('button', { className: 'ghost', textContent: 'Turn back on' });
+        b.onclick = () => run(async () => showResults(await api.linuxStartupOn(o.id)));
+        t.append(el('tr', {}, el('td', { textContent: `${o.name} (${new Date(o.when).toLocaleDateString()})` }), el('td', { className: 'act' }, b)));
+      }
+      f.holder.append(t);
+    }
+    if (r.cron.length) f.holder.append(el('h2', { textContent: 'Scheduled jobs (crontab)' }), el('ul', { className: 'found' }, ...r.cron.map((c) => el('li', { textContent: c }))), el('p', { className: 'dim', textContent: 'To change these, run crontab -e in Terminal.' }));
+    syncButtons();
+  };
+}
+
+async function showLinuxSpace() {
+  const f = macFrame('Free up space', 'Measures what can safely go. Nothing is deleted until you tick it and press Delete.');
+  const scan = el('button', { className: 'big', textContent: 'Measure' });
+  f.bar.append(scan, f.back);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Measuring. This can take a minute...';
+    setProgress(0.5);
+    let r;
+    try {
+      r = await api.linuxSpaceScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return setProgress(null);
+    }
+    setProgress(null);
+    scan.disabled = false;
+    scan.textContent = 'Measure again';
+    f.holder.replaceChildren();
+    f.status.textContent = r.free ? `${r.free} free of ${r.total}.` : '';
+    const picks = [];
+    const t = el('table');
+    for (const it of r.items) {
+      const box = el('input', { type: 'checkbox', checked: it.preset });
+      picks.push({ id: it.id, box });
+      t.append(el('tr', {}, el('td', {}, el('strong', { textContent: it.name }), el('br'), el('small', { textContent: it.detail })), el('td', { textContent: it.size }), el('td', { className: 'act' }, box)));
+    }
+    if (!r.items.length) f.holder.append(el('p', { className: 'lead', textContent: 'Nothing large enough to bother with was found.' }));
+    else {
+      const go = el('button', { className: 'big run', textContent: 'Delete selected' });
+      go.onclick = () => {
+        const ids = picks.filter((p) => p.box.checked).map((p) => p.id);
+        if (!ids.length) return migSafeStatus('Tick at least one item to delete.');
+        run(async () => showResults(await api.linuxSpaceClean(ids)));
+      };
+      f.holder.append(t, el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: 'Deleted files do not go to the Trash. Items for the whole computer ask for your password.' }));
+    }
+    if (r.large.length) {
+      f.holder.append(el('h2', { textContent: 'Large files' }), el('p', { className: 'dim', textContent: 'Files over 1 GB in your folders. Look at each yourself; MendKit will not delete them.' }));
+      const lt = el('table');
+      for (const x of r.large) {
+        const b = el('button', { className: 'ghost', textContent: 'Show in folder' });
+        b.onclick = () => api.linuxReveal(x.path);
+        lt.append(el('tr', {}, el('td', { textContent: x.label }), el('td', { className: 'act' }, b)));
+      }
+      f.holder.append(lt);
+    }
+    syncButtons();
+  };
+}
+
+async function showLinuxBoot() {
+  const f = macFrame('Repair a system that will not start', 'Run this from a Linux live USB (for example the Ubuntu or Mint installer, choosing "Try"), on the computer whose Linux will not start. It repairs the installed system on the drive.');
+  f.bar.append(f.back);
+  let info;
+  try {
+    info = await api.linuxBootInfo();
+  } catch (err) {
+    f.status.textContent = errText(err);
+    return;
+  }
+  if (!info.live) f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: 'This does not look like a live USB session. Repairing the system you are running from can fail; for that, use "Rebuild the startup menu" and "Rebuild the startup files" in Repair instead.' })));
+  if (info.locked.length) f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: `Encrypted partitions (${info.locked.join(', ')}) are locked. Open the Files app, click the encrypted drive, type its password, then come back and open this screen again.` })));
+  if (info.lvm) {
+    const b = el('button', { className: 'ghost', textContent: 'Look for LVM partitions' });
+    b.onclick = () => run(async () => {
+      showResults(await api.linuxBootLvm());
+    });
+    f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: 'This drive uses LVM. If the system partition is not listed below, click this first.' }), b));
+  }
+  if (!info.roots.length) {
+    f.status.textContent = 'No Linux system partitions were found. Unlock encrypted drives first, or check the drive is connected.';
+    return;
+  }
+  const sel = el('select', { className: 'text' });
+  for (const r of info.roots) sel.append(el('option', { value: r.path, textContent: r.label }));
+  const fsck = el('input', { type: 'checkbox', checked: true });
+  const grub = el('input', { type: 'checkbox', checked: true });
+  const initr = el('input', { type: 'checkbox', checked: false });
+  const go = el('button', { className: 'big run', textContent: 'Repair it' });
+  go.onclick = () => run(async () => showResults(await api.linuxBootRepair(sel.value, { fsck: fsck.checked, grub: grub.checked, initramfs: initr.checked })));
+  f.holder.append(
+    el('h2', { textContent: '1. The installed system\'s partition' }),
+    el('p', { className: 'dim', textContent: 'Choose the partition holding the installed Linux (usually the largest ext4 or btrfs one). MendKit checks it really holds a system before changing anything.' }),
+    sel,
+    el('h2', { textContent: '2. What to repair' }),
+    el('label', { className: 'switch' }, fsck, 'Check and repair the file system (the partition must not be open)'),
+    el('label', { className: 'switch' }, grub, `Reinstall and rebuild the startup menu (GRUB, ${info.uefi ? 'UEFI' : 'legacy BIOS'})`),
+    el('label', { className: 'switch' }, initr, 'Rebuild the startup files (initramfs), for a system that stops at a black screen or "emergency mode"'),
+    el('div', { className: 'result-foot' }, go),
+    el('p', { className: 'lead note', textContent: 'Needs the internet for Fedora. Afterwards, remove the USB stick and restart.' }),
+  );
+  syncButtons();
+}
+
+async function showLinuxUpgrade() {
+  const f = macFrame('Upgrade to the next version', 'Moves this computer to the next release of its Linux, keeping files, apps and settings. Checks come first; nothing starts until you click.');
+  f.bar.append(f.back);
+  f.status.textContent = 'Checking the computer is ready...';
+  let r;
+  try {
+    r = await api.linuxUpgradeCheck();
+  } catch (err) {
+    f.status.textContent = errText(err);
+    return;
+  }
+  f.status.textContent = r.name;
+  for (const c of r.checks) f.holder.append(el('div', { className: 'result ' + (c.level === 'good' ? '' : c.level) }, el('div', { className: 'icon ' + c.level, textContent: ICONS[c.level] }), el('div', {}, el('span', { textContent: c.text }))));
+  if (r.method === 'manual') {
+    f.holder.append(el('p', { className: 'lead', textContent: 'MendKit does not run upgrades for this distribution. Follow its own release notes.' }));
+    return;
+  }
+  const blocked = r.checks.some((c) => c.level === 'problem');
+  const go = el('button', { className: 'big run', textContent: r.method === 'fedora' ? `Download Fedora ${r.fedoraNext}` : 'Start the upgrade', disabled: blocked });
+  go.onclick = () => run(async () => {
+    const res = await api.linuxUpgradeStart();
+    if (res && res.launched) {
+      migSafeStatus(`${res.launched} has opened. Follow its steps; it asks for your password and takes an hour or more.`);
+      return;
+    }
+    showResults(res);
+    const reboot = el('button', { className: 'big run', textContent: 'Restart and upgrade' });
+    reboot.onclick = () => run(async () => showResults(await api.linuxUpgradeReboot()));
+    $('#view').append(el('div', { className: 'notice' }, el('span', { textContent: 'When the download has finished without errors, save your work and click Restart and upgrade. The computer restarts, upgrades (30 to 60 minutes) and restarts again.' }), reboot));
+  });
+  f.holder.append(el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: blocked ? 'Fix the items marked in red first.' : r.method === 'fedora' ? 'MendKit downloads the new release, then you restart to install it.' : 'The distribution\'s own upgrade tool opens and guides you through it.' }));
+  syncButtons();
 }
 
 // ---------- Mac tools ----------
@@ -1725,7 +2026,7 @@ async function renderTools(view) {
     const paintCard = () => {
       const n = Object.keys(cache.entries).length;
       const status = state.online === false ? 'No internet right now: ticked tools install from the offline cache.' : n ? `${n} tool${n === 1 ? '' : 's'} saved (${cache.totalText}).` : 'Nothing saved yet.';
-      const where = el('p', { className: 'lead note', textContent: `Kept in ${cache.dir}. A technician USB can carry them: tick "Offline installers" when you build one in the ISO Library.` });
+      const where = el('p', { className: 'lead note', textContent: `Kept in ${cache.dir}. A technician USB can carry them: tick "Offline installers" when you build one in the ISO Library.${cache.linux ? ' On Linux each tool is saved with the packages it needs that this computer lacks, so install them on the same Linux version.' : ''}` });
       const pick = el('button', { className: 'ghost', textContent: 'Change folder' });
       pick.onclick = async () => {
         cache = await api.cachePickDir(false);
@@ -1745,7 +2046,7 @@ async function renderTools(view) {
         el('strong', { textContent: 'Offline installers' }),
         el('p', { className: 'lead', textContent: `Save installers now, install them later on a computer with no internet. ${status}` }),
         where,
-        el('div', { className: 'toolbar' }, save, unsave, sizes, open, pick, ...(cache.isDefault ? [] : [(() => {
+        el('div', { className: 'toolbar' }, save, unsave, ...(cache.linux ? [] : [sizes]), open, pick, ...(cache.isDefault ? [] : [(() => {
           const reset = el('button', { className: 'ghost', textContent: 'Use the default folder' });
           reset.onclick = async () => {
             cache = await api.cachePickDir(true);
@@ -1877,7 +2178,7 @@ async function renderTweaks(view) {
   view.append(el('h1', { textContent: 'Tweaks' }), el('p', { className: 'lead', textContent: 'Tick what you want on, then Apply. MendKit remembers the old values so every change can be undone.' }));
   const data = await api.tweaks();
   if (state.screen !== 'tweaks') return;
-  if (!data.supported) return view.append(el('div', { className: 'placeholder', textContent: 'Tweaks on Linux need the GNOME desktop (gsettings), which was not found on this computer.' }));
+  if (!data.supported) return view.append(el('div', { className: 'placeholder', textContent: 'No tweaks are available for this desktop. MendKit has tweaks for GNOME, Cinnamon (Linux Mint), KDE Plasma and XFCE.' }));
   const win = state.info.platform === 'win32';
   if (win && !state.info.elevated) view.append(adminNotice());
   const desired = { ...data.status };

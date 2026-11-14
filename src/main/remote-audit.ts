@@ -5,6 +5,7 @@ import * as os from 'os';
 import * as path from 'path';
 import { exePatterns, loadRemoteTools, matchScan, RawScan, RemoteFinding, removalPlan } from '../engine/remote';
 import { ActionStep, Engine } from '../engine/runner';
+import { CommandDef } from '../engine/types';
 import { isElevated } from './system';
 
 /**
@@ -95,7 +96,25 @@ async function scanPosix(): Promise<RawScan> {
       /* folder missing */
     }
   }
-  return { programs, processes, services: [], files: [] };
+  if (process.platform !== 'linux') return { programs, processes, services: [], files: [] };
+  // Linux: packages (marked with how to remove them), Flatpak apps, systemd services and loose copies in the usual folders.
+  const sh = (c: string) => new Promise<string>((resolve) => execFile('sh', ['-c', c], { timeout: 30000, maxBuffer: 16 * 1024 * 1024 }, (_e, out) => resolve(String(out))));
+  const pm = (await sh('command -v dpkg-query >/dev/null && echo apt || (command -v rpm >/dev/null && (command -v zypper >/dev/null && echo zypper || echo dnf)) || (command -v pacman >/dev/null && echo pacman)')).trim();
+  const list = pm === 'apt' ? "dpkg-query -W -f='${Package}\\n'" : pm === 'pacman' ? 'pacman -Qq' : pm ? "rpm -qa --qf '%{NAME}\\n'" : 'true';
+  for (const n of (await sh(list)).split('\n').filter(Boolean)) programs.push({ DisplayName: n, UninstallString: `pkg:${pm}:${n}` });
+  for (const l of (await sh('flatpak list --app --columns=application,installation 2>/dev/null')).split('\n').filter(Boolean)) {
+    const [id, where] = l.split('\t');
+    programs.push({ DisplayName: id, UninstallString: `flatpak:${where === 'user' ? 'user' : 'system'}:${id}` });
+  }
+  const services: RawScan['services'] = [];
+  for (const l of (await sh('systemctl list-unit-files --type=service --no-legend --no-pager 2>/dev/null')).split('\n')) {
+    const [name, state] = l.trim().split(/\s+/);
+    if (name) services.push({ Name: name, DisplayName: name, PathName: '', State: state, StartMode: state === 'enabled' ? 'Auto' : state });
+  }
+  const files: string[] = [];
+  const roots = ['Downloads', 'Desktop', 'Applications', '.local/bin'].map((d) => path.join(os.homedir(), d)).concat(['/opt']);
+  for (const l of (await sh(`find ${roots.map((r) => `'${r}'`).join(' ')} -maxdepth 3 \\( -iname '*.AppImage' -o -iname '*.run' -o -iname '*.deb' -o -iname '*.rpm' -o -iname '*.tar.gz' -o -type d \\) 2>/dev/null`)).split('\n')) if (l) files.push(l);
+  return { programs, processes, services, files };
 }
 
 function runAct(job: object, write: (t: string) => void): Promise<{ ok: boolean; note?: string }> {
@@ -135,11 +154,12 @@ export function registerRemoteAudit(engine: Engine): void {
   ipcMain.handle('remote-scan', async () => {
     const raw = process.platform === 'win32' ? await scanWindows(exePatterns(defs)) : await scanPosix();
     last = matchScan(raw, defs);
-    return { findings: last, canRemove: process.platform === 'win32', elevated: isElevated(), known: defs.length };
+    return { findings: last, canRemove: process.platform === 'win32' || process.platform === 'linux', elevated: isElevated(), known: defs.length };
   });
 
   ipcMain.handle('remote-remove', (_e, ids: string[]) => {
-    if (process.platform !== 'win32') throw new Error('Removal is only built for Windows so far');
+    if (process.platform === 'linux') return removeLinux(ids);
+    if (process.platform !== 'win32') throw new Error('Removal is built for Windows and Linux so far');
     const want = new Set(Array.isArray(ids) ? ids.map(String) : []);
     // Only products from the scan the person just reviewed can be removed.
     const chosen = last.filter((f) => want.has(f.id) && !f.builtin);
@@ -175,6 +195,58 @@ export function registerRemoteAudit(engine: Engine): void {
     if (!steps.length) throw new Error('There is nothing MendKit can remove for the ticked programs');
     return engine.runActions('remote-access-removal', 'Remove remote access programs', 'recipe', steps, { elevated: isElevated() });
   });
+
+  /** Linux: stop and disable services, close the programs, remove the package or Flatpak, and set loose copies aside. */
+  const removeLinux = (ids: string[]) => {
+    const want = new Set(Array.isArray(ids) ? ids.map(String) : []);
+    const chosen = last.filter((f) => want.has(f.id) && !f.builtin);
+    if (!chosen.length) throw new Error('Tick at least one program to remove');
+    const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const q = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
+    const steps: (CommandDef | ActionStep)[] = [];
+    const sysDir = `/var/lib/mendkit/quarantine/${stamp}`;
+    for (const f of chosen) {
+      const services = f.services.map((x) => x.name).filter((n) => /^[\w@.-]+$/.test(n));
+      const pids = f.running.map((r) => r.pid).filter((n) => Number.isInteger(n) && n > 1);
+      const pkgs = f.installed.map((i) => /^pkg:(apt|dnf|zypper|pacman):([\w.+-]+)$/.exec(i.uninstall)).filter((m): m is RegExpExecArray => !!m);
+      const flats = f.installed.map((i) => /^flatpak:(user|system):([\w.-]+)$/.exec(i.uninstall)).filter((m): m is RegExpExecArray => !!m);
+      const cmd = (id: string, name: string, script: string, ok: string, admin = true): CommandDef => ({ id, name, description: '', exec: 'sh', args: ['-c', script], admin, typicalMinutes: 1, friendly: { title: f.name, ok, problem: `${name} did not finish.` } });
+      if (services.length || pids.length) steps.push(cmd(`stop-${f.id}`, `${f.name}: stop it running`, `${services.map((n) => `systemctl disable --now ${q(n)} 2>&1`).join('; ')}; ${pids.length ? `kill ${pids.join(' ')} 2>/dev/null` : 'true'}; echo stopped`, 'It is no longer running, and its service will not start again.'));
+      for (const m of pkgs) {
+        const rm = m[1] === 'apt' ? `DEBIAN_FRONTEND=noninteractive apt-get purge -y ${q(m[2])}` : m[1] === 'dnf' ? `dnf remove -y ${q(m[2])}` : m[1] === 'zypper' ? `zypper --non-interactive remove ${q(m[2])}` : `pacman -Rns --noconfirm ${q(m[2])}`;
+        steps.push(cmd(`uninstall-${f.id}-${m[2]}`, `${f.name}: uninstall ${m[2]}`, rm, 'It was uninstalled.'));
+      }
+      for (const m of flats) steps.push(cmd(`flatpak-${f.id}-${m[2]}`, `${f.name}: uninstall ${m[2]}`, `flatpak uninstall -y --${m[1]} --delete-data ${q(m[2])}`, 'It was uninstalled.', m[1] === 'system'));
+      const userFiles = f.files.filter((x) => x.startsWith(os.homedir() + '/'));
+      const sysFiles = f.files.filter((x) => !x.startsWith(os.homedir() + '/'));
+      if (userFiles.length) {
+        const dir = path.join(app.getPath('userData'), 'Quarantine', stamp);
+        steps.push({
+          id: `quarantine-${f.id}`, name: `${f.name}: set aside ${userFiles.length} loose cop${userFiles.length === 1 ? 'y' : 'ies'}`, admin: false,
+          ok: 'Moved to the MendKit quarantine folder. They can be put back from the Undo Center.', problem: 'Some files could not be set aside.',
+          action: async (write) => {
+            fs.mkdirSync(dir, { recursive: true });
+            const moved: Quarantined[] = [];
+            for (const [i, from] of userFiles.entries()) {
+              if (!fs.existsSync(from)) continue;
+              const to = path.join(dir, `${f.id}-${i}-${path.basename(from)}.quarantined`);
+              try {
+                fs.renameSync(from, to);
+                moved.push({ id: `${stamp}-${path.basename(to)}`, tool: f.name, from, to, when: new Date().toISOString() });
+                write(`Set aside ${from}\n`);
+              } catch {
+                write(`COULD_NOT_MOVE ${from}\n`);
+              }
+            }
+            if (moved.length) fs.writeFileSync(quarantineFile, JSON.stringify([...quarantined(), ...moved], null, 2));
+            return { ok: true };
+          },
+        });
+      }
+      if (sysFiles.length) steps.push(cmd(`quarantine-sys-${f.id}`, `${f.name}: set aside leftovers`, `mkdir -p ${q(sysDir)}; for x in ${sysFiles.map(q).join(' ')}; do [ -e "$x" ] && mv "$x" ${q(sysDir)}/ && echo "Set aside $x"; done; true`, `Leftover files were moved to ${sysDir}.`));
+    }
+    return engine.runSteps('remote-access-removal', 'Remove remote access programs', 'recipe', steps, { elevated: isElevated() });
+  };
 
   ipcMain.handle('quarantine-list', () => quarantined().filter((q) => fs.existsSync(q.to)));
   ipcMain.handle('quarantine-restore', (_e, id: string) => {

@@ -19,6 +19,8 @@ declare -A latest=(
   ["MendKit-$v-arm64.dmg"]="MendKit-latest-arm64.dmg"
   ["MendKit-$v-x86_64.AppImage"]="MendKit-latest-x86_64.AppImage"
   ["MendKit-$v-x64.tar.gz"]="MendKit-latest-x64.tar.gz"
+  ["MendKit-$v-amd64.deb"]="MendKit-latest-amd64.deb"
+  ["MendKit-$v-x86_64.rpm"]="MendKit-latest-x86_64.rpm"
 )
 feeds=(latest.yml latest-mac.yml latest-linux.yml)
 
@@ -46,6 +48,8 @@ type_of() {
     *.dmg) echo application/x-apple-diskimage ;;
     *.AppImage) echo application/vnd.appimage ;;
     *.tar.gz) echo application/gzip ;;
+    *.deb) echo application/vnd.debian.binary-package ;;
+    *.rpm) echo application/x-rpm ;;
     *.yml) echo text/yaml ;;
     *.json) echo application/json ;;
     *) echo application/octet-stream ;;
@@ -77,7 +81,9 @@ cat > version.json <<JSON
     "portable": { "name": "MendKit-Portable-$v.exe", "size": $(size "MendKit-Portable-$v.exe") },
     "mac": { "name": "MendKit-$v-arm64.dmg", "size": $(size "MendKit-$v-arm64.dmg") },
     "appimage": { "name": "MendKit-$v-x86_64.AppImage", "size": $(size "MendKit-$v-x86_64.AppImage") },
-    "targz": { "name": "MendKit-$v-x64.tar.gz", "size": $(size "MendKit-$v-x64.tar.gz") }
+    "targz": { "name": "MendKit-$v-x64.tar.gz", "size": $(size "MendKit-$v-x64.tar.gz") },
+    "deb": { "name": "MendKit-$v-amd64.deb", "size": $(size "MendKit-$v-amd64.deb") },
+    "rpm": { "name": "MendKit-$v-x86_64.rpm", "size": $(size "MendKit-$v-x86_64.rpm") }
   }
 }
 JSON

@@ -31,7 +31,12 @@
       "linux": [
         "problem-reports",
         "auto-empty-trash",
-        "auto-clean-temp"
+        "auto-clean-temp",
+        "gnome-min-max",
+        "cinnamon-date",
+        "cinnamon-list-view",
+        "kde-double-click",
+        "xfce-no-tearing"
       ]
     }
   },

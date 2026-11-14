@@ -13,6 +13,14 @@
         "on": "false",
         "off": "true"
       }
+    ],
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
     ]
   },
   {
@@ -29,6 +37,14 @@
         "on": "false",
         "off": "true"
       }
+    ],
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
     ]
   },
   {
@@ -45,6 +61,14 @@
         "on": "true",
         "off": "false"
       }
+    ],
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
     ]
   },
   {
@@ -61,6 +85,14 @@
         "on": "true",
         "off": "false"
       }
+    ],
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
     ]
   },
   {
@@ -77,6 +109,14 @@
         "on": "'prefer-dark'",
         "off": "'default'"
       }
+    ],
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
     ]
   },
   {
@@ -93,6 +133,14 @@
         "on": "true",
         "off": "false"
       }
+    ],
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
     ]
   },
   {
@@ -108,6 +156,565 @@
         "type": "gsettings",
         "on": "false",
         "off": "true"
+      }
+    ],
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
+    ]
+  },
+  {
+    "id": "gnome-min-max",
+    "group": "Desktop",
+    "admin": false,
+    "name": "Show minimise and maximise buttons",
+    "description": "Adds the minimise and maximise buttons to every window, like Windows. Handy for people switching from Windows.",
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
+    ],
+    "entries": [
+      {
+        "path": "org.gnome.desktop.wm.preferences",
+        "name": "button-layout",
+        "type": "gsettings",
+        "on": "'appmenu:minimize,maximize,close'",
+        "off": "'appmenu:close'"
+      }
+    ]
+  },
+  {
+    "id": "gnome-hot-corner-off",
+    "group": "Desktop",
+    "admin": false,
+    "name": "Turn off the hot corner",
+    "description": "Stops the overview opening when the pointer touches the top left corner.",
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
+    ],
+    "entries": [
+      {
+        "path": "org.gnome.desktop.interface",
+        "name": "enable-hot-corners",
+        "type": "gsettings",
+        "on": "false",
+        "off": "true"
+      }
+    ]
+  },
+  {
+    "id": "gnome-larger-text",
+    "group": "Accessibility",
+    "admin": false,
+    "name": "Larger text",
+    "description": "Makes all text 25% larger. Easier to read on high-resolution screens.",
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
+    ],
+    "entries": [
+      {
+        "path": "org.gnome.desktop.interface",
+        "name": "text-scaling-factor",
+        "type": "gsettings",
+        "on": "1.25",
+        "off": "1.0"
+      }
+    ]
+  },
+  {
+    "id": "gnome-tap-click",
+    "group": "Touchpad",
+    "admin": false,
+    "name": "Tap to click",
+    "description": "A light tap on the touchpad counts as a click.",
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
+    ],
+    "entries": [
+      {
+        "path": "org.gnome.desktop.peripherals.touchpad",
+        "name": "tap-to-click",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "gnome-night-light",
+    "group": "Display",
+    "admin": false,
+    "name": "Night light",
+    "description": "Warmer screen colours in the evening, from sunset to sunrise.",
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
+    ],
+    "entries": [
+      {
+        "path": "org.gnome.settings-daemon.plugins.color",
+        "name": "night-light-enabled",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "gnome-weekday",
+    "group": "Desktop",
+    "admin": false,
+    "name": "Show the weekday in the clock",
+    "description": "Shows the day of the week beside the time.",
+    "desktops": [
+      "gnome",
+      "ubuntu",
+      "unity",
+      "budgie",
+      "pop",
+      "zorin"
+    ],
+    "entries": [
+      {
+        "path": "org.gnome.desktop.interface",
+        "name": "clock-show-weekday",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-hidden-files",
+    "group": "Files",
+    "admin": false,
+    "name": "Show hidden files",
+    "description": "The file manager shows hidden files and folders. Handy when cleaning up; they look faded.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.nemo.preferences",
+        "name": "show-hidden-files",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-full-path",
+    "group": "Files",
+    "admin": false,
+    "name": "Full path in the window title",
+    "description": "Shows the whole folder path at the top of file manager windows.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.nemo.preferences",
+        "name": "show-full-path-titles",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-list-view",
+    "group": "Files",
+    "admin": false,
+    "name": "Open folders as a list",
+    "description": "Folders open as a detailed list with sizes and dates instead of icons.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.nemo.preferences",
+        "name": "default-folder-viewer",
+        "type": "gsettings",
+        "on": "'list-view'",
+        "off": "'icon-view'"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-recent-off",
+    "group": "Privacy",
+    "admin": false,
+    "name": "Do not remember recent files",
+    "description": "The desktop stops keeping a list of recently used files.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.cinnamon.desktop.privacy",
+        "name": "remember-recent-files",
+        "type": "gsettings",
+        "on": "false",
+        "off": "true"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-date",
+    "group": "Desktop",
+    "admin": false,
+    "name": "Show the date in the clock",
+    "description": "Shows the date beside the time in the panel clock.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.cinnamon.desktop.interface",
+        "name": "clock-show-date",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-larger-text",
+    "group": "Accessibility",
+    "admin": false,
+    "name": "Larger text",
+    "description": "Makes all text 25% larger. Easier to read on high-resolution screens.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.cinnamon.desktop.interface",
+        "name": "text-scaling-factor",
+        "type": "gsettings",
+        "on": "1.25",
+        "off": "1.0"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-tap-click",
+    "group": "Touchpad",
+    "admin": false,
+    "name": "Tap to click",
+    "description": "A light tap on the touchpad counts as a click.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.cinnamon.desktop.peripherals.touchpad",
+        "name": "tap-to-click",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-night-light",
+    "group": "Display",
+    "admin": false,
+    "name": "Night light",
+    "description": "Warmer screen colours in the evening.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.cinnamon.settings-daemon.plugins.color",
+        "name": "night-light-enabled",
+        "type": "gsettings",
+        "on": "true",
+        "off": "false"
+      }
+    ]
+  },
+  {
+    "id": "cinnamon-no-effects",
+    "group": "Speed",
+    "admin": false,
+    "name": "Turn off window effects",
+    "description": "Windows open and close instantly without animation. Feels faster on older computers.",
+    "desktops": [
+      "cinnamon"
+    ],
+    "entries": [
+      {
+        "path": "org.cinnamon",
+        "name": "desktop-effects-workspace",
+        "type": "gsettings",
+        "on": "false",
+        "off": "true"
+      }
+    ]
+  },
+  {
+    "id": "kde-double-click",
+    "group": "Files",
+    "admin": false,
+    "name": "Open files with a double click",
+    "description": "Files and folders open with a double click, like Windows, instead of a single click.",
+    "desktops": [
+      "kde",
+      "plasma"
+    ],
+    "entries": [
+      {
+        "path": "kde:kdeglobals|KDE",
+        "name": "SingleClick",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ],
+    "needsSignOut": true
+  },
+  {
+    "id": "kde-no-indexing",
+    "group": "Speed",
+    "admin": false,
+    "name": "Turn off file search indexing",
+    "description": "Stops Baloo indexing every file in the background. A big speed-up on older computers; file search by content stops working.",
+    "desktops": [
+      "kde",
+      "plasma"
+    ],
+    "entries": [
+      {
+        "path": "kde:baloofilerc|Basic Settings",
+        "name": "Indexing-Enabled",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "sh",
+      "-c",
+      "balooctl6 disable 2>/dev/null || balooctl disable 2>/dev/null; true"
+    ],
+    "revertCmd": [
+      "sh",
+      "-c",
+      "balooctl6 enable 2>/dev/null || balooctl enable 2>/dev/null; true"
+    ]
+  },
+  {
+    "id": "kde-no-animations",
+    "group": "Speed",
+    "admin": false,
+    "name": "Turn off animations",
+    "description": "Windows and menus appear instantly. Feels faster on older computers.",
+    "desktops": [
+      "kde",
+      "plasma"
+    ],
+    "entries": [
+      {
+        "path": "kde:kdeglobals|KDE",
+        "name": "AnimationDurationFactor",
+        "type": "string",
+        "on": "0",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "sh",
+      "-c",
+      "qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || qdbus org.kde.KWin /KWin reconfigure 2>/dev/null; true"
+    ],
+    "revertCmd": [
+      "sh",
+      "-c",
+      "qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || qdbus org.kde.KWin /KWin reconfigure 2>/dev/null; true"
+    ]
+  },
+  {
+    "id": "kde-night-color",
+    "group": "Display",
+    "admin": false,
+    "name": "Night light",
+    "description": "Warmer screen colours in the evening.",
+    "desktops": [
+      "kde",
+      "plasma"
+    ],
+    "entries": [
+      {
+        "path": "kde:kwinrc|NightColor",
+        "name": "Active",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "sh",
+      "-c",
+      "qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || qdbus org.kde.KWin /KWin reconfigure 2>/dev/null; true"
+    ],
+    "revertCmd": [
+      "sh",
+      "-c",
+      "qdbus6 org.kde.KWin /KWin reconfigure 2>/dev/null || qdbus org.kde.KWin /KWin reconfigure 2>/dev/null; true"
+    ]
+  },
+  {
+    "id": "kde-no-recent",
+    "group": "Privacy",
+    "admin": false,
+    "name": "Do not remember recent documents",
+    "description": "Plasma stops listing recently opened files.",
+    "desktops": [
+      "kde",
+      "plasma"
+    ],
+    "entries": [
+      {
+        "path": "kde:kdeglobals|RecentDocuments",
+        "name": "UseRecent",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "xfce-no-tearing",
+    "group": "Display",
+    "admin": false,
+    "name": "Stop screen tearing",
+    "description": "Uses the graphics card to sync drawing with the screen, which stops tearing lines in videos and scrolling.",
+    "desktops": [
+      "xfce"
+    ],
+    "entries": [
+      {
+        "path": "xfconf:xfwm4",
+        "name": "/general/vblank_mode",
+        "type": "string",
+        "on": "glx",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "sh",
+      "-c",
+      "xfwm4 --replace >/dev/null 2>&1 & true"
+    ],
+    "revertCmd": [
+      "sh",
+      "-c",
+      "xfwm4 --replace >/dev/null 2>&1 & true"
+    ]
+  },
+  {
+    "id": "xfce-no-compositor",
+    "group": "Speed",
+    "admin": false,
+    "name": "Turn off desktop effects",
+    "description": "Turns off shadows and transparency. Faster on very old computers; may bring back tearing.",
+    "desktops": [
+      "xfce"
+    ],
+    "entries": [
+      {
+        "path": "xfconf:xfwm4",
+        "name": "/general/use_compositing",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "xfce-hidden-files",
+    "group": "Files",
+    "admin": false,
+    "name": "Show hidden files",
+    "description": "The file manager shows hidden files and folders.",
+    "desktops": [
+      "xfce"
+    ],
+    "entries": [
+      {
+        "path": "xfconf:thunar",
+        "name": "/last-show-hidden",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "xfce-larger-text",
+    "group": "Accessibility",
+    "admin": false,
+    "name": "Larger text",
+    "description": "Makes text about 25% larger.",
+    "desktops": [
+      "xfce"
+    ],
+    "entries": [
+      {
+        "path": "xfconf:xsettings",
+        "name": "/Xft/DPI",
+        "type": "int",
+        "on": "120",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "xfce-dark",
+    "group": "Display",
+    "admin": false,
+    "name": "Dark theme",
+    "description": "Dark colours for windows and apps.",
+    "desktops": [
+      "xfce"
+    ],
+    "entries": [
+      {
+        "path": "xfconf:xsettings",
+        "name": "/Net/ThemeName",
+        "type": "string",
+        "on": "Adwaita-dark",
+        "off": null
       }
     ]
   }

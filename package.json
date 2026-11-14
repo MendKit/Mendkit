@@ -87,21 +87,54 @@
     "linux": {
       "target": [
         "AppImage",
+        "deb",
+        "rpm",
         "tar.gz"
       ],
       "category": "System",
       "icon": "build/icon.png",
       "synopsis": "Repair, tune and migrate computers",
-      "artifactName": "MendKit-${version}-${arch}.${ext}"
+      "artifactName": "MendKit-${version}-${arch}.${ext}",
+      "maintainer": "MendKit <mendkit@users.noreply.github.com>",
+      "vendor": "MendKit",
+      "syncDesktopName": true
     },
     "publish": [
       {
         "provider": "generic",
         "url": "https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev"
       }
-    ]
+    ],
+    "deb": {
+      "depends": [
+        "libgtk-3-0 | libgtk-3-0t64",
+        "libnotify4",
+        "libnss3",
+        "libxss1",
+        "libxtst6",
+        "xdg-utils",
+        "libatspi2.0-0 | libatspi2.0-0t64",
+        "libuuid1",
+        "libsecret-1-0"
+      ],
+      "priority": "optional"
+    },
+    "rpm": {
+      "depends": [
+        "gtk3",
+        "libnotify",
+        "nss",
+        "libXScrnSaver",
+        "libXtst",
+        "xdg-utils",
+        "at-spi2-core",
+        "libuuid"
+      ]
+    }
   },
   "dependencies": {
     "electron-updater": "^6.8.11"
-  }
+  },
+  "homepage": "https://mendkit.github.io",
+  "desktopName": "mendkit.desktop"
 }

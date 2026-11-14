@@ -14,11 +14,13 @@ import { registerRemoteAudit } from './remote-audit';
 import { notify, registerBatch3, unattendedRecipe } from './batch3';
 import { gatherFacts } from './advisor';
 import { JobHandle, readBackup, runBackup, runImport, runRestore } from '../engine/backup';
-import { gsettings, loadTweaks, macDefaults, memoryRegistry, TweakManager, windowsRegistry } from '../engine/tweaks';
+import { currentDesktops, gsettings, linuxDesktop, linuxTweaksAvailable, loadTweaks, macDefaults, memoryRegistry, TweakManager, windowsRegistry } from '../engine/tweaks';
 import { findProfiles, oldApps, oldItems, OldProfile } from '../engine/olddrive';
 import { registerBatch4 } from './batch4';
 import { registerMacTools } from './mactools';
 import { registerPermissions } from './permissions';
+import { registerLinuxTools } from './linuxtools';
+import { registerSwitchLinux } from './switchlinux';
 import { registerUpdater } from './updater';
 import { offlineInstallSteps, quickOnline, readCache, registerOffline } from './offline';
 import { applyPortableMode, jobScheduled, jobsSupported, registerBatch5, scheduleJob, Job } from './batch5';
@@ -194,7 +196,7 @@ function registerIpc(): void {
   });
   // With no internet on Windows, tools in the offline cache are installed from there instead of through winget.
   const installTools = async (ids: string[]): Promise<RunSummary> => {
-    if (process.platform === 'win32' && readCache().size && !(await quickOnline())) {
+    if ((process.platform === 'win32' || process.platform === 'linux') && readCache().size && !(await quickOnline())) {
       return engine.runSteps('install-tools', `Install ${ids.length} tool${ids.length === 1 ? '' : 's'} from the offline cache`, 'tool', await offlineInstallSteps(catalog, ids), { elevated: isElevated() });
     }
     return ids.length === 1 ? engine.runTool(ids[0], 'install', { elevated: isElevated() }) : engine.runToolInstalls(ids, { elevated: isElevated() });
@@ -209,11 +211,12 @@ function registerIpc(): void {
 
   // ----- Tweaks -----
   const defsDir = path.join(app.getAppPath(), 'definitions');
-  // Windows registry, macOS defaults, or GNOME gsettings. Other Linux desktops have no tweaks yet.
+  // Windows registry, macOS defaults, or on Linux gsettings (GNOME, Cinnamon), KDE config files and xfconf (XFCE).
   // MENDKIT_TEST_TWEAKS=1 swaps in an in-memory registry with the Windows tweak list, so the screen can be tested anywhere.
   const testTweaks = process.env.MENDKIT_TEST_TWEAKS === '1';
-  const tweakBackend = testTweaks ? memoryRegistry() : catalog.platform === 'win32' ? windowsRegistry : catalog.platform === 'darwin' ? macDefaults : onPath('gsettings') ? gsettings : null;
-  const tweakData = tweakBackend ? loadTweaks(defsDir, testTweaks ? 'win32' : catalog.platform) : { tweaks: [], presets: [] };
+  const tweakBackend = testTweaks ? memoryRegistry() : catalog.platform === 'win32' ? windowsRegistry : catalog.platform === 'darwin' ? macDefaults : linuxDesktop;
+  const desktops = currentDesktops();
+  const tweakData = testTweaks || catalog.platform !== 'linux' ? loadTweaks(defsDir, testTweaks ? 'win32' : catalog.platform) : loadTweaks(defsDir, 'linux', (all) => linuxTweaksAvailable(all, desktops));
   const tweakMgr = new TweakManager(tweakData.tweaks, tweakBackend ?? gsettings, path.join(app.getPath('userData'), 'tweak-journal.json'));
   const extras = registerExtras({ engine, catalog, logDir, tweakMgr, getWin: () => win, settings, saveSettings: () => fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2)) });
   registerRemoteAudit(engine);
@@ -324,10 +327,12 @@ function registerIpc(): void {
   // ----- App matching between systems -----
   const appTable = loadApps(path.join(app.getAppPath(), 'definitions'));
   const hasFlatpak = process.platform === 'linux' && onPath('flatpak');
+  registerSwitchLinux({ appTable });
   registerBatch3({ engine, catalog, tweakMgr, presets: tweakData.presets, appTable, hasFlatpak, getWin: () => win, logDir, noteToolRun: extras.noteToolRun });
   registerBatch4({ engine, getWin: () => win, logDir });
   registerMacTools({ engine, getWin: () => win });
   registerPermissions();
+  registerLinuxTools({ engine });
   registerUpdater({ getWin: () => win, busy: () => engine.isBusy() || job !== null });
   registerOffline({ engine, catalog, getWin: () => win });
   registerBatch5({ engine, getWin: () => win, portable });

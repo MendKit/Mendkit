@@ -119,6 +119,7 @@ export type OfflineSupport = 'install' | 'portable' | 'unsupported';
 /** Whether a cached installer can be installed silently, only run from the folder, or neither. */
 export function offlineSupport(e: Pick<CacheEntry, 'installerType' | 'silent'>): OfflineSupport {
   const t = e.installerType;
+  if (LINUX_TYPES.includes(t)) return 'install';
   if (t in DEFAULT_SILENT || t === 'msix' || t === 'appx') return 'install';
   if (t === 'exe') return e.silent ? 'install' : 'unsupported';
   if (t === 'portable' || t === 'zip') return 'portable';
@@ -127,6 +128,7 @@ export function offlineSupport(e: Pick<CacheEntry, 'installerType' | 'silent'>):
 
 /** Builds the command that installs a cached tool with no internet. */
 export function offlineInstallCommand(tool: ToolDef, entry: CacheEntry, dir: string): CommandDef {
+  if (LINUX_TYPES.includes(entry.installerType)) return linuxOfflineInstall(tool, entry, dir);
   const file = path.join(dir, entry.file);
   const t = entry.installerType;
   const silent = splitArgs(entry.silent ?? DEFAULT_SILENT[t]);
@@ -168,4 +170,38 @@ export function offlineInstallCommand(tool: ToolDef, entry: CacheEntry, dir: str
 /** Store and MSIX-only packages need a Microsoft account to download, so they are not cached. */
 export function cacheable(wingetId: string | undefined): boolean {
   return !!wingetId && !/^[0-9A-Z]{12}$/.test(wingetId);
+}
+
+/** Linux cache entries hold a folder of packages (the tool plus what it needs) instead of one installer. */
+export const LINUX_TYPES = ['linux-apt', 'linux-dnf', 'linux-pacman'];
+const shq = (x: string) => `'${x.replace(/'/g, `'\\''`)}'`;
+
+/** The command that downloads a tool and the packages it needs into a folder, without installing it. */
+export function linuxDownloadCommand(manager: string, pkg: string, folder: string): string[] | null {
+  const f = shq(folder);
+  const p = shq(pkg);
+  if (manager === 'apt') return ['sh', '-c', `mkdir -p ${f}/partial && DEBIAN_FRONTEND=noninteractive apt-get install -y --download-only --reinstall -o Dir::Cache::archives=${f} ${p} && rm -rf ${f}/partial ${f}/lock`];
+  if (manager === 'dnf') return ['sh', '-c', `mkdir -p ${f} && dnf download -y --resolve --destdir ${f} ${p}`];
+  if (manager === 'pacman') return ['sh', '-c', `mkdir -p ${f} && pacman -Sw --noconfirm --cachedir ${f} ${p}`];
+  return null;
+}
+
+function linuxOfflineInstall(tool: ToolDef, entry: CacheEntry, dir: string): CommandDef {
+  const f = shq(path.join(dir, entry.file));
+  const script =
+    entry.installerType === 'linux-apt'
+      ? `DEBIAN_FRONTEND=noninteractive apt-get install -y --no-download ${f}/*.deb`
+      : entry.installerType === 'linux-dnf'
+        ? `dnf install -y --disablerepo='*' ${f}/*.rpm`
+        : `pacman -U --noconfirm --needed ${f}/*.pkg.tar.*`;
+  return {
+    id: `install-${tool.id}`,
+    name: `Install ${tool.name} from the offline cache`,
+    description: '',
+    exec: 'sh',
+    args: ['-c', script],
+    admin: true,
+    typicalMinutes: 2,
+    friendly: { title: tool.name, ok: `${tool.name} was installed from the offline cache.`, problem: `${tool.name} could not be installed offline. This computer may be missing a package it needs that the computer which saved it already had; install it once online.` },
+  };
 }

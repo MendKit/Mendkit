@@ -1,46 +1,63 @@
 [
-  {
-    "id": "home-basics",
-    "name": "Home basics",
-    "description": "A browser, an office suite, a media player and an archive tool, with the Standard tweaks.",
-    "apps": [
-      "firefox",
-      "libreoffice",
-      "vlc",
-      "7zip"
-    ],
-    "tools": [],
-    "tweaks": [],
-    "tweakPreset": "standard"
-  },
-  {
-    "id": "technician-bench",
-    "name": "Technician bench",
-    "description": "The diagnostic tools a bench computer needs. No tweaks.",
-    "apps": [
-      "firefox",
-      "7zip"
-    ],
-    "tools": [
-      "crystaldiskinfo",
-      "hwinfo",
-      "lhm",
-      "windirstat",
-      "autoruns",
-      "procexp",
-      "smartmontools",
-      "testdisk",
-      "ventoy",
-      "rufus",
-      "bluescreenview",
-      "cpuz",
-      "htop",
-      "inxi",
-      "lm-sensors",
-      "ncdu",
-      "stats"
-    ],
-    "tweaks": [],
-    "tweakPreset": ""
-  }
+ {
+  "id": "home-basics",
+  "name": "Home basics",
+  "description": "A browser, an office suite, a media player and an archive tool, with the Standard tweaks.",
+  "apps": [
+   "firefox",
+   "libreoffice",
+   "vlc",
+   "7zip"
+  ],
+  "tools": [],
+  "tweaks": [],
+  "tweakPreset": "standard"
+ },
+ {
+  "id": "technician-bench",
+  "name": "Technician bench",
+  "description": "The diagnostic tools a bench computer needs. No tweaks.",
+  "apps": [
+   "firefox",
+   "7zip"
+  ],
+  "tools": [
+   "crystaldiskinfo",
+   "hwinfo",
+   "lhm",
+   "windirstat",
+   "autoruns",
+   "procexp",
+   "smartmontools",
+   "testdisk",
+   "ventoy",
+   "rufus",
+   "bluescreenview",
+   "cpuz",
+   "htop",
+   "inxi",
+   "lm-sensors",
+   "ncdu",
+   "stats"
+  ],
+  "tweaks": [],
+  "tweakPreset": ""
+ },
+ {
+  "id": "new-linux",
+  "name": "New Linux computer",
+  "description": "For a computer just switched from Windows: Firefox, Thunderbird, LibreOffice, VLC and 7-Zip, Timeshift for snapshots, and the Standard tweaks for its desktop. Run the \"First setup after installing Linux\" recipe as well.",
+  "apps": [
+   "firefox",
+   "thunderbird",
+   "libreoffice",
+   "vlc",
+   "7zip"
+  ],
+  "tools": [
+   "timeshift"
+  ],
+  "tweaks": [],
+  "tweakPreset": "standard"
+ }
 ]

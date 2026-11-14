@@ -190,6 +190,18 @@
     {
      "command": "zypper-updates-list",
      "onFail": "continue"
+    },
+    {
+     "command": "snap-clean",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-old-kernels",
+     "onFail": "continue"
+    },
+    {
+     "command": "snap-updates-list",
+     "onFail": "continue"
     }
    ]
   }
@@ -343,6 +355,30 @@
     {
      "command": "zypper-updates-list",
      "onFail": "continue"
+    },
+    {
+     "command": "security-status",
+     "onFail": "continue"
+    },
+    {
+     "command": "hardware-errors",
+     "onFail": "continue"
+    },
+    {
+     "command": "boot-time",
+     "onFail": "continue"
+    },
+    {
+     "command": "drivers-missing",
+     "onFail": "continue"
+    },
+    {
+     "command": "snap-updates-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "release-check",
+     "onFail": "continue"
     }
    ]
   }
@@ -370,6 +406,10 @@
     },
     {
      "command": "printer-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "printer-find",
      "onFail": "continue"
     }
    ],
@@ -404,6 +444,10 @@
    "linux": [
     {
      "command": "sound-restart",
+     "onFail": "continue"
+    },
+    {
+     "command": "sound-reset",
      "onFail": "continue"
     }
    ],
@@ -500,6 +544,14 @@
     },
     {
      "command": "ping-internet",
+     "onFail": "continue"
+    },
+    {
+     "command": "drivers-missing",
+     "onFail": "continue"
+    },
+    {
+     "command": "firmware-install",
      "onFail": "continue"
     }
    ],
@@ -653,6 +705,10 @@
     {
      "command": "flush-dns",
      "onFail": "continue"
+    },
+    {
+     "command": "drivers-missing",
+     "onFail": "continue"
     }
    ],
    "darwin": [
@@ -802,6 +858,22 @@
     {
      "command": "flatpak-unused",
      "onFail": "continue"
+    },
+    {
+     "command": "boot-time",
+     "onFail": "continue"
+    },
+    {
+     "command": "hardware-errors",
+     "onFail": "continue"
+    },
+    {
+     "command": "snap-clean",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-old-kernels",
+     "onFail": "continue"
     }
    ],
    "darwin": [
@@ -907,6 +979,10 @@
    ],
    "linux": [
     {
+     "command": "apt-locks",
+     "onFail": "continue"
+    },
+    {
      "command": "apt-configure",
      "onFail": "continue"
     },
@@ -915,11 +991,23 @@
      "onFail": "continue"
     },
     {
+     "command": "apt-bad-sources",
+     "onFail": "continue"
+    },
+    {
      "command": "apt-update",
      "onFail": "continue"
     },
     {
+     "command": "apt-held",
+     "onFail": "continue"
+    },
+    {
      "command": "dnf-check",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-keyring",
      "onFail": "continue"
     },
     {
@@ -928,6 +1016,14 @@
     },
     {
      "command": "zypper-verify",
+     "onFail": "continue"
+    },
+    {
+     "command": "snap-refresh",
+     "onFail": "continue"
+    },
+    {
+     "command": "kernels-list",
      "onFail": "continue"
     }
    ],
@@ -990,6 +1086,18 @@
     },
     {
      "command": "journal-errors",
+     "onFail": "continue"
+    },
+    {
+     "command": "hardware-errors",
+     "onFail": "continue"
+    },
+    {
+     "command": "drivers-missing",
+     "onFail": "continue"
+    },
+    {
+     "command": "kernels-list",
      "onFail": "continue"
     }
    ],
@@ -1304,6 +1412,210 @@
     },
     {
      "command": "brew-cleanup",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "linux-drivers",
+  "name": "Missing drivers",
+  "description": "Finds hardware without a driver and installs the recommended drivers and firmware: NVIDIA graphics, Broadcom Wi-Fi and more.",
+  "simpleMode": true,
+  "steps": {
+   "linux": [
+    {
+     "command": "drivers-missing",
+     "onFail": "continue"
+    },
+    {
+     "command": "drivers-recommended",
+     "onFail": "continue"
+    },
+    {
+     "command": "drivers-install",
+     "onFail": "continue"
+    },
+    {
+     "command": "nvidia-fedora",
+     "onFail": "continue"
+    },
+    {
+     "command": "broadcom-wifi",
+     "onFail": "continue"
+    },
+    {
+     "command": "firmware-install",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "linux-security",
+  "name": "Linux security checkup",
+  "description": "Checks the firewall, automatic security updates, remote login, administrators and encryption.",
+  "simpleMode": true,
+  "steps": {
+   "linux": [
+    {
+     "command": "security-status",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "linux-secure",
+  "name": "Secure this computer",
+  "description": "Turns on the firewall and automatic security updates.",
+  "simpleMode": false,
+  "steps": {
+   "linux": [
+    {
+     "command": "firewall-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "auto-updates-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "security-status",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "desktop-frozen",
+  "name": "Desktop frozen or panel missing",
+  "description": "Restarts the desktop and panel without signing out.",
+  "simpleMode": true,
+  "steps": {
+   "linux": [
+    {
+     "command": "desktop-restart",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "scanner-fix",
+  "name": "Scanner not working",
+  "description": "Installs scanner support including network scanners, and lists the scanners found.",
+  "simpleMode": true,
+  "steps": {
+   "linux": [
+    {
+     "command": "scanner-setup",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "keyring-fix",
+  "name": "Keeps asking to unlock the keyring",
+  "description": "Resets the login keyring so it matches your current password.",
+  "simpleMode": false,
+  "steps": {
+   "linux": [
+    {
+     "command": "keyring-reset",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "slow-startup",
+  "name": "Slow to start",
+  "description": "Shows which services hold up startup and checks for hardware errors.",
+  "simpleMode": true,
+  "steps": {
+   "linux": [
+    {
+     "command": "boot-time",
+     "onFail": "continue"
+    },
+    {
+     "command": "hardware-errors",
+     "onFail": "continue"
+    },
+    {
+     "command": "failed-services",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "linux-first-setup",
+  "name": "First setup after installing Linux",
+  "description": "Finishes a new Linux install: updates, missing drivers and firmware, media codecs, Flathub, Office fonts, printer drivers, firewall and automatic security updates.",
+  "simpleMode": true,
+  "steps": {
+   "linux": [
+    {
+     "command": "apt-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "apt-upgrade",
+     "onFail": "continue"
+    },
+    {
+     "command": "dnf-upgrade",
+     "onFail": "continue"
+    },
+    {
+     "command": "pacman-upgrade",
+     "onFail": "continue"
+    },
+    {
+     "command": "zypper-upgrade",
+     "onFail": "continue"
+    },
+    {
+     "command": "drivers-missing",
+     "onFail": "continue"
+    },
+    {
+     "command": "drivers-install",
+     "onFail": "continue"
+    },
+    {
+     "command": "firmware-install",
+     "onFail": "continue"
+    },
+    {
+     "command": "codecs",
+     "onFail": "continue"
+    },
+    {
+     "command": "flathub-enable",
+     "onFail": "continue"
+    },
+    {
+     "command": "office-fonts",
+     "onFail": "continue"
+    },
+    {
+     "command": "printer-drivers",
+     "onFail": "continue"
+    },
+    {
+     "command": "firewall-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "auto-updates-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "security-status",
      "onFail": "continue"
     }
    ]
