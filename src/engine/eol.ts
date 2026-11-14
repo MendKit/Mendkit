@@ -21,7 +21,7 @@ const UBUNTU: Record<string, string> = {
   '26.04': '2031-05-31',
 };
 const MINT: Record<string, string> = { '20': '2025-04-30', '21': '2027-04-30', '22': '2029-04-30' };
-const FEDORA: Record<string, string> = { '40': '2025-05-13', '41': '2025-12-15', '42': '2026-05-13', '43': '2026-12-09', '44': '2027-05-19' };
+const FEDORA: Record<string, string> = { '40': '2025-05-13', '41': '2025-12-15', '42': '2026-05-13', '43': '2026-12-09', '44': '2027-05-19', '45': '2027-12-08' };
 const DEBIAN: Record<string, string> = { '11': '2026-08-31', '12': '2028-06-30', '13': '2030-06-30' };
 
 /** Reads /etc/os-release text into its fields. */
