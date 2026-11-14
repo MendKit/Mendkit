@@ -299,8 +299,13 @@ async function main(): Promise<void> {
 
   // Symptoms point at real recipes on every system that lists them; advisor verdicts.
   const symptoms = JSON.parse(fs.readFileSync(path.join(defs, 'symptoms.json'), 'utf8')) as { id: string; recipe: string }[];
-  const winRecipes = new Set(loadCatalog(defs, 'win32', () => true).recipes.map((r) => r.id));
-  assert(symptoms.every((s) => winRecipes.has(s.recipe)), 'a symptom points at a missing recipe');
+  const anyRecipes = new Set((['win32', 'darwin', 'linux'] as const).flatMap((p) => loadCatalog(defs, p, () => true).recipes.map((r) => r.id)));
+  assert(symptoms.every((s) => anyRecipes.has(s.recipe)), 'a symptom points at a missing recipe');
+  // Mac-only additions are offered on a Mac and hidden elsewhere.
+  const macIds = new Set(loadCatalog(defs, 'darwin', () => true).recipes.map((r) => r.id));
+  const winIds = new Set(loadCatalog(defs, 'win32', () => true).recipes.map((r) => r.id));
+  for (const id of ['mac-security', 'app-wont-open', 'running-hot', 'free-space', 'camera-fix']) assert(macIds.has(id), `Mac recipe ${id} missing`);
+  assert(!winIds.has('running-hot'), 'Mac-only recipe shown on Windows');
   const facts: AdvisorFacts = { platform: 'win32', ramGb: 16, driveType: 'SSD', driveHealthy: true, freePercent: 40, windowsBuild: 26100, tpm: '2.0', secureBoot: true, cores: 8, driveGb: 512, biosYear: 2024, batteryPercent: 91 };
   assert(advise(facts, 2026).verdict === 'keep', 'healthy computer not judged worth keeping');
   const tired = advise({ ...facts, ramGb: 4, driveType: 'HDD', windowsBuild: 19045, biosYear: 2019 }, 2026);

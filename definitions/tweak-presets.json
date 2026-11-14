@@ -20,7 +20,13 @@
         "no-network-dsstore",
         "file-extensions",
         "finder-path-bar",
-        "expanded-save"
+        "expanded-save",
+        "no-usb-dsstore",
+        "search-this-folder",
+        "folders-first",
+        "photos-no-autoopen",
+        "no-timemachine-prompt",
+        "screenshots-folder"
       ],
       "linux": [
         "problem-reports",

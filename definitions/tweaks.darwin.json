@@ -206,5 +206,560 @@
       "killall",
       "Dock"
     ]
+  },
+  {
+    "id": "show-hidden-files",
+    "group": "Finder",
+    "admin": false,
+    "name": "Show hidden files",
+    "description": "Shows files and folders macOS normally hides. Handy when cleaning up; they look faded.",
+    "entries": [
+      {
+        "path": "com.apple.finder",
+        "name": "AppleShowAllFiles",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "show-library",
+    "group": "Finder",
+    "admin": false,
+    "name": "Show your Library folder",
+    "description": "Shows the Library folder in your home folder, where apps keep settings and caches.",
+    "entries": [
+      {
+        "path": "@chflags",
+        "name": "~/Library",
+        "type": "string",
+        "on": "nohidden",
+        "off": "hidden"
+      }
+    ]
+  },
+  {
+    "id": "search-this-folder",
+    "group": "Finder",
+    "admin": false,
+    "name": "Search the current folder",
+    "description": "Finder searches the folder you are in instead of the whole Mac.",
+    "entries": [
+      {
+        "path": "com.apple.finder",
+        "name": "FXDefaultSearchScope",
+        "type": "string",
+        "on": "SCcf",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "folders-first",
+    "group": "Finder",
+    "admin": false,
+    "name": "Keep folders on top",
+    "description": "Lists folders before files when sorting by name.",
+    "entries": [
+      {
+        "path": "com.apple.finder",
+        "name": "_FXSortFoldersFirst",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "path-in-title",
+    "group": "Finder",
+    "admin": false,
+    "name": "Full path in the window title",
+    "description": "Shows the whole folder path at the top of Finder windows.",
+    "entries": [
+      {
+        "path": "com.apple.finder",
+        "name": "_FXShowPosixPathInTitle",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "no-extension-warning",
+    "group": "Finder",
+    "admin": false,
+    "name": "No warning when renaming extensions",
+    "description": "Stops Finder asking every time a file ending is changed.",
+    "entries": [
+      {
+        "path": "com.apple.finder",
+        "name": "FXEnableExtensionChangeWarning",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Finder"
+    ],
+    "revertCmd": [
+      "killall",
+      "Finder"
+    ]
+  },
+  {
+    "id": "no-usb-dsstore",
+    "group": "Privacy",
+    "admin": false,
+    "name": "No .DS_Store files on USB drives",
+    "description": "Stops macOS leaving hidden files on USB sticks and external drives.",
+    "entries": [
+      {
+        "path": "com.apple.desktopservices",
+        "name": "DSDontWriteUSBStores",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "autocorrect-off",
+    "group": "Typing",
+    "admin": false,
+    "name": "Turn off autocorrect",
+    "description": "Stops macOS changing words as you type.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "NSAutomaticSpellingCorrectionEnabled",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      },
+      {
+        "path": "NSGlobalDomain",
+        "name": "WebAutomaticSpellingCorrectionEnabled",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "smart-quotes-off",
+    "group": "Typing",
+    "admin": false,
+    "name": "Straight quotes and dashes",
+    "description": "Types plain quotes and dashes, so passwords, code and commands paste correctly.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "NSAutomaticQuoteSubstitutionEnabled",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      },
+      {
+        "path": "NSGlobalDomain",
+        "name": "NSAutomaticDashSubstitutionEnabled",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "fast-key-repeat",
+    "group": "Typing",
+    "admin": false,
+    "name": "Faster key repeat",
+    "description": "Held-down keys repeat sooner and faster. Takes effect after signing out.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "KeyRepeat",
+        "type": "int",
+        "on": "2",
+        "off": null
+      },
+      {
+        "path": "NSGlobalDomain",
+        "name": "InitialKeyRepeat",
+        "type": "int",
+        "on": "15",
+        "off": null
+      }
+    ],
+    "needsSignOut": true
+  },
+  {
+    "id": "no-press-and-hold",
+    "group": "Typing",
+    "admin": false,
+    "name": "Repeat keys instead of accent menu",
+    "description": "Holding a key repeats it instead of showing accented letters. Takes effect in newly opened apps.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "ApplePressAndHoldEnabled",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "tap-to-click",
+    "group": "Trackpad",
+    "admin": false,
+    "name": "Tap to click",
+    "description": "A light tap on the trackpad counts as a click.",
+    "entries": [
+      {
+        "path": "com.apple.AppleMultitouchTrackpad",
+        "name": "Clicking",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      },
+      {
+        "path": "com.apple.driver.AppleBluetoothMultitouch.trackpad",
+        "name": "Clicking",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      },
+      {
+        "path": "currentHost:NSGlobalDomain",
+        "name": "com.apple.mouse.tapBehavior",
+        "type": "int",
+        "on": "1",
+        "off": null
+      }
+    ],
+    "needsSignOut": true
+  },
+  {
+    "id": "screenshots-folder",
+    "group": "Screenshots",
+    "admin": false,
+    "name": "Save screenshots to a folder",
+    "description": "Puts screenshots in Pictures, Screenshots instead of all over the desktop.",
+    "entries": [
+      {
+        "path": "com.apple.screencapture",
+        "name": "location",
+        "type": "string",
+        "on": "~/Pictures/Screenshots",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "sh",
+      "-c",
+      "mkdir -p \"$HOME/Pictures/Screenshots\"; killall SystemUIServer"
+    ],
+    "revertCmd": [
+      "sh",
+      "-c",
+      "mkdir -p \"$HOME/Pictures/Screenshots\"; killall SystemUIServer"
+    ]
+  },
+  {
+    "id": "screenshots-jpg",
+    "group": "Screenshots",
+    "admin": false,
+    "name": "Save screenshots as JPG",
+    "description": "Smaller screenshot files that are easier to email.",
+    "entries": [
+      {
+        "path": "com.apple.screencapture",
+        "name": "type",
+        "type": "string",
+        "on": "jpg",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "SystemUIServer"
+    ],
+    "revertCmd": [
+      "killall",
+      "SystemUIServer"
+    ]
+  },
+  {
+    "id": "dock-autohide",
+    "group": "Dock",
+    "admin": false,
+    "name": "Hide the Dock automatically",
+    "description": "The Dock slides away until you move the pointer to it, giving apps more room.",
+    "entries": [
+      {
+        "path": "com.apple.dock",
+        "name": "autohide",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Dock"
+    ],
+    "revertCmd": [
+      "killall",
+      "Dock"
+    ]
+  },
+  {
+    "id": "dock-minimize-to-app",
+    "group": "Dock",
+    "admin": false,
+    "name": "Minimise windows into their app icon",
+    "description": "Keeps the Dock tidy by not adding a tile for each minimised window.",
+    "entries": [
+      {
+        "path": "com.apple.dock",
+        "name": "minimize-to-application",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Dock"
+    ],
+    "revertCmd": [
+      "killall",
+      "Dock"
+    ]
+  },
+  {
+    "id": "spaces-fixed-order",
+    "group": "Dock",
+    "admin": false,
+    "name": "Keep desktops in order",
+    "description": "Stops macOS rearranging desktop spaces by most recent use.",
+    "entries": [
+      {
+        "path": "com.apple.dock",
+        "name": "mru-spaces",
+        "type": "bool",
+        "on": "false",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Dock"
+    ],
+    "revertCmd": [
+      "killall",
+      "Dock"
+    ]
+  },
+  {
+    "id": "hot-corners-off",
+    "group": "Dock",
+    "admin": false,
+    "name": "Turn off hot corners",
+    "description": "Stops surprise actions when the pointer touches a screen corner.",
+    "entries": [
+      {
+        "path": "com.apple.dock",
+        "name": "wvous-tl-corner",
+        "type": "int",
+        "on": "1",
+        "off": null
+      },
+      {
+        "path": "com.apple.dock",
+        "name": "wvous-tr-corner",
+        "type": "int",
+        "on": "1",
+        "off": null
+      },
+      {
+        "path": "com.apple.dock",
+        "name": "wvous-bl-corner",
+        "type": "int",
+        "on": "1",
+        "off": null
+      },
+      {
+        "path": "com.apple.dock",
+        "name": "wvous-br-corner",
+        "type": "int",
+        "on": "1",
+        "off": null
+      }
+    ],
+    "applyCmd": [
+      "killall",
+      "Dock"
+    ],
+    "revertCmd": [
+      "killall",
+      "Dock"
+    ]
+  },
+  {
+    "id": "photos-no-autoopen",
+    "group": "Devices",
+    "admin": false,
+    "name": "Don't open Photos when a phone connects",
+    "description": "Stops Photos opening each time an iPhone, iPad or camera is plugged in.",
+    "entries": [
+      {
+        "path": "currentHost:com.apple.ImageCapture",
+        "name": "disableHotPlug",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "no-timemachine-prompt",
+    "group": "Devices",
+    "admin": false,
+    "name": "Don't offer new drives for Time Machine",
+    "description": "Stops the \"use this disk to back up\" question for every drive plugged in.",
+    "entries": [
+      {
+        "path": "com.apple.TimeMachine",
+        "name": "DoNotOfferNewDisksForBackup",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "expanded-print",
+    "group": "Interface",
+    "admin": false,
+    "name": "Expanded print dialog",
+    "description": "Opens the print window with all options showing.",
+    "entries": [
+      {
+        "path": "NSGlobalDomain",
+        "name": "PMPrintingExpandedStateForPrint",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      },
+      {
+        "path": "NSGlobalDomain",
+        "name": "PMPrintingExpandedStateForPrint2",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "textedit-plain",
+    "group": "Interface",
+    "admin": false,
+    "name": "TextEdit starts in plain text",
+    "description": "New TextEdit documents are plain text instead of rich text.",
+    "entries": [
+      {
+        "path": "com.apple.TextEdit",
+        "name": "RichText",
+        "type": "int",
+        "on": "0",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "safari-full-url",
+    "group": "Interface",
+    "admin": false,
+    "name": "Show full website addresses in Safari",
+    "description": "Shows the whole address so look-alike scam sites are easier to spot. Quit Safari first; may need Full Disk Access.",
+    "entries": [
+      {
+        "path": "com.apple.Safari",
+        "name": "ShowFullURLInSmartSearchField",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "reduce-motion",
+    "group": "Accessibility",
+    "admin": false,
+    "name": "Reduce motion",
+    "description": "Replaces sliding and zooming animations with fades. Feels faster on older Macs. May need Full Disk Access.",
+    "entries": [
+      {
+        "path": "com.apple.universalaccess",
+        "name": "reduceMotion",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
+  },
+  {
+    "id": "reduce-transparency",
+    "group": "Accessibility",
+    "admin": false,
+    "name": "Reduce transparency",
+    "description": "Solid backgrounds instead of see-through ones. Easier to read and lighter on older Macs. May need Full Disk Access.",
+    "entries": [
+      {
+        "path": "com.apple.universalaccess",
+        "name": "reduceTransparency",
+        "type": "bool",
+        "on": "true",
+        "off": null
+      }
+    ]
   }
 ]

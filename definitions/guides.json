@@ -2539,5 +2539,162 @@
     ]
    }
   ]
+ },
+ {
+  "id": "mac-safe-mode",
+  "group": "Mac",
+  "title": "Start a Mac in Safe Mode",
+  "summary": "Starts macOS with only Apple's own software, to tell whether an app or driver is behind a problem.",
+  "systems": "macOS",
+  "sections": [
+   {
+    "heading": "Apple silicon (M1 and later)",
+    "steps": [
+     "Shut the Mac down and wait 10 seconds.",
+     "Press and hold the power button until \"Loading startup options\" appears.",
+     "Click the startup disk, hold Shift, and click Continue in Safe Mode.",
+     "Sign in. \"Safe Boot\" shows at the top right of the login window."
+    ]
+   },
+   {
+    "heading": "Intel Macs",
+    "steps": [
+     "Restart the Mac and immediately hold Shift.",
+     "Let go when the login window appears. Sign in, possibly twice."
+    ]
+   },
+   {
+    "heading": "What it tells you",
+    "steps": [
+     "If the problem is gone in Safe Mode, something installed is causing it: use Startup items in Repair to remove leftovers, then restart normally.",
+     "Safe Mode also checks the startup disk and clears some caches, so a normal restart afterwards sometimes fixes things on its own."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "mac-recovery",
+  "group": "Mac",
+  "title": "macOS Recovery and First Aid",
+  "summary": "Repairs the startup disk from outside macOS, and reinstalls macOS without erasing files.",
+  "systems": "macOS",
+  "sections": [
+   {
+    "heading": "Open Recovery",
+    "steps": [
+     "Apple silicon: shut down, then hold the power button until \"Loading startup options\" appears, click Options, then Continue.",
+     "Intel: restart and hold Command and R until the Apple logo appears."
+    ]
+   },
+   {
+    "heading": "Repair the disk",
+    "steps": [
+     "Choose Disk Utility, click View, Show All Devices.",
+     "Select the last volume in the list first, click First Aid, and run it. Work upwards to the container and then the disk.",
+     "Run First Aid again if it reports it repaired something, until it finds no problems."
+    ]
+   },
+   {
+    "heading": "Reinstall macOS and keep files",
+    "steps": [
+     "From the Recovery menu choose Reinstall macOS and follow the steps. Files, apps and settings stay.",
+     "It needs the internet and can take an hour or more. Keep a laptop on its charger."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "mac-nvram-smc",
+  "group": "Mac",
+  "title": "Reset NVRAM and SMC on Intel Macs",
+  "summary": "Clears the stored settings behind startup, sound, display and power problems on Intel Macs. Apple-silicon Macs do this themselves on a restart.",
+  "systems": "macOS",
+  "sections": [
+   {
+    "heading": "Reset NVRAM (PRAM)",
+    "steps": [
+     "Shut down. Turn the Mac on and immediately hold Option, Command, P and R together.",
+     "Keep holding about 20 seconds, or until a Mac with a T2 chip shows the Apple logo a second time, then let go.",
+     "Afterwards check the startup disk, display resolution, sound volume and time zone settings."
+    ]
+   },
+   {
+    "heading": "Reset the SMC on Macs with a T2 chip (2018 to 2020)",
+    "steps": [
+     "Shut down. Hold Control, Option and Shift on the left side for 7 seconds, then also hold the power button for another 7 seconds.",
+     "Let go, wait a few seconds, and turn the Mac on.",
+     "Desktops: unplug the power cord for 15 seconds, plug it back in, wait 5 seconds, then turn it on."
+    ]
+   },
+   {
+    "heading": "Reset the SMC on older laptops",
+    "steps": [
+     "Shut down. Hold Shift, Control and Option on the left side and the power button together for 10 seconds.",
+     "Let go and turn the Mac on."
+    ]
+   },
+   {
+    "heading": "When it helps",
+    "steps": [
+     "Fans running flat out, a battery that will not charge, the Mac not waking from sleep, or power and lights acting oddly."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "mac-bootable-installer",
+  "group": "Mac",
+  "title": "Make a bootable macOS USB installer",
+  "summary": "A USB stick that installs or reinstalls macOS without the internet or a working Recovery.",
+  "systems": "macOS",
+  "sections": [
+   {
+    "heading": "Get the installer",
+    "steps": [
+     "In MendKit, Repair, run \"Download the macOS installer\". The installer lands in Applications. It is over 12 GB.",
+     "Or download a specific version from Apple's support page \"How to download and install macOS\"."
+    ]
+   },
+   {
+    "heading": "Make the stick (erases it)",
+    "steps": [
+     "Plug in a USB stick of 32 GB or more. Everything on it will be erased.",
+     "In Disk Utility, erase it as Mac OS Extended (Journaled) with the name MyVolume.",
+     "In Terminal run (for the installer you downloaded): sudo /Applications/Install\\ macOS\\ Sequoia.app/Contents/Resources/createinstallmedia --volume /Volumes/MyVolume",
+     "Type your Mac password and Y when asked. It takes 10 to 30 minutes."
+    ]
+   },
+   {
+    "heading": "Start from it",
+    "steps": [
+     "Apple silicon: shut down, hold the power button until startup options appear, and choose the installer.",
+     "Intel: restart holding Option and choose the installer. Macs with a T2 chip need \"Allow booting from external media\" in Startup Security Utility first."
+    ]
+   }
+  ]
+ },
+ {
+  "id": "mac-battery",
+  "group": "Mac",
+  "title": "Mac battery checks",
+  "summary": "How to read battery condition and when a Mac battery is due for replacement.",
+  "systems": "macOS",
+  "sections": [
+   {
+    "heading": "Check it",
+    "steps": [
+     "Run the Battery command in MendKit, or open System Settings, Battery, and click the info button next to Battery Health.",
+     "\"Service Recommended\" or a Maximum Capacity under 80% means the battery is worn."
+    ]
+   },
+   {
+    "heading": "Make it last",
+    "steps": [
+     "Turn on Optimised Battery Charging in Battery settings.",
+     "Use \"Turn off Power Nap\" and \"Set sensible sleep timers\" in Repair for longer battery life between charges.",
+     "Swollen batteries lift the trackpad or bottom case: stop using the Mac and have the battery replaced right away."
+    ]
+   }
+  ]
  }
 ]

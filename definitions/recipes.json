@@ -289,6 +289,18 @@
     {
      "command": "brew-outdated",
      "onFail": "continue"
+    },
+    {
+     "command": "memory-pressure",
+     "onFail": "continue"
+    },
+    {
+     "command": "thermal",
+     "onFail": "continue"
+    },
+    {
+     "command": "security-status",
+     "onFail": "continue"
     }
    ],
    "linux": [
@@ -432,12 +444,26 @@
  {
   "id": "camera-fix",
   "name": "Camera fix",
-  "description": "Checks the camera privacy switch and turns the camera back on.",
+  "description": "Checks the camera privacy switch and turns the camera back on. On a Mac it restarts the camera and clears app permissions so each app asks again.",
   "simpleMode": true,
   "steps": {
    "win32": [
     {
      "command": "camera-check",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "camera-restart",
+     "onFail": "continue"
+    },
+    {
+     "command": "tcc-camera",
+     "onFail": "continue"
+    },
+    {
+     "command": "tcc-microphone",
      "onFail": "continue"
     }
    ]
@@ -635,6 +661,10 @@
      "onFail": "continue"
     },
     {
+     "command": "active-connection",
+     "onFail": "continue"
+    },
+    {
      "command": "ping-router",
      "onFail": "continue"
     },
@@ -647,7 +677,15 @@
      "onFail": "continue"
     },
     {
+     "command": "time-sync",
+     "onFail": "continue"
+    },
+    {
      "command": "flush-dns",
+     "onFail": "continue"
+    },
+    {
+     "command": "renew-dhcp",
      "onFail": "continue"
     }
    ]
@@ -776,6 +814,18 @@
      "onFail": "continue"
     },
     {
+     "command": "memory-pressure",
+     "onFail": "continue"
+    },
+    {
+     "command": "thermal",
+     "onFail": "continue"
+    },
+    {
+     "command": "launch-items",
+     "onFail": "continue"
+    },
+    {
      "command": "thin-snapshots",
      "onFail": "continue"
     },
@@ -807,6 +857,24 @@
     },
     {
      "command": "startup-apps",
+     "onFail": "continue"
+    }
+   ],
+   "darwin": [
+    {
+     "command": "profiles-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "launch-items",
+     "onFail": "continue"
+    },
+    {
+     "command": "system-extensions",
+     "onFail": "continue"
+    },
+    {
+     "command": "security-status",
      "onFail": "continue"
     }
    ]
@@ -928,6 +996,14 @@
    "darwin": [
     {
      "command": "recent-crashes",
+     "onFail": "continue"
+    },
+    {
+     "command": "shutdown-cause",
+     "onFail": "continue"
+    },
+    {
+     "command": "system-extensions",
      "onFail": "continue"
     },
     {
@@ -1128,6 +1204,106 @@
     },
     {
      "command": "backup-check",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "mac-security",
+  "name": "Mac security checkup",
+  "description": "Checks FileVault, the firewall, Gatekeeper and System Integrity Protection, and lists configuration profiles, startup items and drivers not made by Apple.",
+  "simpleMode": true,
+  "steps": {
+   "darwin": [
+    {
+     "command": "security-status",
+     "onFail": "continue"
+    },
+    {
+     "command": "profiles-list",
+     "onFail": "continue"
+    },
+    {
+     "command": "launch-items",
+     "onFail": "continue"
+    },
+    {
+     "command": "system-extensions",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "app-wont-open",
+  "name": "An app will not open",
+  "description": "Installs Rosetta for Intel apps and rebuilds the list of which app opens which file. For an app macOS calls \"damaged\", use Fix an app in Repair.",
+  "simpleMode": true,
+  "steps": {
+   "darwin": [
+    {
+     "command": "rosetta-install",
+     "onFail": "continue"
+    },
+    {
+     "command": "launchservices-reset",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "running-hot",
+  "name": "Runs hot or shuts down",
+  "description": "Reads why the Mac last shut down, whether it is slowing down from heat, memory use, crashes and the battery.",
+  "simpleMode": true,
+  "steps": {
+   "darwin": [
+    {
+     "command": "shutdown-cause",
+     "onFail": "continue"
+    },
+    {
+     "command": "thermal",
+     "onFail": "continue"
+    },
+    {
+     "command": "memory-pressure",
+     "onFail": "continue"
+    },
+    {
+     "command": "recent-crashes",
+     "onFail": "continue"
+    },
+    {
+     "command": "battery",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "free-space",
+  "name": "Low on space",
+  "description": "Measures caches, old device backups, Downloads and the Trash, and frees space held by old snapshots. Use Free up space in Repair to choose what to delete.",
+  "simpleMode": true,
+  "steps": {
+   "darwin": [
+    {
+     "command": "disk-usage",
+     "onFail": "continue"
+    },
+    {
+     "command": "space-report",
+     "onFail": "continue"
+    },
+    {
+     "command": "thin-snapshots",
+     "onFail": "continue"
+    },
+    {
+     "command": "brew-cleanup",
      "onFail": "continue"
     }
    ]

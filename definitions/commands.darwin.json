@@ -324,6 +324,11 @@
      "pattern": "Condition: (Service|Replace)",
      "level": "attention",
      "message": "The battery is worn and is due for service."
+    },
+    {
+     "pattern": "Maximum Capacity: ([1-7]\\d)%",
+     "level": "attention",
+     "message": "The battery holds only $1% of its original charge. It is due for replacement."
     }
    ]
   }
@@ -681,6 +686,721 @@
      "message": "Apps crashed $1 times in the last week. The technician log names them."
     }
    ]
+  }
+ },
+ {
+  "id": "security-status",
+  "name": "Security settings",
+  "description": "Checks FileVault, the firewall, Gatekeeper, System Integrity Protection, automatic security updates and the malware definitions.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "echo \"FILEVAULT: $(fdesetup status 2>&1 | head -1)\"\necho \"FIREWALL: $(/usr/libexec/ApplicationFirewall/socketfilterfw --getglobalstate 2>&1)\"\necho \"GATEKEEPER: $(spctl --status 2>&1)\"\necho \"SIP: $(csrutil status 2>&1)\"\necho \"XPROTECT: $(defaults read /Library/Apple/System/Library/CoreServices/XProtect.bundle/Contents/Info.plist CFBundleShortVersionString 2>/dev/null || echo unknown)\"\necho \"SECURITY_UPDATES: $(defaults read /Library/Preferences/com.apple.SoftwareUpdate CriticalUpdateInstall 2>/dev/null || echo default)\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Security settings",
+   "ok": "The security settings were read.",
+   "problem": "The security settings could not be read.",
+   "notes": [
+    {
+     "pattern": "SIP: .*disabled",
+     "level": "problem",
+     "message": "System Integrity Protection is turned off. Unless you turned it off on purpose, turn it back on from Recovery (csrutil enable)."
+    },
+    {
+     "pattern": "GATEKEEPER: assessments disabled",
+     "level": "problem",
+     "message": "Gatekeeper is turned off, so the Mac opens any app without checking it. Turn it back on with: sudo spctl --master-enable"
+    },
+    {
+     "pattern": "SECURITY_UPDATES: 0",
+     "level": "attention",
+     "message": "Automatic security updates are turned off. Turn on \"Install Security Responses and system files\" in System Settings, General, Software Update, Automatic Updates."
+    },
+    {
+     "pattern": "FILEVAULT: FileVault is Off",
+     "level": "attention",
+     "message": "FileVault is off, so anyone with the Mac can read its files. Turn it on in System Settings, Privacy & Security, FileVault."
+    },
+    {
+     "pattern": "FIREWALL: .*(disabled|State = 0)",
+     "level": "attention",
+     "message": "The firewall is off. Turn it on in System Settings, Network, Firewall."
+    },
+    {
+     "pattern": "FIREWALL: .*(enabled|State = [12])",
+     "level": "good",
+     "message": "FileVault, firewall, Gatekeeper and System Integrity Protection were checked. Anything that needs attention is listed above."
+    }
+   ]
+  }
+ },
+ {
+  "id": "profiles-list",
+  "name": "Configuration profiles",
+  "description": "Lists configuration profiles. Adware installs these to lock the browser's home page and search engine.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "out=$(profiles show -type configuration 2>&1); echo \"$out\"; n=$(echo \"$out\" | grep -c \"attribute: name\"); echo \"PROFILE_COUNT: $n\""
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Configuration profiles",
+   "ok": "Configuration profiles were checked.",
+   "problem": "Configuration profiles could not be listed.",
+   "notes": [
+    {
+     "pattern": "PROFILE_COUNT: ([1-9]\\d*)",
+     "level": "attention",
+     "message": "$1 configuration profiles are installed. Unless a school or company manages this Mac, check each one in System Settings, General, Device Management (or Profiles) and remove any you do not recognise. Adware uses them to take over the browser."
+    },
+    {
+     "pattern": "PROFILE_COUNT: 0",
+     "level": "good",
+     "message": "No configuration profiles are installed."
+    }
+   ]
+  }
+ },
+ {
+  "id": "launch-items",
+  "name": "Startup and background items",
+  "description": "Lists programs set to start with the Mac or run in the background, leaving out Apple's own.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "n=0; for d in \"$HOME/Library/LaunchAgents\" /Library/LaunchAgents /Library/LaunchDaemons; do for f in \"$d\"/*.plist; do [ -e \"$f\" ] || continue; b=$(basename \"$f\"); case \"$b\" in com.apple.*) continue;; esac; echo \"$d/$b\"; n=$((n+1)); done; done; echo \"THIRD_PARTY_ITEMS: $n\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Startup and background items",
+   "ok": "Startup and background items were listed.",
+   "problem": "Startup and background items could not be listed.",
+   "notes": [
+    {
+     "pattern": "THIRD_PARTY_ITEMS: ([1-9]\\d*)",
+     "level": "info",
+     "message": "$1 startup or background items are not from Apple. Most belong to apps you installed. Use Startup items in Repair to see who made each one and remove any you do not recognise."
+    },
+    {
+     "pattern": "THIRD_PARTY_ITEMS: 0",
+     "level": "good",
+     "message": "Nothing but Apple's own items starts with the Mac."
+    }
+   ]
+  }
+ },
+ {
+  "id": "system-extensions",
+  "name": "Drivers and system extensions",
+  "description": "Lists drivers and system extensions not made by Apple. Leftovers from removed antivirus, VPN or audio software often cause crashes.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "systemextensionsctl list 2>&1; echo; echo \"Loaded drivers not from Apple:\"; k=$(kmutil showloaded 2>/dev/null | grep -v com.apple | tail -n +2); echo \"$k\"; echo \"THIRD_PARTY_DRIVERS: $(echo \"$k\" | grep -c .)\""
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Drivers and system extensions",
+   "ok": "Drivers and system extensions were listed.",
+   "problem": "Drivers and system extensions could not be listed.",
+   "notes": [
+    {
+     "pattern": "THIRD_PARTY_DRIVERS: ([1-9]\\d*)",
+     "level": "info",
+     "message": "$1 drivers not made by Apple are loaded. If one belongs to software you removed, uninstall it properly or ask its maker how to remove it."
+    }
+   ]
+  }
+ },
+ {
+  "id": "rosetta-install",
+  "name": "Install Rosetta",
+  "description": "Installs Rosetta, which Apple-silicon Macs need to run apps made for Intel Macs.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if [ \"$(uname -m)\" != arm64 ]; then echo NOT_APPLE_SILICON; exit 0; fi; if /usr/bin/pgrep -q oahd; then echo ROSETTA_PRESENT; exit 0; fi; /usr/sbin/softwareupdate --install-rosetta --agree-to-license"
+  ],
+  "admin": true,
+  "typicalMinutes": 3,
+  "friendly": {
+   "title": "Rosetta",
+   "ok": "Rosetta is installed. Apps made for Intel Macs can now open.",
+   "problem": "Rosetta could not be installed. It needs the internet.",
+   "notes": [
+    {
+     "pattern": "NOT_APPLE_SILICON",
+     "level": "info",
+     "message": "This Mac has an Intel processor, so it does not need Rosetta."
+    },
+    {
+     "pattern": "ROSETTA_PRESENT",
+     "level": "good",
+     "message": "Rosetta is already installed."
+    }
+   ]
+  }
+ },
+ {
+  "id": "launchservices-reset",
+  "name": "Reset \"Open With\" and default apps",
+  "description": "Rebuilds the list of which app opens which kind of file. Fixes duplicate entries in Open With and documents opening in the wrong app.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "/System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -r -f -domain local -domain system -domain user && killall Finder"
+  ],
+  "admin": false,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Open With list",
+   "ok": "The Open With list was rebuilt. You may need to choose a default app again for some file types.",
+   "problem": "The Open With list could not be rebuilt."
+  }
+ },
+ {
+  "id": "camera-restart",
+  "name": "Restart the camera service",
+  "description": "Restarts the background service that runs the built-in camera.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "killall VDCAssistant AppleCameraAssistant appleh16camerad 2>/dev/null; echo done"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Camera service",
+   "ok": "The camera service was restarted. Open the app that uses the camera again.",
+   "problem": "The camera service could not be restarted."
+  }
+ },
+ {
+  "id": "tcc-camera",
+  "name": "Reset camera permission",
+  "description": "Clears which apps may use the camera, so each app asks again the next time.",
+  "exec": "tccutil",
+  "args": [
+   "reset",
+   "Camera"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Camera permission",
+   "ok": "Camera permission was reset. Each app will ask again; click Allow.",
+   "problem": "Camera permission could not be reset."
+  }
+ },
+ {
+  "id": "tcc-microphone",
+  "name": "Reset microphone permission",
+  "description": "Clears which apps may use the microphone, so each app asks again the next time.",
+  "exec": "tccutil",
+  "args": [
+   "reset",
+   "Microphone"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Microphone permission",
+   "ok": "Microphone permission was reset. Each app will ask again; click Allow.",
+   "problem": "Microphone permission could not be reset."
+  }
+ },
+ {
+  "id": "tcc-screen",
+  "name": "Reset screen sharing permission",
+  "description": "Clears which apps may record or share the screen, so each app asks again the next time.",
+  "exec": "tccutil",
+  "args": [
+   "reset",
+   "ScreenCapture"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Screen sharing permission",
+   "ok": "Screen sharing permission was reset. Each app will ask again; allow it in System Settings, Privacy & Security, Screen & System Audio Recording.",
+   "problem": "Screen sharing permission could not be reset."
+  }
+ },
+ {
+  "id": "space-report",
+  "name": "Space used by clearable files",
+  "description": "Measures caches, old iPhone and iPad backups, old device update files, Downloads and the Trash.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "s(){ [ -e \"$2\" ] && printf \"%-28s %s\\n\" \"$1\" \"$(du -sh \"$2\" 2>/dev/null | cut -f1)\"; }\ns \"App caches\" \"$HOME/Library/Caches\"\ns \"iPhone and iPad backups\" \"$HOME/Library/Application Support/MobileSync/Backup\"\ns \"iPhone update files\" \"$HOME/Library/iTunes/iPhone Software Updates\"\ns \"iPad update files\" \"$HOME/Library/iTunes/iPad Software Updates\"\ns \"Xcode build files\" \"$HOME/Library/Developer/Xcode/DerivedData\"\ns \"Downloads\" \"$HOME/Downloads\"\ns \"Trash\" \"$HOME/.Trash\"\ndf -h / | tail -1 | awk '{print \"FREE_SPACE: \" $4 \" free of \" $2}' "
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Clearable files",
+   "ok": "Clearable files were measured. Use Free up space in Repair to choose what to delete.",
+   "problem": "Clearable files could not be measured.",
+   "notes": [
+    {
+     "pattern": "FREE_SPACE: (.*)",
+     "level": "info",
+     "message": "$1 on the startup disk. Use Free up space in Repair to see what can be deleted."
+    }
+   ]
+  }
+ },
+ {
+  "id": "apfs-list",
+  "name": "Disk containers",
+  "description": "Shows the Mac's APFS disk containers and how much space each volume uses.",
+  "exec": "diskutil",
+  "args": [
+   "apfs",
+   "list"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Disk containers",
+   "ok": "The disk layout was read.",
+   "problem": "The disk layout could not be read."
+  }
+ },
+ {
+  "id": "renew-dhcp",
+  "name": "Renew the network address",
+  "description": "Asks the router for a fresh network address on the active connection.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "d=$(route -n get default 2>/dev/null | awk '/interface:/{print $2}'); [ -z \"$d\" ] && { echo NO_CONNECTION; exit 0; }; ipconfig set \"$d\" DHCP; sleep 4; echo \"ADDRESS: $(ipconfig getifaddr \"$d\")\""
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network address",
+   "ok": "A fresh network address was requested.",
+   "problem": "A fresh network address could not be requested.",
+   "notes": [
+    {
+     "pattern": "NO_CONNECTION",
+     "level": "attention",
+     "message": "There is no active network connection to renew. Connect to Wi-Fi or plug in the cable first."
+    },
+    {
+     "pattern": "ADDRESS: (\\d+\\.\\d+\\.\\d+\\.\\d+)",
+     "level": "good",
+     "message": "The Mac now has the address $1."
+    },
+    {
+     "pattern": "ADDRESS: \\s*$",
+     "level": "attention",
+     "message": "The router did not give the Mac an address. Restart the router, then try again."
+    }
+   ]
+  }
+ },
+ {
+  "id": "network-reset",
+  "name": "Deep network reset",
+  "description": "Moves the Mac's saved network settings aside so they are rebuilt from scratch at the next restart. Saved Wi-Fi passwords stay in the keychain.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "d=/Library/Preferences/SystemConfiguration; b=\"$d/MendKit-backup-$(date +%Y%m%d-%H%M%S)\"; mkdir -p \"$b\"; n=0; for f in NetworkInterfaces.plist preferences.plist com.apple.airport.preferences.plist com.apple.wifi.message-tracer.plist; do [ -e \"$d/$f\" ] && mv \"$d/$f\" \"$b/\" && n=$((n+1)); done; echo \"MOVED: $n files to $b\""
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Network settings",
+   "ok": "The network settings were reset. Restart the Mac, then join Wi-Fi again.",
+   "problem": "The network settings could not be reset.",
+   "notes": [
+    {
+     "pattern": "MOVED: (\\d+) files to (.*)",
+     "level": "good",
+     "message": "The network settings were reset ($1 files moved to $2, in case they are needed). Restart the Mac, then join Wi-Fi again."
+    }
+   ]
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "wifi-diagnostics",
+  "name": "Wireless diagnostics report",
+  "description": "Runs Apple's own Wi-Fi diagnostics and saves the report.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "wdutil info 2>&1 | head -60; echo; wdutil diagnose 2>&1 | tail -5"
+  ],
+  "admin": true,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Wireless diagnostics",
+   "ok": "Apple's wireless diagnostics ran. The report location is in the full log.",
+   "problem": "Wireless diagnostics could not run."
+  },
+  "heavy": true
+ },
+ {
+  "id": "time-sync",
+  "name": "Fix the clock",
+  "description": "Sets the clock from Apple's time server. A wrong clock causes \"your connection is not private\" errors on every website.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "before=$(date); sntp -sS time.apple.com 2>&1; echo \"WAS: $before\"; echo \"NOW: $(date)\""
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Clock",
+   "ok": "The clock was set from Apple's time server.",
+   "problem": "The clock could not be set. It needs the internet."
+  }
+ },
+ {
+  "id": "reset-home-permissions",
+  "name": "Reset home folder permissions",
+  "description": "Repairs the permissions on your own folders. Fixes \"you don't have permission\" errors and apps that cannot save settings.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "diskutil resetUserPermissions / \"$(id -u)\""
+  ],
+  "admin": false,
+  "typicalMinutes": 5,
+  "friendly": {
+   "title": "Home folder permissions",
+   "ok": "Your home folder permissions were repaired. Restart the Mac to finish.",
+   "problem": "The permissions could not be repaired. Give MendKit Full Disk Access in System Settings, Privacy & Security, then try again."
+  },
+  "heavy": true,
+  "needsRestart": true
+ },
+ {
+  "id": "font-cache",
+  "name": "Rebuild the font cache",
+  "description": "Clears the font cache. Fixes garbled text and fonts that will not show.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "atsutil databases -removeUser 2>&1; atsutil server -shutdown 2>&1; atsutil server -ping 2>&1"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Font cache",
+   "ok": "The font cache was cleared. Restart the Mac to finish.",
+   "problem": "The font cache could not be cleared."
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "icloud-restart",
+  "name": "Restart iCloud Drive syncing",
+  "description": "Restarts the services that sync iCloud Drive. Fixes files stuck uploading or downloading.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "killall bird cloudd 2>/dev/null; echo done"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "iCloud Drive",
+   "ok": "iCloud Drive syncing was restarted. Give it a few minutes to catch up.",
+   "problem": "iCloud Drive syncing could not be restarted."
+  }
+ },
+ {
+  "id": "clipboard-restart",
+  "name": "Fix copy and paste",
+  "description": "Restarts the clipboard service when copy and paste stops working.",
+  "exec": "killall",
+  "args": [
+   "pboard"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Copy and paste",
+   "ok": "The clipboard was restarted. Try copy and paste again.",
+   "problem": "The clipboard could not be restarted."
+  }
+ },
+ {
+  "id": "dock-finder-restart",
+  "name": "Restart the Dock and Finder",
+  "description": "Restarts the Dock and Finder when they freeze or show the wrong icons.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "killall Dock; killall Finder; echo done"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Dock and Finder",
+   "ok": "The Dock and Finder were restarted.",
+   "problem": "The Dock and Finder could not be restarted."
+  }
+ },
+ {
+  "id": "memory-pressure",
+  "name": "Memory use",
+  "description": "Shows how hard the memory is working, how much is spilling to the disk, and which apps use the most.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "memory_pressure 2>/dev/null | tail -1; sysctl vm.swapusage; echo; top -l 1 -o mem -n 8 -stats command,mem 2>/dev/null | tail -9"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Memory",
+   "ok": "Memory use was read.",
+   "problem": "Memory use could not be read.",
+   "notes": [
+    {
+     "pattern": "free percentage: ([0-9]|1[0-4])%",
+     "level": "attention",
+     "message": "Memory is nearly full ($1% free). Closing apps helps; if this happens in normal use, the Mac needs more memory or a lighter workload."
+    },
+    {
+     "pattern": "used = ([4-9]\\d{3}|\\d{5,})\\.\\d+M",
+     "level": "attention",
+     "message": "More than 4 GB is spilling over to the disk, which slows the Mac down. It needs more memory for how it is used, or fewer apps open."
+    },
+    {
+     "pattern": "free percentage: (\\d+)%",
+     "level": "good",
+     "message": "Memory is fine: $1% is free."
+    }
+   ]
+  }
+ },
+ {
+  "id": "shutdown-cause",
+  "name": "Why did it shut down?",
+  "description": "Reads why the Mac last shut down or restarted: normally, the power button, power loss, overheating or the battery.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "log show --last 14d --style compact --predicate 'eventMessage contains \"Previous shutdown cause\"' 2>/dev/null | tail -5"
+  ],
+  "admin": false,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Last shutdown",
+   "ok": "The recent shutdown causes were read.",
+   "problem": "The shutdown history could not be read.",
+   "notes": [
+    {
+     "pattern": "cause: -(3|74|86|95)\\b",
+     "level": "problem",
+     "message": "The Mac recently shut down because it got too hot. Clean the vents and fans, keep it off soft surfaces, and check for an app keeping the processor busy."
+    },
+    {
+     "pattern": "cause: -(60|61|62)\\b",
+     "level": "problem",
+     "message": "The Mac recently shut down with a hardware or power fault. If this keeps happening, it needs a hardware check."
+    },
+    {
+     "pattern": "cause: -(104|128)\\b",
+     "level": "attention",
+     "message": "The Mac recently lost power unexpectedly, often from the battery or charger. Check the battery condition and try another charger."
+    },
+    {
+     "pattern": "cause: 0\\b",
+     "level": "attention",
+     "message": "The Mac recently lost power suddenly: unplugged, or a battery that ran flat or failed."
+    },
+    {
+     "pattern": "cause: 3\\b",
+     "level": "info",
+     "message": "The Mac was recently forced off by holding the power button."
+    },
+    {
+     "pattern": "cause: 5\\b",
+     "level": "good",
+     "message": "The last shutdowns were normal."
+    }
+   ]
+  }
+ },
+ {
+  "id": "thermal",
+  "name": "Heat and slowdown",
+  "description": "Shows whether the Mac is slowing its processor down to cool off.",
+  "exec": "pmset",
+  "args": [
+   "-g",
+   "therm"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Heat",
+   "ok": "The heat status was read.",
+   "problem": "The heat status could not be read.",
+   "notes": [
+    {
+     "pattern": "CPU_Speed_Limit\\s*=\\s*([1-9]\\d?)\\b",
+     "level": "attention",
+     "message": "The Mac is running its processor at $1% to cool down. Clean the vents and fans and check for a busy app."
+    },
+    {
+     "pattern": "No thermal warning level has been recorded",
+     "level": "good",
+     "message": "The Mac is not slowing down because of heat."
+    }
+   ]
+  }
+ },
+ {
+  "id": "full-installers-list",
+  "name": "macOS installers available",
+  "description": "Lists the full macOS installers Apple offers for this Mac.",
+  "exec": "softwareupdate",
+  "args": [
+   "--list-full-installers"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "macOS installers",
+   "ok": "The available macOS installers are listed in the full log.",
+   "problem": "The installer list could not be read. It needs the internet."
+  }
+ },
+ {
+  "id": "full-installer-download",
+  "name": "Download the macOS installer",
+  "description": "Downloads the newest full macOS installer into Applications, for a reinstall or a bootable USB stick. It is over 12 GB.",
+  "exec": "softwareupdate",
+  "args": [
+   "--fetch-full-installer"
+  ],
+  "admin": true,
+  "typicalMinutes": 45,
+  "friendly": {
+   "title": "macOS installer",
+   "ok": "The macOS installer is in the Applications folder.",
+   "problem": "The macOS installer could not be downloaded."
+  },
+  "heavy": true
+ },
+ {
+  "id": "power-nap-off",
+  "name": "Turn off Power Nap",
+  "description": "Stops the Mac waking up to check mail and back up while asleep, which saves battery.",
+  "exec": "pmset",
+  "args": [
+   "-a",
+   "powernap",
+   "0"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Power Nap",
+   "ok": "Power Nap is off.",
+   "problem": "Power Nap could not be turned off."
+  }
+ },
+ {
+  "id": "power-nap-on",
+  "name": "Turn Power Nap back on",
+  "description": "Lets the Mac check mail and back up while asleep again.",
+  "exec": "pmset",
+  "args": [
+   "-a",
+   "powernap",
+   "1"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Power Nap",
+   "ok": "Power Nap is on.",
+   "problem": "Power Nap could not be turned on."
+  }
+ },
+ {
+  "id": "lid-wake-off",
+  "name": "Stop turning on when the lid opens",
+  "description": "Stops the laptop starting up by itself when the lid is opened or the charger is connected.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if [ \"$(uname -m)\" = arm64 ]; then nvram BootPreference=%00; else nvram AutoBoot=%00; fi && echo done"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Start when lid opens",
+   "ok": "The Mac will no longer start up by itself when the lid opens. Press the power button to start it.",
+   "problem": "This setting could not be changed. Apple-silicon Macs need macOS Sequoia or later for it."
+  }
+ },
+ {
+  "id": "lid-wake-on",
+  "name": "Turn on when the lid opens",
+  "description": "Lets the laptop start up by itself again when the lid is opened.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "if [ \"$(uname -m)\" = arm64 ]; then nvram -d BootPreference; else nvram AutoBoot=%03; fi; echo done"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Start when lid opens",
+   "ok": "The Mac will start up by itself when the lid opens again.",
+   "problem": "This setting could not be changed."
+  }
+ },
+ {
+  "id": "sleep-timers",
+  "name": "Set sensible sleep timers",
+  "description": "On the charger: screen off after 10 minutes, sleep after 30. On battery: screen off after 5, sleep after 15.",
+  "exec": "sh",
+  "args": [
+   "-c",
+   "pmset -c displaysleep 10 sleep 30 && pmset -b displaysleep 5 sleep 15 2>/dev/null; pmset -g custom"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Sleep timers",
+   "ok": "Sleep timers were set.",
+   "problem": "Sleep timers could not be set."
+  }
+ },
+ {
+  "id": "power-defaults",
+  "name": "Restore default power settings",
+  "description": "Puts every power and sleep setting back to Apple's defaults.",
+  "exec": "pmset",
+  "args": [
+   "restoredefaults"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Power settings",
+   "ok": "Power settings are back to Apple's defaults.",
+   "problem": "Power settings could not be reset."
   }
  }
 ]

@@ -218,6 +218,21 @@ function renderRepair(view) {
   const reBtn = el('button', { className: 'ghost', textContent: 'Reinstall assistant' });
   reBtn.onclick = () => show('reinstall');
   view.append(el('div', { className: 'notice' }, el('span', { textContent: 'Reinstall assistant: when repairs do not hold, reinstall the system over itself and keep files, apps and settings. MendKit checks the computer is ready and walks you through it.' }), reBtn));
+  if (state.info.platform === 'darwin') {
+    view.append(el('h2', { textContent: 'Mac tools' }));
+    const mt = el('table');
+    for (const [name, desc, fn] of [
+      ['Startup items', 'See every program set to start with the Mac or run in the background, who made it, and remove the ones you do not want.', showMacStartup],
+      ['Free up space', 'Measure caches, old device backups, update files, the Trash and large files, then choose what to delete.', showMacSpace],
+      ['Fix an app that will not open', 'For apps macOS says are "damaged" or "can\'t be opened": clears the download block, and can re-sign the app for this Mac.', showMacAppFix],
+      ['Check another drive', 'Check or repair an external drive or USB stick plugged into this Mac.', showMacDrive],
+    ]) {
+      const b = el('button', { className: 'ghost', textContent: 'Open' });
+      b.onclick = () => fn();
+      mt.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, b)));
+    }
+    view.append(mt);
+  }
   view.append(el('h2', { textContent: 'Recipes' }));
   const rt = el('table', { className: 'searchable' });
   for (const r of state.catalog.recipes) {
@@ -611,6 +626,201 @@ async function showRemoteAudit() {
     syncButtons();
   };
   view.scrollTop = 0;
+}
+
+// ---------- Mac tools ----------
+
+/** Common frame for the Mac tool screens: title, lead, a status line and a holder for results. */
+function macFrame(title, lead) {
+  const view = $('#view');
+  view.replaceChildren();
+  const back = el('button', { className: 'ghost', textContent: 'Back' });
+  back.onclick = () => show('repair');
+  const status = el('p', { className: 'lead mig-status' });
+  const holder = el('div');
+  const bar = el('div', { className: 'toolbar' });
+  view.append(el('h1', { textContent: title }), el('p', { className: 'lead', textContent: lead }), bar, status, holder);
+  view.scrollTop = 0;
+  return { view, back, status, holder, bar };
+}
+const errText = (err) => String(err.message || err).replace(/^Error invoking remote method '[^']+': (Error: )?/, '');
+
+async function showMacStartup() {
+  const f = macFrame('Startup items', 'Programs set to start with the Mac or run in the background, leaving out Apple\'s own. Most belong to apps you installed. Removing one stops it starting; the app itself stays.');
+  const scan = el('button', { className: 'big', textContent: 'Scan' });
+  f.bar.append(scan, f.back);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Reading startup items and checking who signed each one...';
+    let r;
+    try {
+      r = await api.macStartupScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return;
+    }
+    scan.disabled = false;
+    scan.textContent = 'Scan again';
+    f.holder.replaceChildren();
+    f.status.textContent = r.items.length ? `${r.items.length} startup or background item${r.items.length === 1 ? '' : 's'} not made by Apple. Tick the ones you do not recognise or no longer want.` : 'Nothing but Apple\'s own items starts with this Mac.';
+    const picks = [];
+    for (const it of r.items) {
+      const box = el('input', { type: 'checkbox' });
+      picks.push({ id: it.id, box });
+      const body = el('div', {}, el('strong', { textContent: it.label }));
+      if (it.running) body.append(el('span', { className: 'tag hot', textContent: 'running now' }));
+      if (it.missing) body.append(el('span', { className: 'tag', textContent: 'program missing' }));
+      if (it.signer === 'Not signed') body.append(el('span', { className: 'tag hot', textContent: 'not signed' }));
+      body.append(el('ul', { className: 'found' },
+        el('li', { textContent: `Made by: ${it.signer}` }),
+        el('li', { textContent: `Runs: ${it.program || 'unknown'}` }),
+        el('li', { textContent: `For: ${it.scope === 'user' ? 'your account' : it.scope === 'system' ? 'the whole Mac, before anyone signs in' : 'every account'}` }),
+        el('li', { textContent: `File: ${it.file}` })));
+      if (it.missing) body.append(el('p', { className: 'dim', textContent: 'The program it starts is gone, so this is a leftover from something removed. Safe to remove.' }));
+      f.holder.append(el('div', { className: 'result ' + (it.signer === 'Not signed' ? 'attention' : '') }, el('div', { className: 'chk' }, box), body));
+    }
+    if (r.items.length) {
+      const remove = el('button', { className: 'big run', textContent: 'Remove selected' });
+      remove.onclick = () => {
+        const ids = picks.filter((p) => p.box.checked).map((p) => p.id);
+        if (!ids.length) return migSafeStatus('Tick at least one item to remove.');
+        run(async () => showResults(await api.macStartupRemove(ids)));
+      };
+      f.holder.append(el('div', { className: 'result-foot' }, remove), el('p', { className: 'lead note', textContent: 'Items for every account or the whole Mac need your Mac password. Removed items are moved aside, not deleted.' }));
+    }
+    if (r.loginItems.length) {
+      f.holder.append(el('h2', { textContent: 'Login items' }), el('p', { className: 'dim', textContent: 'Apps that open when you sign in.' }));
+      const t = el('table');
+      for (const n of r.loginItems) {
+        const b = el('button', { className: 'ghost', textContent: 'Remove' });
+        b.onclick = async () => {
+          try {
+            await api.macLoginItemRemove(n);
+            b.closest('tr').remove();
+          } catch (err) {
+            migSafeStatus(errText(err));
+          }
+        };
+        t.append(el('tr', {}, el('td', { textContent: n }), el('td', { className: 'act' }, b)));
+      }
+      f.holder.append(t);
+    }
+    syncButtons();
+  };
+}
+
+async function showMacSpace() {
+  const f = macFrame('Free up space', 'Measures what can safely go. Nothing is deleted until you tick it and press Delete.');
+  const scan = el('button', { className: 'big', textContent: 'Measure' });
+  f.bar.append(scan, f.back);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Measuring. Large folders can take a minute...';
+    setProgress(0.5);
+    let r;
+    try {
+      r = await api.macSpaceScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return setProgress(null);
+    }
+    setProgress(null);
+    scan.disabled = false;
+    scan.textContent = 'Measure again';
+    f.holder.replaceChildren();
+    f.status.textContent = r.free ? `${r.free} free of ${r.total}.` : '';
+    const picks = [];
+    const t = el('table');
+    for (const it of r.items) {
+      const cell = el('td', { className: 'act' });
+      if (it.reportOnly) {
+        const b = el('button', { className: 'ghost', textContent: 'Show' });
+        b.onclick = () => api.macReveal(it.paths[0]);
+        cell.append(b);
+      } else {
+        const box = el('input', { type: 'checkbox', checked: /^(caches|logs|ios-updates|mail-downloads|xcode)$/.test(it.id) });
+        picks.push({ id: it.id, box });
+        cell.append(box);
+      }
+      t.append(el('tr', {}, el('td', {}, el('strong', { textContent: it.name }), el('br'), el('small', { textContent: it.detail })), el('td', { textContent: it.size }), cell));
+    }
+    if (!r.items.length) f.holder.append(el('p', { className: 'lead', textContent: 'Nothing large enough to bother with was found.' }));
+    else f.holder.append(t);
+    if (picks.length) {
+      const go = el('button', { className: 'big run', textContent: 'Delete selected' });
+      go.onclick = () => {
+        const ids = picks.filter((p) => p.box.checked).map((p) => p.id);
+        if (!ids.length) return migSafeStatus('Tick at least one item to delete.');
+        run(async () => showResults(await api.macSpaceClean(ids)));
+      };
+      f.holder.append(el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: 'Deleted files do not go to the Trash. If the Trash or a device backup cannot be deleted, give MendKit Full Disk Access in System Settings, Privacy & Security.' }));
+    }
+    if (r.large.length) {
+      f.holder.append(el('h2', { textContent: 'Large files' }), el('p', { className: 'dim', textContent: 'Files over 1 GB in your folders. Look at each yourself; MendKit will not delete them.' }));
+      const lt = el('table');
+      for (const x of r.large) {
+        const b = el('button', { className: 'ghost', textContent: 'Show in Finder' });
+        b.onclick = () => api.macReveal(x.path);
+        lt.append(el('tr', {}, el('td', { textContent: x.label }), el('td', { className: 'act' }, b)));
+      }
+      f.holder.append(lt);
+    }
+    syncButtons();
+  };
+}
+
+async function showMacAppFix() {
+  const f = macFrame('Fix an app that will not open', 'When macOS says an app "is damaged and can\'t be opened" or "cannot be checked for malicious software", it is usually just blocked because it came from the internet without Apple\'s approval. Only do this for apps you trust, from their maker\'s own website.');
+  const pick = el('button', { className: 'big', textContent: 'Choose the app' });
+  f.bar.append(pick, f.back);
+  pick.onclick = async () => {
+    let a;
+    try {
+      a = await api.macAppPick();
+    } catch (err) {
+      return (f.status.textContent = errText(err));
+    }
+    if (!a) return;
+    f.holder.replaceChildren();
+    f.status.textContent = '';
+    const resign = el('input', { type: 'checkbox', checked: !a.signedOk });
+    f.holder.append(
+      el('h2', { textContent: a.name }),
+      el('ul', { className: 'found' },
+        el('li', { textContent: a.quarantined ? 'Blocked as downloaded from the internet: yes' : 'Blocked as downloaded from the internet: no' }),
+        el('li', { textContent: a.signedOk ? 'Signature: valid' : `Signature: not valid (${a.signNote || 'no details'})` })),
+      el('label', { className: 'switch' }, resign, 'Also re-sign it on this Mac (for apps that still say "damaged" afterwards)'),
+    );
+    const go = el('button', { className: 'big run', textContent: `Fix ${a.name}` });
+    go.onclick = () => run(async () => showResults(await api.macAppFix(a.path, resign.checked)));
+    f.holder.append(el('div', { className: 'result-foot' }, go));
+    syncButtons();
+  };
+}
+
+async function showMacDrive() {
+  const f = macFrame('Check another drive', 'Checks the file system on an external drive or USB stick. To check the Mac\'s own drive, use the Disk check recipe instead.');
+  f.bar.append(f.back);
+  let vols = [];
+  try {
+    vols = await api.macVolumes();
+  } catch (err) {
+    f.status.textContent = errText(err);
+  }
+  if (!vols.length) {
+    f.status.textContent = 'No other drives are connected. Plug one in, then open this again.';
+    return;
+  }
+  const sel = el('select');
+  for (const v of vols) sel.append(el('option', { value: v.id, textContent: v.label }));
+  const repair = el('input', { type: 'checkbox' });
+  const go = el('button', { className: 'big run', textContent: 'Check drive' });
+  repair.onchange = () => (go.textContent = repair.checked ? 'Repair drive' : 'Check drive');
+  go.onclick = () => run(async () => showResults(await api.macVolumeCheck(sel.value, repair.checked)));
+  f.holder.append(sel, el('label', { className: 'switch' }, repair, 'Repair problems it finds (asks for your Mac password; the drive is unavailable while it runs)'), el('div', { className: 'result-foot' }, go));
+  syncButtons();
 }
 
 // ---------- ISO Library ----------

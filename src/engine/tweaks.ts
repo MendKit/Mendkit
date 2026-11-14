@@ -1,5 +1,6 @@
 import { execFile } from 'child_process';
 import * as fs from 'fs';
+import * as os from 'os';
 import { ActionStep } from './runner';
 
 export interface RegValue {
@@ -130,18 +131,40 @@ export function memoryRegistry(): RegBackend {
   };
 }
 
-/** macOS: "path" is the defaults domain and "name" is the key. */
+/**
+ * macOS: "path" is the defaults domain and "name" is the key.
+ * A domain starting "currentHost:" is read and written with -currentHost (per-Mac settings).
+ * The pseudo-domain "@chflags" treats "name" as a folder and the value as its visibility flag (hidden or nohidden).
+ */
+const macDomain = (domain: string): string[] => (domain.startsWith('currentHost:') ? ['-currentHost', domain.slice(12)] : [domain]);
 export const macDefaults: RegBackend = {
   async get(domain, key) {
-    const r = await tool('defaults', ['read', domain, key]);
+    if (domain === '@chflags') {
+      const r = await tool('ls', ['-lOd', key]);
+      if (r.code !== 0) return { exists: false };
+      return { exists: true, data: /\bhidden\b/.test(r.out.split('\n')[0]) ? 'hidden' : 'nohidden' };
+    }
+    const m = macDomain(domain);
+    const r = await tool('defaults', [...m.slice(0, -1), 'read', m[m.length - 1], key]);
     return r.code === 0 ? { exists: true, data: r.out.trim() } : { exists: false };
   },
   async set(domain, key, type, data) {
-    const r = await tool('defaults', ['write', domain, key, `-${type}`, data]);
+    if (domain === '@chflags') {
+      const r = await tool('chflags', [data, key]);
+      if (r.code !== 0) throw new Error(r.out.trim() || `Could not change ${key}`);
+      return;
+    }
+    const m = macDomain(domain);
+    const r = await tool('defaults', [...m.slice(0, -1), 'write', m[m.length - 1], key, `-${type}`, data]);
     if (r.code !== 0) throw new Error(r.out.trim() || `Could not write ${domain} ${key}`);
   },
   async del(domain, key) {
-    await tool('defaults', ['delete', domain, key]);
+    if (domain === '@chflags') {
+      await tool('chflags', ['hidden', key]);
+      return;
+    }
+    const m = macDomain(domain);
+    await tool('defaults', [...m.slice(0, -1), 'delete', m[m.length - 1], key]);
   },
   async delKey() {
     /* not used on macOS */
@@ -217,7 +240,12 @@ export class TweakManager {
       name: `${def.name}: ${on ? 'turn on' : 'turn off'}`,
       admin: def.admin,
       ok: on ? 'Turned on.' : 'Put back the way it was.',
-      problem: 'This setting could not be changed. Windows may be protecting it.',
+      problem:
+        process.platform === 'darwin'
+          ? 'This setting could not be changed. Some Mac settings need MendKit to have Full Disk Access (System Settings, Privacy & Security).'
+          : process.platform === 'win32'
+            ? 'This setting could not be changed. Windows may be protecting it.'
+            : 'This setting could not be changed.',
       action: async (write) => {
         if (on) await this.apply(def, write);
         else await this.revert(def, write);
@@ -281,6 +309,15 @@ export function loadTweaks(definitionsDir: string, platform: string = 'win32'): 
   const tweaks = fs.existsSync(file) ? (JSON.parse(fs.readFileSync(file, 'utf8')) as TweakDef[]) : [];
   const rawPresets = JSON.parse(fs.readFileSync(`${definitionsDir}/tweak-presets.json`, 'utf8')) as (Omit<TweakPreset, 'tweaks'> & { tweaks: Record<string, string[]> })[];
   const ids = new Set<string>();
+  if (platform === 'darwin') {
+    // "~/" in a path or value means the user's home folder.
+    const home = os.homedir();
+    const ex = (v: unknown) => (typeof v === 'string' && v.startsWith('~/') ? home + v.slice(1) : v);
+    for (const t of tweaks) {
+      for (const e of t.entries) Object.assign(e, { name: ex(e.name), on: ex(e.on), off: ex(e.off) });
+      for (const c of [t.applyCmd, t.revertCmd]) if (c) c.forEach((a, i) => (c[i] = ex(a) as string));
+    }
+  }
   for (const t of tweaks) {
     if (!t.id || !t.name || !Array.isArray(t.entries) || t.entries.length === 0) throw new Error(`Bad tweak definition: ${JSON.stringify(t)}`);
     if (ids.has(t.id)) throw new Error(`Duplicate tweak id "${t.id}"`);
