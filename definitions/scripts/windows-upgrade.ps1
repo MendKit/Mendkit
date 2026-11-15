@@ -41,7 +41,7 @@ ConvertTo-Json -Depth 4 -Compress -InputObject ([pscustomobject]@{
   admin = $admin
   product = [string]$cv.ProductName; edition = [string]$cv.EditionID; version = [string]$cv.DisplayVersion
   build = [int]$cv.CurrentBuildNumber; ubr = [int]$cv.UBR; arch = [string]$env:PROCESSOR_ARCHITECTURE
-  cpu = [string]$cpu.Name; cpuMaker = [string]$cpu.Manufacturer; cores = [int](Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum; mhz = [int]$cpu.MaxClockSpeed
+  cpu = ([string]$cpu.Name).Trim(); cpuMaker = [string]$cpu.Manufacturer; cores = [int](Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum; mhz = [int]$cpu.MaxClockSpeed
   ramGb = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
   tpm = $tpm; secureBoot = $sb; firmware = $fw
   partitionStyle = [string]$disk.PartitionStyle; diskGb = [math]::Round($disk.Size / 1GB); freeGb = [math]::Round($vol.SizeRemaining / 1GB, 1)

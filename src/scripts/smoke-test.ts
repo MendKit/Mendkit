@@ -782,7 +782,7 @@ async function main(): Promise<void> {
       fs.utimesSync(path.join(dcim, n), when, when);
     }
     const ph = phone.gvfsPhones(gv);
-    assert(ph.length === 2 && ph.find((p) => p.kind === 'android')!.folders.length === 1 && ph.find((p) => p.kind === 'iphone') && ph.find((p) => p.kind === 'android')!.name.startsWith('SAMSUNG'), `gvfs phones wrong: ${JSON.stringify(ph)}`);
+    assert(ph.length === 2 && ph.find((p) => p.kind === 'android')!.folders.length === 1 && ph.find((p) => p.kind === 'iphone') && ph.find((p) => p.kind === 'android')!.name === 'SAMSUNG Android' && ph.find((p) => p.kind === 'iphone')!.name === 'Apple Inc. iPhone', `gvfs phones wrong: ${JSON.stringify(ph)}`);
     const android = ph.find((p) => p.kind === 'android')!;
     const media = phone.listMedia(android.root, android.folders);
     assert(media.length === 3, `media list wrong: ${JSON.stringify(media)}`);

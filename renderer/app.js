@@ -880,6 +880,7 @@ async function renderPermissions(view) {
 /** Tools on every system: [name, description, open function]. */
 const ALL_TOOLS = [
   ['Recover deleted files', 'Get back deleted photos and documents: first from the Recycle Bin or Trash, Previous Versions, File History or Time Machine, then with a deep search of the drive or memory card (PhotoRec).', () => showRecover()],
+  ['Phone photos and backups', 'Copy photos and videos off an iPhone or Android phone by USB, into a folder per month, skipping ones already copied. Also lists the iPhone and iPad backups on this computer and how old they are.', () => showPhone()],
   ['Browser cleanup', 'Pop-ups, a changed home page or search engine, or toolbars nobody installed: lists every extension, the sites allowed to show notifications, and settings forced in by other programs, then removes the ones you choose. Chrome, Edge, Brave, Vivaldi and Firefox.', () => showBrowserClean()],
 ];
 
@@ -974,6 +975,89 @@ async function showRecover() {
   };
   f.holder.append(el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: `A search takes from a few minutes for a memory card to several hours for a large drive. The panel at the bottom shows how many files have been found so far, and Cancel stops it; files found up to then are kept. ${r.platform === 'win32' ? (r.elevated ? '' : 'Restart MendKit as administrator first: Windows only lets administrators read a drive directly.') : 'MendKit asks for your password, because reading a drive directly needs administrator rights.'}` }));
   syncButtons();
+}
+
+async function showPhone() {
+  const f = macFrame('Phone photos and backups', 'Copy photos and videos off a phone plugged in with its USB cable, and check the iPhone and iPad backups kept on this computer.');
+  const scan = el('button', { className: 'big', textContent: 'Look for phones' });
+  f.bar.append(scan, f.back);
+  const prep = el('div', { className: 'notice' }, el('span', { textContent: 'Before you look: plug the phone in and unlock it. iPhone: tap Trust and enter the passcode. Android: pull down from the top, tap the USB notification, and choose File transfer (or Transfer photos). The phone must stay unlocked while copying.' }));
+  f.holder.append(prep);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Looking for phones and counting their photos. A phone with many photos takes a minute...';
+    let r;
+    try {
+      r = await api.phoneScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return;
+    }
+    scan.disabled = false;
+    scan.textContent = 'Look again';
+    f.status.textContent = '';
+    f.holder.replaceChildren(prep);
+    f.holder.append(el('h2', { textContent: 'Copy photos and videos' }));
+    if (r.platform === 'darwin') {
+      const ic = el('button', { className: 'ghost', textContent: 'Open Image Capture' });
+      ic.onclick = () => api.phoneOpen('imagecapture');
+      f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: 'On a Mac, Image Capture copies from an iPhone, and from an Android phone set to Transfer photos (PTP). Choose the phone on the left, pick a folder in "Import To", and click Download All. Turn on "Keep originals" in the iPhone\'s Settings, Photos, Transfer to Mac or PC, to get the original photos.' }), ic));
+    } else if (!r.devices.length) {
+      f.holder.append(el('p', { className: 'lead', textContent: r.platform === 'linux' ? 'No phone found. Unlock it, choose File transfer on it, and open it once in the file manager so the desktop connects to it, then look again.' : 'No phone found. Unlock it, tap Trust (iPhone) or choose File transfer (Android), and look again. An iPhone may need Apple\'s Devices app installed once for Windows to see it.' }));
+      if (r.platform === 'win32') {
+        const ad = el('button', { className: 'ghost', textContent: 'Get Apple Devices' });
+        ad.onclick = () => api.phoneOpen('apple-devices');
+        f.holder.append(el('div', { className: 'toolbar' }, ad));
+      }
+    } else {
+      const picked = { device: '', name: '', dest: '' };
+      const t = el('table');
+      for (const d of r.devices) {
+        const radio = el('input', { type: 'radio', name: 'phoneDev', disabled: d.locked || !d.count });
+        radio.onchange = () => Object.assign(picked, { device: d.id, name: d.name });
+        const info = d.locked ? 'Locked, or not trusted yet: unlock it and tap Trust (iPhone) or choose File transfer (Android), then look again.' : `${d.count.toLocaleString()} photos and videos, ${fmtSize(d.bytes)}`;
+        t.append(el('tr', {}, el('td', { className: 'chk' }, radio), el('td', {}, el('strong', { textContent: d.name }), el('br'), el('small', { textContent: info }))));
+      }
+      const where = el('p', { className: 'dim', textContent: `Choose a folder. A folder named after the phone is made inside it, with one folder per month. Your Pictures folder is ${r.pictures}.` });
+      const pick = el('button', { className: 'ghost', textContent: 'Choose a folder' });
+      pick.onclick = async () => {
+        const d = await api.phonePickDest();
+        if (!d) return;
+        picked.dest = d;
+        where.textContent = d;
+      };
+      const go = el('button', { className: 'big run', textContent: 'Copy new photos and videos' });
+      go.onclick = () => {
+        if (!picked.device) return migSafeStatus('Choose the phone.');
+        if (!picked.dest) return migSafeStatus('Choose where to put the photos.');
+        run(async () => {
+          const res = await api.phoneCopy(picked);
+          showResults(res.summary);
+          const open = el('button', { textContent: 'Open the folder' });
+          open.onclick = () => api.phoneOpen('folder');
+          $('#view').append(el('div', { className: 'notice' }, el('span', { textContent: `Saved in ${res.folder}. Nothing on the phone was changed or deleted. Check the photos open before deleting anything from the phone.` }), open));
+        });
+      };
+      f.holder.append(t, el('div', { className: 'toolbar' }, pick), where, el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: 'Copies only: nothing is deleted from the phone. Photos already copied (same name and size) are skipped, so it is safe to run again. Messages, WhatsApp and app data are not included; those move with the phone\'s own transfer or backup.' }));
+    }
+
+    f.holder.append(el('h2', { textContent: 'iPhone and iPad backups on this computer' }));
+    if (!r.backupsReadable) f.holder.append(el('p', { className: 'lead', textContent: 'MendKit needs Full Disk Access to read the backups. Open Permissions in the menu and turn it on.' }));
+    else if (!r.backups.length) f.holder.append(el('p', { className: 'dim', textContent: r.platform === 'linux' ? 'iPhone backups are made with Finder on a Mac or Apple Devices (or iTunes) on Windows.' : 'There are no iPhone or iPad backups on this computer. If the phone is not backed up to iCloud, back it up here: plug it in and use ' + (r.platform === 'darwin' ? 'Finder (choose the phone in the sidebar, then Back Up Now).' : 'Apple Devices or iTunes (choose the phone, then Back Up Now).') }));
+    else {
+      const bt = el('table');
+      bt.append(el('tr', {}, el('th', { textContent: 'Device' }), el('th', { textContent: 'Last backup' }), el('th', { textContent: 'Encrypted' })));
+      for (const b of r.backups) {
+        const age = b.date ? Math.floor((Date.now() - new Date(b.date).getTime()) / 86400000) : null;
+        bt.append(el('tr', {}, el('td', {}, el('strong', { textContent: b.name }), el('br'), el('small', { textContent: `${b.model}${b.ios ? `, iOS ${b.ios}` : ''}` })), el('td', { textContent: b.date ? `${new Date(b.date).toLocaleDateString()}${age > 30 ? ` (${age} days ago)` : ''}` : 'unknown' }), el('td', { textContent: b.encrypted === null ? 'unknown' : b.encrypted ? 'Yes' : 'No' })));
+      }
+      const ob = el('button', { className: 'ghost', textContent: 'Show the backup folder' });
+      ob.onclick = () => api.phoneOpen('backups');
+      f.holder.append(bt, el('p', { className: 'dim', textContent: 'An encrypted backup also keeps saved passwords, Wi-Fi and Health data; its password is needed to restore it. A backup more than a month old is missing recent photos and messages.' }), el('div', { className: 'toolbar' }, ob));
+    }
+    syncButtons();
+  };
 }
 
 async function showBrowserClean() {

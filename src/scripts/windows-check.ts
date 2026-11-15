@@ -143,6 +143,16 @@ async function main() {
     fail(`windows-upgrade.ps1 output: ${(e as Error).message}: ${up.stdout.slice(0, 400)} ${up.stderr.slice(0, 400)}`);
   }
 
+  // Phone helper: with no phone plugged in, the list is empty but must still be valid JSON.
+  const phones = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(psDir, 'windows-phone.ps1'), '-List'], { encoding: 'utf8', timeout: 180000 });
+  try {
+    const j = JSON.parse(phones.stdout.trim() || 'null');
+    if (!Array.isArray(j)) throw new Error('not a list');
+    console.log(`phones: ${j.length} found`);
+  } catch (e) {
+    fail(`windows-phone.ps1 -List output: ${(e as Error).message}: ${phones.stdout.slice(0, 300)} ${phones.stderr.slice(0, 300)}`);
+  }
+
   const cat = loadCatalog(defs, 'win32');
   const readOnly = cmds.filter((c) => !c.admin && !['flush-dns'].includes(c.id) && cat.commands.has(c.id)).map((c) => c.id);
   const eng = new Engine(cat, fs.mkdtempSync(path.join(os.tmpdir(), 'mk-win-')));

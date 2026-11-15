@@ -203,7 +203,10 @@ export function gvfsPhones(gvfsDir: string): PhoneSource[] {
   const out: PhoneSource[] = [];
   for (const m of mounts) {
     const root = path.join(gvfsDir, m);
-    const host = decodeURIComponent(m.replace(/^\w+:host=/, '')).replace(/_/g, ' ');
+    // gvfs names a phone Maker_Model_Serial: drop the serial and a maker repeated in the model.
+    const parts = decodeURIComponent(m.replace(/^\w+:host=/, '')).split(/[_\s]+/).filter(Boolean);
+    if (parts.length > 1 && /^(?=.*\d)[A-Za-z0-9]{8,}$/.test(parts[parts.length - 1])) parts.pop();
+    const host = parts.filter((w, i) => w.toLowerCase() !== parts[i - 1]?.toLowerCase()).join(' ');
     const kind: PhoneSource['kind'] = m.startsWith('afc') || /apple|iphone|ipad/i.test(host) ? 'iphone' : m.startsWith('mtp') ? 'android' : 'camera';
     const folders: string[] = [];
     const look = (rel: string, depth: number) => {
@@ -219,7 +222,7 @@ export function gvfsPhones(gvfsDir: string): PhoneSource[] {
       }
     };
     look('', 1);
-    if (folders.length) out.push({ id: `p${out.length}`, name: host.replace(/ ?(\d{6,}|[0-9a-f]{20,})$/i, '').trim() || 'Phone', kind, folders, root });
+    if (folders.length) out.push({ id: `p${out.length}`, name: host || 'Phone', kind, folders, root });
   }
   return out;
 }
