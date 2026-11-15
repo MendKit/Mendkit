@@ -73,7 +73,24 @@ async function main() {
     parse(e.name, e.script);
     parsed++;
   }
+  const psDir = path.join(defs, 'scripts');
+  for (const f of fs.existsSync(psDir) ? fs.readdirSync(psDir).filter((n) => n.endsWith('.ps1')) : []) {
+    parse(`definitions/scripts/${f}`, fs.readFileSync(path.join(psDir, f), 'utf8'));
+    parsed++;
+  }
   console.log(`PowerShell: ${parsed} scripts parsed`);
+
+  // Read-only scripts run for real and must print the JSON MendKit expects.
+  const startup = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(psDir, 'windows-startup.ps1')], { encoding: 'utf8', timeout: 180000 });
+  try {
+    const items = JSON.parse(startup.stdout.trim() || 'null');
+    if (!Array.isArray(items)) throw new Error('not a list');
+    const kinds = [...new Set(items.map((i: any) => i.kind))];
+    if (items.some((i: any) => !i.kind || !('enabled' in i) || !i.name)) throw new Error('an item lacks kind, name or enabled');
+    console.log(`startup items: ${items.length} found (${kinds.join(', ')})`);
+  } catch (e) {
+    fail(`windows-startup.ps1 output: ${(e as Error).message}: ${startup.stdout.slice(0, 300)} ${startup.stderr.slice(0, 300)}`);
+  }
 
   const cat = loadCatalog(defs, 'win32');
   const readOnly = cmds.filter((c) => !c.admin && !['flush-dns'].includes(c.id) && cat.commands.has(c.id)).map((c) => c.id);

@@ -280,6 +280,17 @@ function renderRepair(view) {
     }
     view.append(mt);
   }
+  if (state.info.platform === 'win32') {
+    view.append(el('h2', { textContent: 'Windows tools' }));
+    const wt = el('table');
+    wt.id = 'winTools';
+    for (const [name, desc, fn] of WIN_TOOLS) {
+      const b = el('button', { className: 'ghost', textContent: 'Open' });
+      b.onclick = () => fn();
+      wt.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, b)));
+    }
+    view.append(wt);
+  }
   if (state.info.platform === 'linux') {
     view.append(el('h2', { textContent: 'Linux tools' }));
     const lt = el('table');
@@ -842,6 +853,86 @@ async function renderPermissions(view) {
     if (!holder.isConnected) return clearInterval(permTimer);
     if (!busy && document.hasFocus()) paint();
   }, 2500);
+}
+
+// ---------- Windows tools ----------
+
+/** Filled in as each Windows tool is added: [name, description, open function]. */
+const WIN_TOOLS = [
+  ['Startup items', 'Programs, scheduled tasks and background services that start with Windows, who made each one, and a switch to turn it off or back on. Uses the same setting as Task Manager.', () => showWinStartup()],
+];
+
+async function showWinStartup() {
+  const f = macFrame('Startup items', 'Everything that starts with Windows, apart from Windows itself. Turning an item off stops it starting; the program stays installed and can be turned back on here or in Task Manager.');
+  const scan = el('button', { className: 'big', textContent: 'Scan' });
+  f.bar.append(scan, f.back);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Reading startup programs and checking who signed each one. This takes up to a minute...';
+    setProgress(0.4);
+    let r;
+    try {
+      r = await api.winStartupScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return setProgress(null);
+    }
+    setProgress(null);
+    scan.disabled = false;
+    scan.textContent = 'Scan again';
+    f.holder.replaceChildren();
+    const on = r.items.filter((i) => i.enabled);
+    const off = r.items.filter((i) => !i.enabled);
+    f.status.textContent = `${on.length} item${on.length === 1 ? '' : 's'} start with Windows${off.length ? `, and ${off.length} ${off.length === 1 ? 'is' : 'are'} turned off` : ''}.${r.elevated ? '' : ' Items for every account, scheduled tasks and services need MendKit running as administrator.'}`;
+    const picks = [];
+    const groups = [
+      ['When you sign in', (i) => i.kind === 'run' || i.kind === 'folder'],
+      ['Scheduled tasks at sign-in or start-up', (i) => i.kind === 'task'],
+      ['Background services', (i) => i.kind === 'service'],
+    ];
+    for (const [title, test] of groups) {
+      const list = on.filter(test).sort((a, b) => (a.essential === b.essential ? (a.hardware === b.hardware ? a.name.localeCompare(b.name) : a.hardware - b.hardware) : a.essential - b.essential));
+      if (!list.length) continue;
+      f.holder.append(el('h2', { textContent: title }));
+      for (const it of list) {
+        const box = el('input', { type: 'checkbox', disabled: !!it.essential });
+        if (!it.essential) picks.push({ id: it.id, box });
+        const body = el('div', {}, el('strong', { textContent: it.name }));
+        if (it.essential) body.append(el('span', { className: 'tag', textContent: 'part of Windows' }));
+        if (it.missing) body.append(el('span', { className: 'tag', textContent: 'program missing' }));
+        if (it.signed === false) body.append(el('span', { className: 'tag hot', textContent: 'not signed' }));
+        if (it.hardware) body.append(el('span', { className: 'tag', textContent: 'hardware helper' }));
+        body.append(el('ul', { className: 'found' },
+          el('li', { textContent: `Made by: ${it.signer || it.publisher || 'unknown'}` }),
+          el('li', { textContent: `Runs: ${it.file || it.command}` }),
+          el('li', { textContent: `For: ${it.scope === 'user' ? 'your account' : 'everyone on this computer'}` })));
+        if (it.missing) body.append(el('p', { className: 'dim', textContent: 'The program it starts is gone: a leftover from something uninstalled. Safe to turn off.' }));
+        if (it.hardware) body.append(el('p', { className: 'dim', textContent: 'Belongs to a hardware maker (sound, touchpad, graphics or similar). Leave it on unless you know it is not needed.' }));
+        f.holder.append(el('div', { className: 'result ' + (it.signed === false ? 'attention' : '') }, el('div', { className: 'chk' }, box), body));
+      }
+    }
+    if (picks.length) {
+      const go = el('button', { className: 'big run', textContent: 'Turn off selected' });
+      go.onclick = () => {
+        const ids = picks.filter((p) => p.box.checked).map((p) => p.id);
+        if (!ids.length) return migSafeStatus('Tick at least one item.');
+        run(async () => showResults(await api.winStartupOff(ids)));
+      };
+      f.holder.append(el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: 'Not sure what something is? Search its name before turning it off. Restart afterwards and check everything still works.' }));
+    }
+    if (off.length) {
+      f.holder.append(el('h2', { textContent: 'Turned off' }));
+      const t = el('table');
+      for (const o of off) {
+        const b = el('button', { className: 'ghost', textContent: 'Turn back on' });
+        b.onclick = () => run(async () => showResults(await api.winStartupOn([o.id])));
+        t.append(el('tr', {}, el('td', { textContent: `${o.name}${o.kind === 'service' ? ' (service)' : o.kind === 'task' ? ' (scheduled task)' : ''}` }), el('td', { className: 'act' }, b)));
+      }
+      f.holder.append(t);
+    }
+    syncButtons();
+  };
 }
 
 // ---------- Switch to Linux ----------

@@ -6,6 +6,7 @@ import { spawn } from 'child_process';
 import { Engine, toolCheckCommand, toolCommand } from '../engine/runner';
 import { Catalog, CommandDef } from '../engine/types';
 import { hasFullDiskAccess } from '../main/permissions';
+import { approvedData, regPath, startupToggle, WinStartupItem } from '../main/wintools';
 import { eolState, linuxEol, parseOsRelease, windowsEol } from '../engine/eol';
 import { linuxEquivalent, switchAdvice, vendorOf } from '../engine/switch';
 import { linuxDownloadCommand, offlineInstallCommand, offlineSupport } from '../engine/offline';
@@ -350,6 +351,18 @@ async function main(): Promise<void> {
   const lf = matchScan({ programs: [{ DisplayName: 'anydesk', UninstallString: 'pkg:apt:anydesk' }, { DisplayName: 'com.rustdesk.RustDesk', UninstallString: 'flatpak:system:com.rustdesk.RustDesk' }], processes: [], services: [{ Name: 'anydesk.service', DisplayName: 'anydesk.service', PathName: '', State: 'enabled', StartMode: 'Auto' }], files: ['/home/a/Downloads/TeamViewer_x64.AppImage', '/home/a/Downloads/photos'] }, loadRemoteTools(defs));
   assert(['anydesk', 'rustdesk', 'teamviewer'].every((id) => lf.some((f) => f.id === id)) && lf.find((f) => f.id === 'anydesk')!.services.length === 1, `Linux remote access findings wrong: ${lf.map((f) => f.id)}`);
   console.log('Linux batch: end of support, switch assistant, offline packages and remote access on Linux OK');
+
+  // Windows startup items: Task Manager's on/off data and the command for each kind of item.
+  assert(approvedData(true) === '02' + '00'.repeat(11) && approvedData(false, Date.UTC(2026, 0, 1)).length === 24 && approvedData(false).startsWith('03000000'), 'StartupApproved data wrong');
+  assert(regPath('HKCU:\\Software\\X') === 'HKCU\\Software\\X', 'registry path conversion wrong');
+  const wi = (kind: WinStartupItem['kind'], extra: Partial<WinStartupItem>): WinStartupItem => ({ id: 'w1', kind, name: 'Thing', command: '', file: '', publisher: '', signer: '', signed: true, missing: false, scope: 'user', enabled: true, ...extra });
+  const runOff = startupToggle(wi('run', { approvedKey: 'HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run', valueName: 'Thing' }), false);
+  assert(runOff.exec === 'reg.exe' && runOff.args.includes('REG_BINARY') && !runOff.admin && runOff.args[1].startsWith('HKCU\\Software'), 'Run item toggle wrong');
+  const svcOn = startupToggle(wi('service', { scope: 'all', service: 'FooSvc' }), true, true);
+  assert(svcOn.exec === 'sc.exe' && svcOn.admin && svcOn.args.join(' ') === 'config FooSvc start= delayed-auto', 'service restore wrong');
+  const taskOff = startupToggle(wi('task', { scope: 'all', taskPath: '\\Vendor\\', taskName: 'Updater' }), false);
+  assert(taskOff.args.join(' ') === '/Change /TN \\Vendor\\Updater /DISABLE', `task toggle wrong: ${taskOff.args.join(' ')}`);
+  console.log('Windows startup items: toggles OK');
 
   // Symptoms point at real recipes on every system that lists them; advisor verdicts.
   const symptoms = JSON.parse(fs.readFileSync(path.join(defs, 'symptoms.json'), 'utf8')) as { id: string; recipe: string }[];
