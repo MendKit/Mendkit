@@ -478,3 +478,9 @@ export function policyConcerns(settings: string[]): string[] {
   if (/\bCACertificates|ImportEnterpriseRoots|^Certificates = .*Install/im.test(t)) c.push('Adds trusted certificates, which can let a program read secure pages');
   return c;
 }
+
+/** cmd.exe arguments that save a registry key to a .reg file and then delete it. */
+export function regRemoveArgs(location: string, saveAs: string): string[] {
+  const key = location.replace(/^HKLM/, 'HKEY_LOCAL_MACHINE').replace(/^HKCU/, 'HKEY_CURRENT_USER');
+  return ['/d', '/c', `reg export "${key}" "${saveAs}" /y && reg delete "${key}" /f`];
+}

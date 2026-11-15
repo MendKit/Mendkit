@@ -12,6 +12,7 @@ import { loadCatalog } from '../engine/catalog';
 import { Engine } from '../engine/runner';
 import { CommandDef } from '../engine/types';
 import { winSpaceCategories } from '../engine/wintools';
+import { forcesFromRegistry, policyConcerns, regRemoveArgs } from '../engine/browsers';
 
 const root = path.join(__dirname, '..', '..');
 const defs = path.join(root, 'definitions');
@@ -109,6 +110,24 @@ async function main() {
     console.log(`startup items: ${items.length} found (${kinds.join(', ')})`);
   } catch (e) {
     fail(`windows-startup.ps1 output: ${(e as Error).message}: ${startup.stdout.slice(0, 300)} ${startup.stderr.slice(0, 300)}`);
+  }
+
+  // Browser cleanup: a made-up adware policy in this account's registry is found, read and removed.
+  try {
+    const key = 'HKCU\\SOFTWARE\\Policies\\Google\\Chrome';
+    const id = 'abcdefghijklmnopabcdefghijklmnop';
+    spawnSync('reg.exe', ['add', key, '/v', 'HomepageLocation', '/t', 'REG_SZ', '/d', 'http://search.example/', '/f']);
+    spawnSync('reg.exe', ['add', `${key}\\ExtensionInstallForcelist`, '/v', '1', '/t', 'REG_SZ', '/d', `${id};https://clients2.google.com/service/update2/crx`, '/f']);
+    const pol = spawnSync('reg.exe', ['query', 'HKCU\\SOFTWARE\\Policies', '/s'], { encoding: 'utf8' }).stdout;
+    const found = forcesFromRegistry('HKCU', pol, '').find((f) => f.browser === 'Google Chrome');
+    if (!found || !found.extensionIds.includes(id) || policyConcerns(found.settings).length < 2) throw new Error(`policy not read: ${JSON.stringify(found)} ${pol.slice(0, 400)}`);
+    const saveAs = path.join(os.tmpdir(), 'mk-policy.reg');
+    const rm = spawnSync('cmd.exe', regRemoveArgs(found.location, saveAs), { encoding: 'utf8' });
+    const left = spawnSync('reg.exe', ['query', key], { encoding: 'utf8' });
+    if (rm.status !== 0 || left.status === 0 || !fs.existsSync(saveAs)) throw new Error(`policy not removed: ${rm.stdout} ${rm.stderr}`);
+    console.log(`browser cleanup: found ${found.settings.length} policy settings, removed them and saved ${fs.statSync(saveAs).size} bytes`);
+  } catch (e) {
+    fail(`browser policy: ${(e as Error).message}`);
   }
 
   const cat = loadCatalog(defs, 'win32');

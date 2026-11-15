@@ -17,6 +17,7 @@ import {
   policyConcerns,
   readChromiumProfile,
   readFirefoxProfile,
+  regRemoveArgs,
   removeChromiumExtensions,
   removeChromiumNotifications,
   removeFirefoxExtensions,
@@ -201,7 +202,6 @@ export function registerBrowsers(ctx: { engine: Engine }): void {
     }
 
     const pickedForces = forces.filter((f) => (pick.forces ?? []).includes(f.id) && f.removable);
-    const reg = (loc: string) => loc.replace(/^HKLM/, 'HKEY_LOCAL_MACHINE').replace(/^HKCU/, 'HKEY_CURRENT_USER');
     for (const f of pickedForces) {
       const what = f.kind === 'policy' ? `${f.browser} policy` : `${f.browser} extension installed by another program`;
       if (f.where === 'registry') {
@@ -209,7 +209,7 @@ export function registerBrowsers(ctx: { engine: Engine }): void {
         const saveAs = path.join(qdir, `${f.id.replace(/[^\w-]+/g, '_')}.reg`);
         steps.push({
           id: `force-${f.id}`, name: `Remove ${what}`, description: '', admin: f.admin, typicalMinutes: 1,
-          exec: 'cmd.exe', args: ['/d', '/c', `reg export "${reg(f.location)}" "${saveAs}" /y && reg delete "${reg(f.location)}" /f`],
+          exec: 'cmd.exe', args: regRemoveArgs(f.location, saveAs),
           friendly: { title: `Remove ${what}`, ok: `Removed. A copy was saved as ${saveAs}; double-click it to put it back.`, problem: `It could not be removed. If this computer belongs to a workplace or school, it may be managed on purpose.` },
         });
       } else {
