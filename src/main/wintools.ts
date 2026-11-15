@@ -1,9 +1,14 @@
-import { app, ipcMain } from 'electron';
+import { app, ipcMain, shell } from 'electron';
+import * as os from 'os';
 import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { Engine } from '../engine/runner';
-import { CommandDef, RunSummary } from '../engine/types';
+import { RunSummary } from '../engine/types';
+import { ESSENTIAL, HARDWARE, human, SpaceCategory, startupToggle, winSpaceCategories, WinStartupItem } from '../engine/wintools';
+
+export { approvedData, regPath, startupToggle, winSpaceCategories } from '../engine/wintools';
+export type { WinStartupItem } from '../engine/wintools';
 import { isElevated } from './system';
 
 /**
@@ -11,59 +16,6 @@ import { isElevated } from './system';
  * Startup items are turned off the way Task Manager does it (StartupApproved), so they show as
  * Disabled there too and can be turned back on from either place.
  */
-
-export interface WinStartupItem {
-  id: string;
-  kind: 'run' | 'folder' | 'task' | 'service';
-  name: string;
-  command: string;
-  file: string;
-  publisher: string;
-  signer: string;
-  signed: boolean | null;
-  missing: boolean;
-  scope: 'user' | 'all';
-  enabled: boolean;
-  approvedKey?: string;
-  valueName?: string;
-  taskPath?: string;
-  taskName?: string;
-  service?: string;
-  delayed?: boolean;
-  /** Needed by Windows itself: listed, never offered. */
-  essential?: boolean;
-  /** Belongs to a hardware maker (audio, touchpad, graphics). */
-  hardware?: boolean;
-}
-
-const ESSENTIAL = /^(SecurityHealth|WindowsDefender|Windows Security notification icon|ctfmon)$/i;
-const HARDWARE = /\b(Intel|Realtek|NVIDIA|AMD|Advanced Micro|Synaptics|ELAN|Dell|HP|Hewlett|Lenovo|ASUS|ASUSTeK|Acer|Logitech|Conexant|Dolby|Waves|Microchip|Qualcomm|MediaTek|Alps|Cirrus)\b/i;
-
-/** "HKCU:\Software\..." to the form reg.exe takes. */
-export const regPath = (psPath: string): string => psPath.replace(/^(HKCU|HKLM):\\/, '$1\\');
-
-/** StartupApproved data: 02 = on; 03 plus the time it was turned off = off. */
-export function approvedData(on: boolean, now = Date.now()): string {
-  if (on) return '02' + '00'.repeat(11);
-  let ft = BigInt(now) * 10000n + 116444736000000000n;
-  let hex = '';
-  for (let i = 0; i < 8; i++) {
-    hex += Number(ft & 0xffn).toString(16).padStart(2, '0');
-    ft >>= 8n;
-  }
-  return '03000000' + hex;
-}
-
-/** The command that turns one startup item off or back on. */
-export function startupToggle(it: WinStartupItem, on: boolean, previousDelayed = false): CommandDef {
-  const label = `${on ? 'Turn on' : 'Turn off'} ${it.name}`;
-  const base = { id: `${on ? 'on' : 'off'}-${it.id}`, name: label, description: '', typicalMinutes: 1, admin: it.scope === 'all' };
-  const friendly = { title: it.name, ok: on ? `${it.name} will start again.` : `${it.name} will no longer start. It is not uninstalled, and Turn back on undoes this.`, problem: `${it.name} could not be changed.` };
-  if (it.kind === 'run' || it.kind === 'folder')
-    return { ...base, exec: 'reg.exe', args: ['add', regPath(it.approvedKey!), '/v', it.valueName!, '/t', 'REG_BINARY', '/d', approvedData(on), '/f'], friendly };
-  if (it.kind === 'task') return { ...base, admin: true, exec: 'schtasks.exe', args: ['/Change', '/TN', `${it.taskPath}${it.taskName}`, on ? '/ENABLE' : '/DISABLE'], friendly };
-  return { ...base, admin: true, exec: 'sc.exe', args: ['config', it.service!, 'start=', on ? (previousDelayed ? 'delayed-auto' : 'auto') : 'demand'], friendly: { ...friendly, ok: on ? `${it.name} starts with the computer again.` : `${it.name} no longer starts with the computer. It still starts when a program needs it.` } };
-}
 
 const run = (file: string, timeout = 120000): Promise<string> =>
   new Promise((resolve) =>
@@ -125,6 +77,45 @@ export function registerWinTools(ctx: { engine: Engine }): void {
     fs.writeFileSync(journal, JSON.stringify(j, null, 2));
     return summary;
   };
+  // ---------- Free up space ----------
+  let space: (SpaceCategory & { bytes: number | null })[] = [];
+  let spacePaths: Record<string, string> = {};
+  ipcMain.handle('win-space-scan', async () => {
+    if (!win) notWin();
+    let r: any;
+    try {
+      r = JSON.parse((await run(path.join(scripts, 'windows-space.ps1'), 600000)).trim());
+    } catch {
+      throw new Error('The drive could not be measured.');
+    }
+    const cats = winSpaceCategories({ local: process.env.LOCALAPPDATA ?? '', temp: process.env.TEMP ?? '' });
+    space = cats.map((c) => ({ ...c, bytes: c.id === 'component' ? null : Number(r.sizes?.[c.id] ?? 0) })).filter((c) => c.bytes === null || c.bytes > 1024 * 1024);
+    if (!r.hibernate) space = space.filter((c) => c.id !== 'hiber');
+    spacePaths = { downloads: String(r.downloadsPath ?? '') };
+    // Each iPhone or iPad backup on its own, with its device name and date.
+    const ios = (Array.isArray(r.ios) ? r.ios : r.ios ? [r.ios] : []).filter((b: any) => Number(b.bytes) > 0);
+    ios.forEach((b: any, i: number) => {
+      const id = `ios-${i}`;
+      const when = b.date ? new Date(b.date).toLocaleDateString() : 'unknown date';
+      space.push({ id, name: `Backup of ${b.name || 'an iPhone or iPad'}`, detail: `Made ${when}. Delete only if the device is backed up to iCloud or no longer used.`, preset: false, bytes: Number(b.bytes), step: { id: `space-${id}`, name: `Delete the backup of ${b.name || 'a device'}`, admin: false, ok: 'The backup was deleted.', problem: 'The backup could not be deleted.', action: async () => (fs.rmSync(String(b.path), { recursive: true, force: true }), { ok: true }) } });
+    });
+    const large = (Array.isArray(r.large) ? r.large : r.large ? [r.large] : []).map((x: any) => ({ path: String(x.path), size: Number(x.bytes), label: `${x.path} (${human(Number(x.bytes))})` }));
+    return {
+      items: space.map(({ step: _s, ...c }) => ({ ...c, size: c.bytes === null ? 'unknown' : human(c.bytes), reportOnly: !_s })),
+      large, free: human(Number(r.free)), total: human(Number(r.total)), downloads: spacePaths.downloads,
+    };
+  });
+  ipcMain.handle('win-reveal', (_e, p: string) => {
+    if (typeof p !== 'string' || !p.toLowerCase().startsWith(os.homedir().toLowerCase())) throw new Error('Bad path');
+    shell.showItemInFolder(p);
+  });
+  ipcMain.handle('win-space-clean', async (_e, ids: string[]): Promise<RunSummary> => {
+    if (!win) notWin();
+    const pick = space.filter((c) => ids.includes(c.id) && c.step);
+    if (!pick.length) throw new Error('Nothing was selected.');
+    return engine.runSteps('win-space', 'Free up space', 'command', pick.map((c) => c.step!), opts());
+  });
+
   ipcMain.handle('win-startup-off', (_e, ids: string[]) => toggle(ids, false));
   ipcMain.handle('win-startup-on', (_e, ids: string[]) => toggle(ids, true));
 }

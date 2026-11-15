@@ -6,7 +6,7 @@ import { spawn } from 'child_process';
 import { Engine, toolCheckCommand, toolCommand } from '../engine/runner';
 import { Catalog, CommandDef } from '../engine/types';
 import { hasFullDiskAccess } from '../main/permissions';
-import { approvedData, regPath, startupToggle, WinStartupItem } from '../main/wintools';
+import { approvedData, regPath, startupToggle, winSpaceCategories, WinStartupItem } from '../engine/wintools';
 import { eolState, linuxEol, parseOsRelease, windowsEol } from '../engine/eol';
 import { linuxEquivalent, switchAdvice, vendorOf } from '../engine/switch';
 import { linuxDownloadCommand, offlineInstallCommand, offlineSupport } from '../engine/offline';
@@ -362,7 +362,12 @@ async function main(): Promise<void> {
   assert(svcOn.exec === 'sc.exe' && svcOn.admin && svcOn.args.join(' ') === 'config FooSvc start= delayed-auto', 'service restore wrong');
   const taskOff = startupToggle(wi('task', { scope: 'all', taskPath: '\\Vendor\\', taskName: 'Updater' }), false);
   assert(taskOff.args.join(' ') === '/Change /TN \\Vendor\\Updater /DISABLE', `task toggle wrong: ${taskOff.args.join(' ')}`);
-  console.log('Windows startup items: toggles OK');
+  const cats = winSpaceCategories({ local: '/nonexistent', temp: '/nonexistent' });
+  assert(new Set(cats.map((c) => c.id)).size === cats.length, 'two space categories share an id');
+  const userLevel = cats.filter((c) => c.step && !c.step.admin).map((c) => c.id).sort().join();
+  assert(userLevel === 'browser,recycle,thumbs,user-temp', `only your own files should clear without administrator: ${userLevel}`);
+  assert(cats.filter((c) => c.preset).every((c) => !['recycle', 'dumps', 'win-old', 'hiber', 'component', 'downloads'].includes(c.id)), 'a risky category is ticked by default');
+  console.log('Windows startup items and free up space: OK');
 
   // Symptoms point at real recipes on every system that lists them; advisor verdicts.
   const symptoms = JSON.parse(fs.readFileSync(path.join(defs, 'symptoms.json'), 'utf8')) as { id: string; recipe: string }[];

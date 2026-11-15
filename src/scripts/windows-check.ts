@@ -11,6 +11,7 @@ import * as path from 'path';
 import { loadCatalog } from '../engine/catalog';
 import { Engine } from '../engine/runner';
 import { CommandDef } from '../engine/types';
+import { winSpaceCategories } from '../engine/wintools';
 
 const root = path.join(__dirname, '..', '..');
 const defs = path.join(root, 'definitions');
@@ -78,9 +79,27 @@ async function main() {
     parse(`definitions/scripts/${f}`, fs.readFileSync(path.join(psDir, f), 'utf8'));
     parsed++;
   }
+  // Cleanup commands built in code (Free up space).
+  for (const c of winSpaceCategories({ local: process.env.LOCALAPPDATA ?? '', temp: process.env.TEMP ?? '' })) {
+    const st = c.step as CommandDef | null;
+    if (st && 'exec' in st && /powershell/i.test(st.exec)) {
+      parse(`free up space: ${c.id}`, st.args[st.args.indexOf('-Command') + 1]);
+      parsed++;
+    }
+  }
   console.log(`PowerShell: ${parsed} scripts parsed`);
 
   // Read-only scripts run for real and must print the JSON MendKit expects.
+  const space = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(psDir, 'windows-space.ps1')], { encoding: 'utf8', timeout: 600000 });
+  try {
+    const r = JSON.parse(space.stdout.trim() || 'null');
+    const ids = winSpaceCategories({ local: '', temp: '' }).map((c) => c.id).filter((id) => id !== 'component');
+    const missing = ids.filter((id) => !(id in (r?.sizes ?? {})));
+    if (missing.length || !(Number(r.total) > 0)) throw new Error(`sizes missing for ${missing.join(', ')}`);
+    console.log(`free up space: measured ${ids.length} categories, ${Object.entries(r.sizes).map(([k, v]) => `${k} ${Math.round(Number(v) / 1048576)} MB`).join(', ')}`);
+  } catch (e) {
+    fail(`windows-space.ps1 output: ${(e as Error).message}: ${space.stdout.slice(0, 300)} ${space.stderr.slice(0, 300)}`);
+  }
   const startup = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(psDir, 'windows-startup.ps1')], { encoding: 'utf8', timeout: 180000 });
   try {
     const items = JSON.parse(startup.stdout.trim() || 'null');

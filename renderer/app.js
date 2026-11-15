@@ -861,7 +861,68 @@ async function renderPermissions(view) {
 /** Filled in as each Windows tool is added: [name, description, open function]. */
 const WIN_TOOLS = [
   ['Startup items', 'Programs, scheduled tasks and background services that start with Windows, who made each one, and a switch to turn it off or back on. Uses the same setting as Task Manager.', () => showWinStartup()],
+  ['Free up space', 'Measure temporary files, downloaded updates, upgrade leftovers, browser caches, old iPhone backups, Windows.old and large files, then choose what to delete.', () => showWinSpace()],
 ];
+
+async function showWinSpace() {
+  const f = macFrame('Free up space', 'Measures what can safely go. Nothing is deleted until you tick it and press Delete. Run MendKit as administrator so Windows\' own files can be cleared too.');
+  const scan = el('button', { className: 'big', textContent: 'Measure' });
+  f.bar.append(scan, f.back);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Measuring. A full drive can take a few minutes...';
+    setProgress(0.4);
+    let r;
+    try {
+      r = await api.winSpaceScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return setProgress(null);
+    }
+    setProgress(null);
+    scan.disabled = false;
+    scan.textContent = 'Measure again';
+    f.holder.replaceChildren();
+    f.status.textContent = `${r.free} free of ${r.total}.`;
+    const picks = [];
+    const t = el('table');
+    for (const it of r.items) {
+      const cell = el('td', { className: 'act' });
+      if (it.reportOnly) {
+        const b = el('button', { className: 'ghost', textContent: 'Show' });
+        b.onclick = () => api.winReveal(r.downloads);
+        cell.append(b);
+      } else {
+        const box = el('input', { type: 'checkbox', checked: it.preset });
+        picks.push({ id: it.id, box });
+        cell.append(box);
+      }
+      t.append(el('tr', {}, el('td', {}, el('strong', { textContent: it.name }), el('br'), el('small', { textContent: it.detail })), el('td', { textContent: it.size }), cell));
+    }
+    if (!r.items.length) f.holder.append(el('p', { className: 'lead', textContent: 'Nothing large enough to bother with was found.' }));
+    else {
+      const go = el('button', { className: 'big run', textContent: 'Delete selected' });
+      go.onclick = () => {
+        const ids = picks.filter((p) => p.box.checked).map((p) => p.id);
+        if (!ids.length) return migSafeStatus('Tick at least one item to delete.');
+        run(async () => showResults(await api.winSpaceClean(ids)));
+      };
+      f.holder.append(t, el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: 'Deleted files do not go to the Recycle Bin. Close browsers before clearing their caches. Windows.old and upgrade leftovers are cleared by Windows\' own Disk Cleanup, which shows its own progress window.' }));
+    }
+    if (r.large.length) {
+      f.holder.append(el('h2', { textContent: 'Large files' }), el('p', { className: 'dim', textContent: 'Files over 1 GB in your folders. Look at each yourself; MendKit will not delete them.' }));
+      const lt = el('table');
+      for (const x of r.large) {
+        const b = el('button', { className: 'ghost', textContent: 'Show in folder' });
+        b.onclick = () => api.winReveal(x.path);
+        lt.append(el('tr', {}, el('td', { textContent: x.label }), el('td', { className: 'act' }, b)));
+      }
+      f.holder.append(lt);
+    }
+    syncButtons();
+  };
+}
 
 async function showWinStartup() {
   const f = macFrame('Startup items', 'Everything that starts with Windows, apart from Windows itself. Turning an item off stops it starting; the program stays installed and can be turned back on here or in Task Manager.');
