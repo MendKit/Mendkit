@@ -33,4 +33,28 @@ G('win-security', GR, 'Securing a Windows computer', 'Checking antivirus, firewa
   S('Secure Boot: turn it on in the computer\'s firmware settings (usually F2 or Del at start-up, under Boot or Security).')]),
  sec('After a scam', ['Run the remote access audit and Pop-ups or strange behaviour as well. See "Staying safe: scams and fake support".'])],
  systems=W, time='10 minutes', level='Easy', screen='dashboard', related=['basics-safety', 'remote-audit', 'mk-win-tools']),
+G('win11-upgrade', GR, 'Upgrading to Windows 11', 'Checking whether a Windows 10 computer can run Windows 11, fixing what can be fixed, and doing the upgrade without losing anything.', [
+ sec('Before you start', [
+  S('Back up the person\'s files first: Migrate, Back up to a drive.', tip='The upgrade keeps files, apps and settings, but a power cut or a failing drive in the middle can lose them.'),
+  S('Restart MendKit as administrator (Dashboard, Restart as administrator, then Yes).', tip='Without it, the security chip (TPM), the start-up mode and BitLocker cannot be read.'),
+  'Plug a laptop into power. Allow about an hour for the upgrade itself.']),
+ sec('Check', [
+  S('Open the Windows 11 upgrade: from the Dashboard notice, or tick Technician mode, open Repair, and click Open beside Windows 11 upgrade under Windows tools.', see='After a few seconds: one line per requirement, each green, amber or red, with a button where something can be fixed.'),
+  S('Read "Windows\' own check" first.', see='This is the same answer Windows Update uses. If it says Windows has not checked yet, click Ask Windows to check and wait a few minutes.'),
+  S('Read the rest.', tip='A red line with a button can be fixed. A red line without one (an old processor, too little memory) is the hardware itself.')], 'steps'),
+ sec('Fixes', [
+  S('No TPM found, on a newer processor: click Restart into firmware settings, then click it again.', see='The computer restarts into its firmware (BIOS) settings in 10 seconds.', tip='Look under Security, Advanced or Trusted Computing for Intel PTT, AMD fTPM, Security Device Support or TPM, and set it to Enabled. Save and exit, usually with F10.'),
+  S('Old BIOS (Legacy) start-up on an MBR drive: click Convert the drive to GPT, then click it again.', warn='After converting, the computer will not start until the firmware is switched to UEFI. Have the BitLocker recovery key ready if the drive is encrypted. Microsoft\'s tool checks first and changes nothing if it is not safe.', see='The result says Converted. Then click Restart into firmware settings, set Boot Mode to UEFI and turn off CSM or Legacy Support, and turn on Secure Boot. Save and exit.'),
+  S('Not enough free space: click Free up space. The upgrade needs about 30 GB.'),
+  S('After any fix, click Check again at the top, and Ask Windows to check for Windows\' own answer.')], 'steps'),
+ sec('Upgrade', [
+  S('When the top says the computer is ready, click Start the upgrade.', see='MendKit downloads Microsoft\'s Windows 11 Installation Assistant, checks that Microsoft signed it, and opens it.'),
+  S('In the Installation Assistant, click Accept and install.', see='It downloads Windows 11, prepares it, then asks to restart. The computer restarts a few times; the screen says not to turn it off.'),
+  S('Sign in when it is done and check the person\'s files, email and printer.', tip='For 10 days, Settings, System, Recovery, Go back returns to Windows 10.')], 'steps'),
+ sec('If the computer cannot run Windows 11', [
+  'Keep Windows 10 with Extended Security Updates: free for home computers until 12 October 2027. Open Windows Update and click Enroll now. It may ask to sign in with a Microsoft account or turn on Windows Backup.',
+  'Switch to Linux with the Switch to Linux assistant: free and supported for years.',
+  S('Upgrade anyway: when the only problem is the processor (and the computer has at least a TPM 1.2 chip), click Allow the upgrade, then get the Windows 11 ISO from the ISO Library, open it and run setup.exe.', warn='Microsoft does not support this. The computer may not get every update, and a desktop watermark may appear. Back up first.'),
+  'Or replace the computer. "Is this computer worth fixing?" on the Dashboard weighs it up.'])],
+ systems=W, time='15 minutes, plus an hour for the upgrade', level='Takes care', screen='repair', related=['win-security', 'mk-win-tools', 'mk-drive-backup']),
 ]

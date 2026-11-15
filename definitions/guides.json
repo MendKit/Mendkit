@@ -2312,6 +2312,103 @@
   ]
  },
  {
+  "id": "win11-upgrade",
+  "group": "Windows",
+  "title": "Upgrading to Windows 11",
+  "summary": "Checking whether a Windows 10 computer can run Windows 11, fixing what can be fixed, and doing the upgrade without losing anything.",
+  "systems": "Windows 10 and 11",
+  "time": "15 minutes, plus an hour for the upgrade",
+  "level": "Takes care",
+  "screen": "repair",
+  "related": [
+   "win-security",
+   "mk-win-tools",
+   "mk-drive-backup"
+  ],
+  "sections": [
+   {
+    "heading": "Before you start",
+    "steps": [
+     {
+      "t": "Back up the person's files first: Migrate, Back up to a drive.",
+      "tip": "The upgrade keeps files, apps and settings, but a power cut or a failing drive in the middle can lose them."
+     },
+     {
+      "t": "Restart MendKit as administrator (Dashboard, Restart as administrator, then Yes).",
+      "tip": "Without it, the security chip (TPM), the start-up mode and BitLocker cannot be read."
+     },
+     "Plug a laptop into power. Allow about an hour for the upgrade itself."
+    ]
+   },
+   {
+    "heading": "Check",
+    "steps": [
+     {
+      "t": "Open the Windows 11 upgrade: from the Dashboard notice, or tick Technician mode, open Repair, and click Open beside Windows 11 upgrade under Windows tools.",
+      "see": "After a few seconds: one line per requirement, each green, amber or red, with a button where something can be fixed."
+     },
+     {
+      "t": "Read \"Windows' own check\" first.",
+      "see": "This is the same answer Windows Update uses. If it says Windows has not checked yet, click Ask Windows to check and wait a few minutes."
+     },
+     {
+      "t": "Read the rest.",
+      "tip": "A red line with a button can be fixed. A red line without one (an old processor, too little memory) is the hardware itself."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Fixes",
+    "steps": [
+     {
+      "t": "No TPM found, on a newer processor: click Restart into firmware settings, then click it again.",
+      "see": "The computer restarts into its firmware (BIOS) settings in 10 seconds.",
+      "tip": "Look under Security, Advanced or Trusted Computing for Intel PTT, AMD fTPM, Security Device Support or TPM, and set it to Enabled. Save and exit, usually with F10."
+     },
+     {
+      "t": "Old BIOS (Legacy) start-up on an MBR drive: click Convert the drive to GPT, then click it again.",
+      "see": "The result says Converted. Then click Restart into firmware settings, set Boot Mode to UEFI and turn off CSM or Legacy Support, and turn on Secure Boot. Save and exit.",
+      "warn": "After converting, the computer will not start until the firmware is switched to UEFI. Have the BitLocker recovery key ready if the drive is encrypted. Microsoft's tool checks first and changes nothing if it is not safe."
+     },
+     "Not enough free space: click Free up space. The upgrade needs about 30 GB.",
+     "After any fix, click Check again at the top, and Ask Windows to check for Windows' own answer."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Upgrade",
+    "steps": [
+     {
+      "t": "When the top says the computer is ready, click Start the upgrade.",
+      "see": "MendKit downloads Microsoft's Windows 11 Installation Assistant, checks that Microsoft signed it, and opens it."
+     },
+     {
+      "t": "In the Installation Assistant, click Accept and install.",
+      "see": "It downloads Windows 11, prepares it, then asks to restart. The computer restarts a few times; the screen says not to turn it off."
+     },
+     {
+      "t": "Sign in when it is done and check the person's files, email and printer.",
+      "tip": "For 10 days, Settings, System, Recovery, Go back returns to Windows 10."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "If the computer cannot run Windows 11",
+    "steps": [
+     "Keep Windows 10 with Extended Security Updates: free for home computers until 12 October 2027. Open Windows Update and click Enroll now. It may ask to sign in with a Microsoft account or turn on Windows Backup.",
+     "Switch to Linux with the Switch to Linux assistant: free and supported for years.",
+     {
+      "t": "Upgrade anyway: when the only problem is the processor (and the computer has at least a TPM 1.2 chip), click Allow the upgrade, then get the Windows 11 ISO from the ISO Library, open it and run setup.exe.",
+      "warn": "Microsoft does not support this. The computer may not get every update, and a desktop watermark may appear. Back up first."
+     },
+     "Or replace the computer. \"Is this computer worth fixing?\" on the Dashboard weighs it up."
+    ]
+   }
+  ]
+ },
+ {
   "id": "mac-safe-mode",
   "group": "Mac",
   "title": "Start a Mac in Safe Mode",
