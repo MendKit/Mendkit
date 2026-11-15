@@ -417,4 +417,29 @@ G('mk-browsers',GR,'Browser cleanup','Removing unwanted extensions, notification
   'Scan again: a policy may have been added after the first scan.']),
  sec('Putting something back',['The old browser settings files and removed extension files are kept. Open Undo Center and click Put back beside the item, with the browser closed. On Windows, a removed policy is saved as a .reg file in the same folder; double-click it to put it back.'])],
  systems=ALL, time='10 minutes', level='Easy', screen='repair', related=['mk-undo','basics-safety','remote-audit']),
+G('mk-recover',GR,'Recover deleted files','Getting back deleted photos and documents: the quick places first, then a deep search of the drive or memory card.',[
+ sec('Right away',[
+  S('Stop using the drive the files were on.',warn='Every file saved to it from now on can overwrite what you want back: downloads, installs, updates, even web browsing. For a memory card or USB drive, take it out and keep it aside.'),
+  'Have a second drive ready to save recovered files to, such as a USB drive with at least as much free space as the files you are looking for.']),
+ sec('Look in the quick places',[
+  S('Tick Technician mode at the bottom left, open Repair, and click Open beside Recover deleted files under Cleanup and recovery.',see='Look here first lists the places on this computer where a deleted file may still be whole, with its name and folder.'),
+  S('Recycle Bin or Trash: click the open button, find the file, then right-click it and choose Restore (Windows and Linux) or Put Back (Mac).'),
+  S('Previous Versions (Windows): open the folder the file was in, right-click an empty part of the window, choose Properties, then the Previous Versions tab. Pick a date and click Open, then copy the file out.',tip='MendKit shows how many saved copies there are when it runs as administrator. None saved means this will not help.'),
+  S('File History (Windows), Time Machine (Mac) or Timeshift (Linux): plug the backup drive in, open it with the button, go back to a date when the file was there and restore it.'),
+  S('OneDrive, iCloud Drive or Google Drive: deleted files stay in the online recycle bin for about 30 days. Sign in on the website and look there.')],'steps'),
+ sec('Search the drive with PhotoRec',[
+  S('If MendKit says PhotoRec is not installed, click Install PhotoRec.',see='The bottom panel shows the install. It is free and open source, and is installed on this computer, not the drive being searched.'),
+  S('Under 1, choose the drive the files were on.',tip='A memory card or USB drive shows as removable. A drive marked "SSD inside the computer" gives a low chance: SSDs wipe deleted space within minutes.'),
+  S('Under 2, tick the kinds of files to look for.',tip='Photos and Documents are ticked to start with. Everything finds many more files and takes longer.'),
+  S('Tick "Search the whole drive" only if the card or drive was formatted, or the computer says it needs formatting.'),
+  S('Under 3, click Choose a folder and pick a folder on a different drive.',warn='MendKit refuses a folder on the drive being searched, because saving there would overwrite the files being recovered.'),
+  S('Click Start searching.',see='On Windows, restart MendKit as administrator first. On a Mac or Linux, MendKit asks for your password. The bottom panel shows how many files have been found so far.',tip='A memory card takes a few minutes; a large hard drive can take several hours. Cancel stops it, and files found up to then are kept.'),
+  S('When it finishes, click Open the recovered files.',see='A folder called "Recovered files" with the date, holding Photos, Documents, Videos, Music and Other folders.')],'steps'),
+ sec('Going through the results',[
+  'Recovered files have new names such as f0012345.jpg, and folders are not kept. Use the picture view in File Explorer or Finder to look through photos quickly.',
+  'Some files will be old, from long before, or only partly readable because part of them was overwritten. That is normal.',
+  'Copy the ones the person wants to keep to their usual folder, then the rest can be deleted.',
+  'On a Mac, the built-in drive is encrypted and clears deleted space, so only Time Machine or iCloud can bring files back from it. The search is for USB drives and memory cards.']),
+ sec('When to stop',['If the drive clicks, is not seen at all, or the files are valuable and the search finds nothing, stop. A drive that is failing gets worse every time it runs. A professional data recovery service can often still help.'])],
+ systems=ALL, time='10 minutes to several hours', level='Takes care', screen='repair', related=['testdisk','mk-drive-backup','mk-old-drive']),
 ]
