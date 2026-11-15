@@ -42,4 +42,4 @@ jobs:
       - run: npx tsc -p tsconfig.json
       - run: node dist/scripts/distro-check.js
       - run: brew install testdisk
-      - run: sudo -E node dist/scripts/recover-check.js
+      - run: node dist/scripts/recover-check.js

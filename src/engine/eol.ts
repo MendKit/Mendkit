@@ -45,11 +45,23 @@ export function linuxEol(osRelease: Record<string, string>): EolInfo {
   return { name, ends: null, advice: '' };
 }
 
-/** Windows 10 left support on 14 October 2025 (Extended Security Updates aside). */
-export function windowsEol(build: number): EolInfo {
-  return build > 0 && build < 22000
-    ? { name: 'Windows 10', ends: '2025-10-14', advice: 'Upgrade to Windows 11 if the computer qualifies, or switch to Linux with the Switch to Linux assistant.' }
-    : { name: 'Windows 11', ends: null, advice: '' };
+/** Windows 11 Home and Pro get 24 months per yearly version, Enterprise and Education 36. */
+const WIN11_HOME: Record<string, string> = { '21H2': '2023-10-10', '22H2': '2024-10-08', '23H2': '2025-11-11', '24H2': '2026-10-13', '25H2': '2027-10-12' };
+const WIN11_ENT: Record<string, string> = { '21H2': '2024-10-08', '22H2': '2025-10-14', '23H2': '2026-11-10', '24H2': '2027-10-12', '25H2': '2028-10-10' };
+/** Free consumer Extended Security Updates for Windows 10 22H2 (extended in June 2026). */
+export const WIN10_ESU_ENDS = '2027-10-12';
+
+/**
+ * Windows 10 left support on 14 October 2025; enrolled computers get security updates through ESU until
+ * WIN10_ESU_ENDS. Windows 11 support depends on the yearly version and the edition.
+ */
+export function windowsEol(build: number, version = '', edition = ''): EolInfo & { esuEnds?: string } {
+  if (build > 0 && build < 22000)
+    return { name: 'Windows 10', ends: '2025-10-14', esuEnds: WIN10_ESU_ENDS, advice: 'Upgrade to Windows 11 if the computer qualifies, or switch to Linux with the Switch to Linux assistant. Until then, Extended Security Updates keep it safe: turn them on in Settings, Windows Update.' };
+  const v = version.toUpperCase();
+  const ent = /Enterprise|Education/i.test(edition);
+  const ends = (ent ? WIN11_ENT : WIN11_HOME)[v] ?? null;
+  return { name: v ? `Windows 11 ${v}` : 'Windows 11', ends, advice: ends ? 'Install the newest version of Windows 11 from Windows Update (Windows 11 upgrade in Repair).' : '' };
 }
 
 /** 'ended', 'soon' (within 6 months) or 'ok'. */

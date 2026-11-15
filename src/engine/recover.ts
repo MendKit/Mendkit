@@ -25,14 +25,15 @@ export const RECOVER_GROUPS: RecoverGroup[] = [
 ];
 
 /**
- * PhotoRec's command line. The device is one volume (a partition, a USB stick or a memory card), so the
- * partition table is "none". Free space only finds deleted files; the whole volume is for a card or drive
- * that was formatted or will not open.
+ * PhotoRec's command line. On Mac and Linux the device is one volume (a partition, a USB stick or a memory
+ * card), so the partition table is "none". Windows' PhotoRec cannot read a drive letter directly, so there it
+ * is the whole disk plus the partition's number. Free space only finds deleted files; the whole volume is
+ * for a card or drive that was formatted or will not open.
  */
-export function photorecArgs(device: string, dest: string, groups: string[], whole: boolean): string[] {
+export function photorecArgs(device: string, dest: string, groups: string[], whole: boolean, partition = 'partition_none'): string[] {
   const fams = [...new Set(RECOVER_GROUPS.filter((g) => groups.includes(g.id)).flatMap((g) => g.families))];
   const fileopt = groups.includes('everything') || !fams.length ? [] : ['fileopt', 'everything', 'disable', ...fams.flatMap((f) => [f, 'enable'])];
-  const opts = ['partition_none', 'options', 'keep_corrupted_file_no', ...fileopt, whole ? 'wholespace' : 'freespace', 'search'];
+  const opts = [partition, 'options', 'keep_corrupted_file_no', ...fileopt, whole ? 'wholespace' : 'freespace', 'search'];
   return ['/log', '/d', path.join(dest, 'recup_dir'), '/cmd', device, opts.join(',')];
 }
 
@@ -126,8 +127,10 @@ export function findPhotorec(platform: string, env: Record<string, string | unde
 }
 
 export interface RecoverVolume {
-  /** What PhotoRec is given: /dev/sdb1, /dev/rdisk4s1 or \\.\E: */
+  /** What PhotoRec is given: /dev/sdb1, /dev/rdisk4s1, or \\.\PhysicalDrive1 on Windows */
   device: string;
+  /** PhotoRec's partition choice: its number on the disk (Windows), or partition_none for a volume. */
+  partition: string;
   label: string;
   size: number;
   fs: string;
@@ -156,6 +159,7 @@ export function linuxVolumes(json: string): RecoverVolume[] {
         const removable = truthy(theDisk?.rm) || truthy(theDisk?.hotplug) || theDisk?.tran === 'usb';
         out.push({
           device: d.path,
+          partition: 'partition_none',
           label: d.label ?? '',
           size: Number(d.size) || 0,
           fs: d.fstype,
@@ -181,11 +185,14 @@ export function windowsVolumes(json: string, systemDrive = 'C:'): RecoverVolume[
     return [];
   }
   return (Array.isArray(j) ? j : j ? [j] : [])
-    .filter((v: any) => v.letter)
+    .filter((v: any) => v.letter && v.disk !== undefined && v.disk !== null && v.disk !== '')
     .map((v: any) => {
       const removable = v.driveType === 'Removable' || /USB|SD|MMC/i.test(String(v.bus ?? ''));
+      // A partition at the very start of the disk is a stick with no partition table.
+      const whole = !(Number(v.part) > 0) || Number(v.offset) === 0;
       return {
-        device: `\\\\.\\${v.letter}:`,
+        device: `\\\\.\\PhysicalDrive${v.disk}`,
+        partition: whole ? 'partition_none' : String(v.part),
         label: String(v.label ?? ''),
         size: Number(v.size) || 0,
         fs: String(v.fs ?? ''),
@@ -210,7 +217,7 @@ export function macVolumes(json: string): RecoverVolume[] {
     const parts = d.Partitions?.length ? d.Partitions : d.Content && !/GUID|FDisk/.test(d.Content) ? [d] : [];
     for (const p of parts) {
       if (/EFI|Apple_Boot|Microsoft Reserved/.test(String(p.Content)) || p.VolumeName === 'EFI') continue;
-      out.push({ device: `/dev/r${p.DeviceIdentifier}`, label: String(p.VolumeName ?? ''), size: Number(p.Size) || 0, fs: String(p.Content ?? ''), mount: String(p.MountPoint ?? ''), removable: true, internalSsd: false, system: false });
+      out.push({ device: `/dev/r${p.DeviceIdentifier}`, partition: 'partition_none', label: String(p.VolumeName ?? ''), size: Number(p.Size) || 0, fs: String(p.Content ?? ''), mount: String(p.MountPoint ?? ''), removable: true, internalSsd: false, system: false });
     }
   }
   return out;
@@ -231,8 +238,8 @@ const psq = (s: string) => `'${s.replace(/'/g, "''")}'`;
  * the count of files found so far is printed every 20 seconds. On Mac and Linux it runs as root, so the
  * results are handed back to the person afterwards.
  */
-export function photorecScan(platform: string, photorec: string, device: string, folder: string, groups: string[], whole: boolean, what: string, owner: { uid: number; gid: number }): CommandDef {
-  const args = photorecArgs(device, folder, groups, whole);
+export function photorecScan(platform: string, photorec: string, vol: { device: string; partition: string }, folder: string, groups: string[], whole: boolean, what: string, owner: { uid: number; gid: number }): CommandDef {
+  const args = photorecArgs(vol.device, folder, groups, whole, vol.partition);
   const notes = [
     { pattern: 'Finished\\. 0 files found', level: 'attention' as const, message: 'No files were found. On an SSD inside a computer, deleted files are usually wiped within minutes. Try "Search the whole drive" if the drive was formatted.' },
     { pattern: 'Finished\\. 1 files found', level: 'good' as const, message: 'One file was found and copied out. The drive that was searched was not changed.' },

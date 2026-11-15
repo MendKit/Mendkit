@@ -335,6 +335,8 @@ async function main(): Promise<void> {
   // End of support: Windows 10 has ended, Mint 22 is supported, an old Ubuntu has ended.
   const now = new Date('2026-11-14');
   assert(eolState(windowsEol(19045), now) === 'ended' && eolState(windowsEol(26100), now) === 'ok', 'Windows end of support wrong');
+  assert(windowsEol(26100, '24H2', 'Professional').ends === '2026-10-13' && windowsEol(26100, '24h2', 'Enterprise').ends === '2027-10-12' && windowsEol(26300, '26H2', 'Core').ends === null && windowsEol(19045).esuEnds === '2027-10-12', 'Windows 11 version support dates wrong');
+  assert(eolState(windowsEol(26100, '24H2', 'Core'), new Date('2026-11-14')) === 'ended' && eolState(windowsEol(26200, '25H2', 'Core'), new Date('2026-11-14')) === 'ok' && eolState(windowsEol(26200, '25H2', 'Core'), new Date('2027-06-01')) === 'soon', 'Windows 11 end of support state wrong');
   assert(eolState(linuxEol(parseOsRelease('ID=linuxmint\nVERSION_ID="22.1"\n')), now) === 'ok', 'Mint 22 should be supported');
   assert(eolState(linuxEol(parseOsRelease('ID=ubuntu\nVERSION_ID="20.04"\n')), now) === 'ended', 'Ubuntu 20.04 should have ended');
   assert(eolState(linuxEol(parseOsRelease('ID=arch\n')), now) === 'ok', 'a rolling release has no end date');
@@ -670,6 +672,7 @@ async function main(): Promise<void> {
     const r = recover;
     const a = r.photorecArgs('/dev/sdb1', '/media/usb/Recovered', ['photos', 'documents'], false);
     assert(a[0] === '/log' && a[2] === path.join('/media/usb/Recovered', 'recup_dir') && a[4] === '/dev/sdb1' && /^partition_none,options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,.*pdf,enable.*,freespace,search$/.test(a[5]), `photorec args wrong: ${a}`);
+    assert(r.photorecArgs('\\\\.\\PhysicalDrive1', 'D:\\R', ['photos'], false, '2')[5].startsWith('2,options,'), 'partition number not passed to PhotoRec');
     assert(/,wholespace,search$/.test(r.photorecArgs('/dev/sdb1', '/x', ['everything'], true)[5]) && !r.photorecArgs('/dev/sdb1', '/x', ['everything'], true)[5].includes('fileopt'), 'whole-drive args wrong');
     // Names PhotoRec 7.1 rejects stop the whole scan, so none may slip in.
     const ok71 = new Set('jpg png gif bmp tif raw psd pdf doc zip txt mov mp3 mkv riff flac ogg asf mpg m2ts orf pst sqlite'.split(' '));
@@ -683,8 +686,8 @@ async function main(): Promise<void> {
       { name: 'sdc', path: '/dev/sdc', type: 'disk', rm: '1', fstype: 'vfat', size: 8000000000 }] });
     const lv = r.linuxVolumes(lsblk);
     assert(lv.length === 4 && lv.find((v) => v.device === '/dev/nvme0n1p2')!.internalSsd && lv.find((v) => v.device === '/dev/nvme0n1p2')!.system && lv.find((v) => v.device === '/dev/sdb1')!.removable && !lv.find((v) => v.device === '/dev/sdb1')!.internalSsd && lv.some((v) => v.device === '/dev/sdc'), `linux volumes wrong: ${JSON.stringify(lv)}`);
-    const wv = r.windowsVolumes(JSON.stringify([{ letter: 'C', fs: 'NTFS', size: 1, driveType: 'Fixed', bus: 'NVMe', media: 'SSD' }, { letter: 'E', label: 'SD', fs: 'exFAT', size: 2, driveType: 'Removable', bus: 'SD' }]));
-    assert(wv[0].device === '\\\\.\\C:' && wv[0].system && wv[0].internalSsd && wv[1].removable && wv[1].mount === 'E:\\', `windows volumes wrong: ${JSON.stringify(wv)}`);
+    const wv = r.windowsVolumes(JSON.stringify([{ letter: 'C', fs: 'NTFS', size: 1, driveType: 'Fixed', bus: 'NVMe', media: 'SSD', disk: 0, part: 3, offset: 1048576 }, { letter: 'E', label: 'SD', fs: 'exFAT', size: 2, driveType: 'Removable', bus: 'SD', disk: 1, part: 1, offset: 0 }, { letter: 'Z', fs: 'NTFS' }]));
+    assert(wv.length === 2 && wv[0].device === '\\\\.\\PhysicalDrive0' && wv[0].partition === '3' && wv[1].partition === 'partition_none' && wv[0].system && wv[0].internalSsd && wv[1].removable && wv[1].mount === 'E:\\', `windows volumes wrong: ${JSON.stringify(wv)}`);
     const mv = r.macVolumes(JSON.stringify({ AllDisksAndPartitions: [{ DeviceIdentifier: 'disk4', Content: 'GUID_partition_scheme', Partitions: [{ DeviceIdentifier: 'disk4s1', Content: 'EFI', VolumeName: 'EFI' }, { DeviceIdentifier: 'disk4s2', Content: 'Microsoft Basic Data', VolumeName: 'USB', MountPoint: '/Volumes/USB', Size: 3 }] }, { DeviceIdentifier: 'disk5', Content: 'DOS_FAT_32', VolumeName: 'CARD', Size: 4 }] }));
     assert(mv.length === 2 && mv[0].device === '/dev/rdisk4s2' && mv[1].device === '/dev/rdisk5', `mac volumes wrong: ${JSON.stringify(mv)}`);
     assert(r.sameVolume('E:\\Saved', wv[1], 'win32') && !r.sameVolume('D:\\Saved', wv[1], 'win32'), 'windows same-drive check wrong');

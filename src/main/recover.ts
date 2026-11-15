@@ -126,7 +126,7 @@ export function registerRecover(ctx: { engine: Engine; getWin: () => BrowserWind
     const folder = path.join(o.dest, `Recovered files ${stamp}`);
     lastFolder = folder;
     const what = `${vol.label || vol.device}`;
-    const scan = photorecScan(plat, pr, vol.device, folder, groups, !!o.whole, what, os.userInfo());
+    const scan = photorecScan(plat, pr, vol, folder, groups, !!o.whole, what, os.userInfo());
     const sort: ActionStep = {
       id: 'recover-sort',
       name: 'Sort the recovered files by type',

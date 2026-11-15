@@ -1,6 +1,7 @@
 import { app, ipcMain } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
+import { execFile } from 'child_process';
 import * as path from 'path';
 import { gatherFacts } from './advisor';
 import { detectApps } from './apps';
@@ -15,9 +16,11 @@ export function registerSwitchLinux(ctx: { appTable: AppDef[] }): void {
   const defs = path.join(app.getAppPath(), 'definitions');
   const equivalents = JSON.parse(fs.readFileSync(path.join(defs, 'linux-equivalents.json'), 'utf8')) as Equivalent[];
 
-  ipcMain.handle('windows-eol', () => {
+  ipcMain.handle('windows-eol', async () => {
     if (process.platform !== 'win32') return null;
-    const e = windowsEol(Number(os.release().split('.')[2]) || 0);
+    const cv = await new Promise<string>((resolve) => execFile('reg.exe', ['query', 'HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion'], { windowsHide: true }, (_e, out) => resolve(String(out ?? ''))));
+    const val = (n: string) => new RegExp(`^\\s+${n}\\s+REG_SZ\\s+(.*)$`, 'm').exec(cv)?.[1]?.trim() ?? '';
+    const e = windowsEol(Number(os.release().split('.')[2]) || 0, val('DisplayVersion'), val('EditionID'));
     return { ...e, state: eolState(e, new Date()) };
   });
 

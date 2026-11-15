@@ -2,9 +2,10 @@
 $ErrorActionPreference = 'SilentlyContinue'
 $out = @()
 foreach ($v in Get-Volume | Where-Object { $_.DriveLetter -and $_.DriveType -in @('Fixed', 'Removable') }) {
-  $bus = ''; $media = ''
+  $bus = ''; $media = ''; $diskNo = $null; $partNo = $null; $offset = $null
   $part = Get-Partition -DriveLetter $v.DriveLetter
   if ($part) {
+    $diskNo = $part.DiskNumber; $partNo = $part.PartitionNumber; $offset = [int64]$part.Offset
     $disk = Get-Disk -Number $part.DiskNumber
     $bus = [string]$disk.BusType
     $pd = Get-PhysicalDisk | Where-Object { $_.DeviceId -eq [string]$part.DiskNumber } | Select-Object -First 1
@@ -12,7 +13,7 @@ foreach ($v in Get-Volume | Where-Object { $_.DriveLetter -and $_.DriveType -in 
   }
   $out += [pscustomobject]@{
     letter = [string]$v.DriveLetter; label = [string]$v.FileSystemLabel; fs = [string]$v.FileSystem
-    size = [int64]$v.Size; free = [int64]$v.SizeRemaining; driveType = [string]$v.DriveType; bus = $bus; media = $media
+    size = [int64]$v.Size; free = [int64]$v.SizeRemaining; driveType = [string]$v.DriveType; bus = $bus; media = $media; disk = $diskNo; part = $partNo; offset = $offset
   }
 }
 ConvertTo-Json -InputObject @($out) -Depth 3 -Compress

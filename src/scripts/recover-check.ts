@@ -3,7 +3,7 @@
  * image on the Mac), copies a photo onto it, deletes it, then runs the same search command MendKit runs
  * and checks the photo comes back. Needs administrator rights (the runners have them).
  */
-import { execFileSync, spawnSync } from 'child_process';
+import { execFileSync, spawn, spawnSync } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
   const pr = findPhotorec(process.platform, process.env as Record<string, string>);
   if (!pr) fail('PhotoRec was not found where MendKit looks for it');
   console.log(`PhotoRec: ${pr}`);
-  let device = '';
+  let vol = { device: '', partition: 'partition_none' };
   let cleanup = () => undefined as unknown;
 
   if (process.platform === 'win32') {
@@ -33,13 +33,16 @@ async function main(): Promise<void> {
     const script = path.join(tmp, 'make.txt');
     fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\nselect vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
     console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-4).join(' '));
+    // Write the photo through to the disk before deleting it, as happens when a file has been there a while.
     fs.copyFileSync(photo, 'R:\\holiday.jpg');
+    spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Write-VolumeCache -DriveLetter R']);
     fs.unlinkSync('R:\\holiday.jpg');
+    spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Write-VolumeCache -DriveLetter R']);
     const vols = windowsVolumes(spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-volumes.ps1')], { encoding: 'utf8' }).stdout.trim(), process.env.SystemDrive);
     console.log(`volumes: ${vols.map((v) => `${v.mount} ${v.fs} ${v.removable ? 'removable' : 'fixed'}${v.system ? ' system' : ''}${v.internalSsd ? ' ssd' : ''}`).join('; ')}`);
     const card = vols.find((v) => v.mount === 'R:\\');
     if (!card || !/FAT32/i.test(card.fs) || !vols.some((v) => v.system)) fail('the volume list is missing the test drive or the system drive');
-    device = card.device;
+    vol = card;
     cleanup = () => {
       fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
       spawnSync('diskpart.exe', ['/s', script]);
@@ -50,9 +53,8 @@ async function main(): Promise<void> {
     console.log(`places: Recycle Bin ${p.bin} items, ${[].concat(p.shadows ?? []).length} shadow copies, File History ${p.fileHistory}`);
   } else {
     const dmg = path.join(tmp, 'card.dmg');
-    // Disk images are made and attached as the signed-in user, as a person would; only the search runs as root.
-    const asUser = (args: string[]) => (process.env.SUDO_UID ? execFileSync('sudo', ['-u', `#${process.env.SUDO_UID}`, 'hdiutil', ...args], { encoding: 'utf8' }) : execFileSync('hdiutil', args, { encoding: 'utf8' }));
-    fs.chmodSync(tmp, 0o777);
+    // This runs as the signed-in user, as a person would; only the search runs as root, through sudo.
+    const asUser = (args: string[]) => execFileSync('hdiutil', args, { encoding: 'utf8' });
     asUser(['create', '-size', '32m', '-fs', 'MS-DOS FAT32', '-volname', 'CARD', '-layout', 'NONE', dmg]);
     const att = asUser(['attach', dmg]);
     const m = /^(\/dev\/disk\d+)\s+.*?(\/Volumes\/\S+)/m.exec(att);
@@ -60,18 +62,19 @@ async function main(): Promise<void> {
     fs.copyFileSync(photo, path.join(m[2], 'holiday.jpg'));
     fs.unlinkSync(path.join(m[2], 'holiday.jpg'));
     execFileSync('sync');
-    device = m[1].replace('/dev/', '/dev/r');
+    vol = { device: m[1].replace('/dev/', '/dev/r'), partition: 'partition_none' };
     cleanup = () => spawnSync('hdiutil', ['detach', m[1], '-force']);
     const list = spawnSync('sh', ['-c', 'diskutil list -plist external physical | plutil -convert json -o - -'], { encoding: 'utf8' }).stdout;
     JSON.parse(list);
     console.log(`external drives: ${macVolumes(list).length}`);
   }
 
-  const owner = process.platform === 'win32' ? { uid: 0, gid: 0 } : { uid: Number(process.env.SUDO_UID ?? process.getuid!()), gid: Number(process.env.SUDO_GID ?? process.getgid!()) };
-  const scan = photorecScan(process.platform, pr, device, out, ['photos', 'documents'], false, 'CARD', owner);
-  const engine = new Engine(loadCatalog(path.join(root, 'definitions'), process.platform === 'win32' ? 'win32' : 'darwin'), tmp);
+  const owner = process.platform === 'win32' ? { uid: 0, gid: 0 } : { uid: process.getuid!(), gid: process.getgid!() };
+  const scan = photorecScan(process.platform, pr, vol, out, ['photos', 'documents'], false, 'CARD', owner);
+  // On the Mac the search goes through a root shell, as in MendKit (there it asks for the password; here sudo needs none).
+  const engine = new Engine(loadCatalog(path.join(root, 'definitions'), process.platform === 'win32' ? 'win32' : 'darwin'), tmp, process.platform === 'win32' ? undefined : () => spawn('sudo', ['-n', '/bin/sh', '-s'], { stdio: 'pipe' }));
   engine.on('event', (e: any) => e.type === 'output' && process.stdout.write(e.text));
-  const s = await engine.runSteps('recover-check', 'Recover deleted files', 'command', [scan], { elevated: true });
+  const s = await engine.runSteps('recover-check', 'Recover deleted files', 'command', [scan], { elevated: process.platform === 'win32' });
   const st = s.steps[0];
   console.log(`\nresult: ${st.status}, ${st.friendly?.level}: ${st.friendly?.message}`);
   const n = countRecovered(out);
@@ -81,16 +84,7 @@ async function main(): Promise<void> {
     // Show what PhotoRec itself says, to see why nothing came back.
     const walk = (d: string): string[] => { try { return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])); } catch { return []; } };
     console.log(`files in the results folder: ${walk(out).join(', ') || 'none'}`);
-    if (process.platform === 'win32') {
-      // Which way of naming the drive does this PhotoRec accept?
-      const num = spawnSync('powershell.exe', ['-NoProfile', '-Command', '(Get-Partition -DriveLetter R).DiskNumber; (Get-Partition -DriveLetter R).PartitionNumber'], { encoding: 'utf8' }).stdout.trim().split(/\s+/);
-      for (const [dev, part] of [['\\\\.\\R:', 'partition_none'], ['\\\\.\\r:', 'partition_none'], ['R:', 'partition_none'], [`\\\\.\\PhysicalDrive${num[0]}`, String(num[1])], [`/dev/sd${String.fromCharCode(97 + Number(num[0]))}`, String(num[1])]]) {
-        const t = spawnSync(pr, ['/log', '/d', path.join(tmp, 'try', 'recup_dir'), '/cmd', dev, `${part},options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,freespace,search`], { cwd: tmp, encoding: 'utf8', timeout: 120000 });
-        console.log(`try ${dev} ${part}: status ${t.status}, found ${countRecovered(path.join(tmp, 'try'))}, ${String(t.stdout).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ' ').replace(/\s+/g, ' ').slice(-300)}`);
-        fs.rmSync(path.join(tmp, 'try'), { recursive: true, force: true });
-      }
-    }
-    const direct = spawnSync(pr, ['/log', '/d', path.join(tmp, 'direct', 'recup_dir'), '/cmd', device, 'partition_none,options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,freespace,search'], { cwd: tmp, encoding: 'utf8', timeout: 120000, env: { ...process.env, TERM: 'dumb' } });
+    const direct = spawnSync(pr, ['/log', '/d', path.join(tmp, 'direct', 'recup_dir'), '/cmd', vol.device, `${vol.partition},options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,wholespace,search`], { cwd: tmp, encoding: 'utf8', timeout: 120000, env: { ...process.env, TERM: 'dumb' } });
     console.log(`direct run: status ${direct.status} ${direct.error ?? ''}\n${String(direct.stdout).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ' ').slice(-1500)}\n${direct.stderr}`);
     console.log(`direct found ${countRecovered(path.join(tmp, 'direct'))}; log: ${(() => { try { return fs.readFileSync(path.join(tmp, 'photorec.log'), 'utf8').slice(-2000); } catch { return 'none'; } })()}`);
   }
