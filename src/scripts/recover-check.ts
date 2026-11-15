@@ -19,7 +19,8 @@ function fail(msg: string): never {
 async function main(): Promise<void> {
   const root = path.join(__dirname, '..', '..');
   const photo = path.join(root, 'test', 'fixtures', 'photo.jpg');
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-recover-'));
+  // On the Mac, root may not create disk images in the runner's own temporary folder.
+  const tmp = fs.mkdtempSync(path.join(process.platform === 'darwin' ? '/private/tmp' : os.tmpdir(), 'mk-recover-'));
   const out = path.join(tmp, 'Recovered files');
   const pr = findPhotorec(process.platform, process.env as Record<string, string>);
   if (!pr) fail('PhotoRec was not found where MendKit looks for it');
@@ -73,6 +74,14 @@ async function main(): Promise<void> {
   const n = countRecovered(out);
   const sorted = sortRecovered(out);
   cleanup();
+  if (n < 1) {
+    // Show what PhotoRec itself says, to see why nothing came back.
+    const walk = (d: string): string[] => { try { return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])); } catch { return []; } };
+    console.log(`files in the results folder: ${walk(out).join(', ') || 'none'}`);
+    const direct = spawnSync(pr, ['/log', '/d', path.join(tmp, 'direct', 'recup_dir'), '/cmd', device, 'partition_none,options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,freespace,search'], { cwd: tmp, encoding: 'utf8', timeout: 120000, env: { ...process.env, TERM: 'dumb' } });
+    console.log(`direct run: status ${direct.status} ${direct.error ?? ''}\n${String(direct.stdout).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ' ').slice(-1500)}\n${direct.stderr}`);
+    console.log(`direct found ${countRecovered(path.join(tmp, 'direct'))}; log: ${(() => { try { return fs.readFileSync(path.join(tmp, 'photorec.log'), 'utf8').slice(-2000); } catch { return 'none'; } })()}`);
+  }
   if (st.status !== 'ok' || n < 1 || !(sorted.Photos >= 1)) fail(`the deleted photo was not recovered (found ${n}, sorted ${JSON.stringify(sorted)}). photorec.log: ${(() => { try { return fs.readFileSync(path.join(out, 'photorec.log'), 'utf8').slice(-1500); } catch { return 'none'; } })()}`);
   const back = fs.readdirSync(path.join(out, 'Photos')).map((f) => fs.statSync(path.join(out, 'Photos', f)).size);
   console.log(`recovered: ${JSON.stringify(sorted)}, photo sizes ${back.join(', ')} (original ${fs.statSync(photo).size})`);

@@ -248,6 +248,7 @@ export function photorecScan(platform: string, photorec: string, device: string,
       `$p = Start-Process -FilePath ${psq(photorec)} -ArgumentList ${psq(argLine)} -WorkingDirectory $d -WindowStyle Hidden -PassThru`,
       "$count = { @(Get-ChildItem -LiteralPath $d -Recurse -File -ErrorAction SilentlyContinue | Where-Object { $_.Directory.Name -like 'recup_dir.*' -and $_.Name -ne 'report.xml' }).Count }",
       '$i = 0; while (-not $p.HasExited) { Start-Sleep -Seconds 2; $i++; if ($i % 10 -eq 0) { "Found so far: $(& $count) files" } }',
+      '$p.WaitForExit(); if ($p.ExitCode) { "PhotoRec stopped with code $($p.ExitCode)." }',
       '"Finished. $(& $count) files found."',
     ].join('; ');
     return { ...base, exec: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', script] };
