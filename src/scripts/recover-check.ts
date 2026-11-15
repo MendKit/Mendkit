@@ -41,8 +41,14 @@ async function main(): Promise<void> {
     const img = fs.openSync(vhd, 'r+');
     fs.writeSync(img, fs.readFileSync(photo), 0, fs.statSync(photo).size, 40 * 1024 * 1024);
     fs.closeSync(img);
-    fs.writeFileSync(script, `select vdisk file="${vhd}"\nattach vdisk\nselect partition 1\nassign letter=R\n`);
-    execFileSync('diskpart.exe', ['/s', script]);
+    fs.writeFileSync(script, `select vdisk file="${vhd}"\nattach vdisk\n`);
+    console.log(spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).stdout.split('\n').slice(-3).join(' '));
+    // Windows usually gives the volume its letter back by itself.
+    for (let i = 0; i < 20 && !fs.existsSync('R:\\'); i++) spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Milliseconds 500']);
+    if (!fs.existsSync('R:\\')) {
+      fs.writeFileSync(script, `select vdisk file="${vhd}"\nselect partition 1\nassign letter=R\n`);
+      console.log(spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).stdout.split('\n').slice(-4).join(' '));
+    }
     const vols = windowsVolumes(spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-volumes.ps1')], { encoding: 'utf8' }).stdout.trim(), process.env.SystemDrive);
     console.log(`volumes: ${vols.map((v) => `${v.mount} ${v.fs} ${v.removable ? 'removable' : 'fixed'}${v.system ? ' system' : ''}${v.internalSsd ? ' ssd' : ''}`).join('; ')}`);
     const card = vols.find((v) => v.mount === 'R:\\');
