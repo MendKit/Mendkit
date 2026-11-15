@@ -567,6 +567,7 @@ function showResults(r) {
 const GROUP_LEAD = {
   'Start here': 'New to fixing computers? Read these first. They explain the words and everyday skills the other guides use.',
   'Using MendKit': 'One guide for each part of MendKit, in the order you are most likely to need them.',
+  Windows: 'Windows repairs and upgrades, step by step.',
   Mac: 'Mac repairs you do yourself, outside MendKit.',
   Linux: 'Installing MendKit on Linux, switching from Windows, drivers, startup repair, upgrades and everyday fixes.',
   Tools: 'Every tool on the Tools screen: what it is for, how to install it, how to use it step by step, and what the results mean.',
