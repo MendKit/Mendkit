@@ -209,7 +209,7 @@ export function registerBrowsers(ctx: { engine: Engine }): void {
         const saveAs = path.join(qdir, `${f.id.replace(/[^\w-]+/g, '_')}.reg`);
         steps.push({
           id: `force-${f.id}`, name: `Remove ${what}`, description: '', admin: f.admin, typicalMinutes: 1,
-          exec: 'cmd.exe', args: regRemoveArgs(f.location, saveAs),
+          exec: 'powershell.exe', args: regRemoveArgs(f.location, saveAs),
           friendly: { title: `Remove ${what}`, ok: `Removed. A copy was saved as ${saveAs}; double-click it to put it back.`, problem: `It could not be removed. If this computer belongs to a workplace or school, it may be managed on purpose.` },
         });
       } else {

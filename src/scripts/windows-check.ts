@@ -122,7 +122,7 @@ async function main() {
     const found = forcesFromRegistry('HKCU', pol, '').find((f) => f.browser === 'Google Chrome');
     if (!found || !found.extensionIds.includes(id) || policyConcerns(found.settings).length < 2) throw new Error(`policy not read: ${JSON.stringify(found)} ${pol.slice(0, 400)}`);
     const saveAs = path.join(os.tmpdir(), 'mk-policy.reg');
-    const rm = spawnSync('cmd.exe', regRemoveArgs(found.location, saveAs), { encoding: 'utf8' });
+    const rm = spawnSync('powershell.exe', regRemoveArgs(found.location, saveAs), { encoding: 'utf8' });
     const left = spawnSync('reg.exe', ['query', key], { encoding: 'utf8' });
     if (rm.status !== 0 || left.status === 0 || !fs.existsSync(saveAs)) throw new Error(`policy not removed: ${rm.stdout} ${rm.stderr}`);
     console.log(`browser cleanup: found ${found.settings.length} policy settings, removed them and saved ${fs.statSync(saveAs).size} bytes`);

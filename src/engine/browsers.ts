@@ -479,8 +479,9 @@ export function policyConcerns(settings: string[]): string[] {
   return c;
 }
 
-/** cmd.exe arguments that save a registry key to a .reg file and then delete it. */
+/** PowerShell arguments that save a registry key to a .reg file and then delete it. */
 export function regRemoveArgs(location: string, saveAs: string): string[] {
   const key = location.replace(/^HKLM/, 'HKEY_LOCAL_MACHINE').replace(/^HKCU/, 'HKEY_CURRENT_USER');
-  return ['/d', '/c', `reg export "${key}" "${saveAs}" /y && reg delete "${key}" /f`];
+  const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
+  return ['-NoProfile', '-NonInteractive', '-Command', `reg.exe export ${q(key)} ${q(saveAs)} /y; if ($LASTEXITCODE -ne 0) { exit 1 }; reg.exe delete ${q(key)} /f; exit $LASTEXITCODE`];
 }
