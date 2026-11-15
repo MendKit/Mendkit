@@ -874,8 +874,102 @@ async function renderPermissions(view) {
 
 /** Tools on every system: [name, description, open function]. */
 const ALL_TOOLS = [
+  ['Recover deleted files', 'Get back deleted photos and documents: first from the Recycle Bin or Trash, Previous Versions, File History or Time Machine, then with a deep search of the drive or memory card (PhotoRec).', () => showRecover()],
   ['Browser cleanup', 'Pop-ups, a changed home page or search engine, or toolbars nobody installed: lists every extension, the sites allowed to show notifications, and settings forced in by other programs, then removes the ones you choose. Chrome, Edge, Brave, Vivaldi and Firefox.', () => showBrowserClean()],
 ];
+
+async function showRecover() {
+  const f = macFrame('Recover deleted files', 'Start with the places a deleted file usually still is. If it is not there, search the drive itself.');
+  f.bar.append(f.back);
+  f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: 'Stop using the drive the files were on. Every file saved to it from now on (downloads, installs, even browsing) can overwrite what you want back. For a memory card or USB drive, take it out and keep it aside until you are ready to search it.' })));
+  f.status.textContent = 'Checking where deleted files might be...';
+  let r;
+  try {
+    r = await api.recoverInfo();
+  } catch (err) {
+    f.status.textContent = errText(err);
+    return;
+  }
+  f.status.textContent = '';
+  f.holder.append(el('h2', { textContent: 'Look here first' }));
+  const t = el('table');
+  for (const p of r.places) {
+    const cell = el('td', { className: 'act' });
+    if (p.open) {
+      const b = el('button', { className: 'ghost', textContent: p.open });
+      b.onclick = () => api.recoverOpenPlace(p.id);
+      cell.append(b);
+    }
+    t.append(el('tr', {}, el('td', {}, el('strong', { textContent: p.name }), p.found ? el('span', { className: 'tag', textContent: p.found }) : '', el('br'), el('small', { textContent: p.detail })), cell));
+  }
+  f.holder.append(t);
+
+  f.holder.append(el('h2', { textContent: 'Search the drive' }), el('p', { className: 'dim', textContent: 'PhotoRec reads the whole drive, finds the remains of deleted files and copies them to another drive. It never changes the drive being searched. Recovered files lose their names and folders: you get files such as f0012345.jpg, sorted into Photos, Documents, Videos and Music.' }));
+  if (r.platform === 'darwin') f.holder.append(el('p', { className: 'dim', textContent: 'On a Mac this is for USB drives and memory cards. A Mac\'s built-in drive is encrypted and clears deleted space, so files deleted from it can only come back from Time Machine or iCloud.' }));
+  if (!r.photorec) {
+    const inst = el('button', { className: 'big', textContent: 'Install PhotoRec' });
+    inst.onclick = () => run(async () => {
+      await api.toolsInstallMany(['testdisk']);
+      showRecover();
+    });
+    f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: 'PhotoRec is free and open source (part of TestDisk). It is not installed yet. Install it on this computer, not on the drive you are recovering from.' }), inst));
+    return syncButtons();
+  }
+  if (!r.volumes.length) {
+    f.holder.append(el('p', { className: 'lead', textContent: r.platform === 'darwin' ? 'No USB drive or memory card is plugged in. Plug it in, then open this screen again.' : 'No drives were found.' }));
+    return;
+  }
+  const picked = { volume: '', dest: '' };
+  const vt = el('table');
+  for (const v of r.volumes) {
+    const radio = el('input', { type: 'radio', name: 'recVol', value: v.id });
+    radio.onchange = () => (picked.volume = v.id);
+    const name = `${v.label || v.device}${v.mount && r.platform === 'win32' ? ` (${v.mount.slice(0, 2)})` : ''}`;
+    const info = [fmtSize(v.size), v.fs, v.removable ? 'removable' : 'inside the computer'].filter(Boolean).join(', ');
+    const notes = [];
+    if (v.system) notes.push('This is the drive the system runs from. Search it only if the files were here, and save the results to a USB drive.');
+    if (v.internalSsd) notes.push('An SSD inside the computer: deleted files are usually wiped within minutes, so the chance is low.');
+    vt.append(el('tr', {}, el('td', { className: 'chk' }, radio), el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: info }), ...notes.map((n) => el('p', { className: 'dim', textContent: n })))));
+  }
+  f.holder.append(el('h3', { textContent: '1. The drive the files were on' }), vt);
+  f.holder.append(el('h3', { textContent: '2. What to look for' }));
+  const kinds = [['photos', 'Photos'], ['documents', 'Documents (PDF, Word, Excel, PowerPoint, Outlook)'], ['videos', 'Videos'], ['music', 'Music and recordings'], ['everything', 'Everything PhotoRec knows (slower, many more files)']];
+  const boxes = kinds.map(([id, label]) => {
+    const box = el('input', { type: 'checkbox', checked: id === 'photos' || id === 'documents' });
+    f.holder.append(el('label', { className: 'check' }, box, ` ${label}`), el('br'));
+    return { id, box };
+  });
+  const every = boxes.find((b) => b.id === 'everything').box;
+  every.onchange = () => boxes.forEach((b) => b.id !== 'everything' && (b.box.disabled = every.checked));
+  const whole = el('input', { type: 'checkbox' });
+  f.holder.append(el('h3', { textContent: 'If the drive was formatted' }), el('label', { className: 'check' }, whole, ' Search the whole drive, not only its free space. Use this for a memory card or drive that was formatted, or that the computer says needs formatting.'));
+  f.holder.append(el('h3', { textContent: '3. Where to save what is found' }));
+  const where = el('p', { className: 'dim', textContent: 'Choose a folder on a different drive, such as a USB drive with enough free space.' });
+  const pick = el('button', { className: 'ghost', textContent: 'Choose a folder' });
+  pick.onclick = async () => {
+    const d = await api.recoverPickDest();
+    if (!d) return;
+    picked.dest = d;
+    where.textContent = d;
+  };
+  f.holder.append(el('div', { className: 'toolbar' }, pick), where);
+  const go = el('button', { className: 'big run', textContent: 'Start searching' });
+  go.onclick = () => {
+    if (!picked.volume) return migSafeStatus('Choose the drive the files were on.');
+    if (!picked.dest) return migSafeStatus('Choose where to save what is found.');
+    const groups = every.checked ? ['everything'] : boxes.filter((b) => b.box.checked && b.id !== 'everything').map((b) => b.id);
+    if (!groups.length) return migSafeStatus('Tick at least one kind of file.');
+    run(async () => {
+      const res = await api.recoverStart({ volume: picked.volume, dest: picked.dest, groups, whole: whole.checked });
+      showResults(res.summary);
+      const open = el('button', { textContent: 'Open the recovered files' });
+      open.onclick = () => api.recoverOpenPlace('folder');
+      $('#view').append(el('div', { className: 'notice' }, el('span', { textContent: `${res.found} file${res.found === 1 ? '' : 's'} saved in ${res.folder}. Many may be old or partly overwritten; open each folder and copy out the ones you want.` }), open));
+    });
+  };
+  f.holder.append(el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: `A search takes from a few minutes for a memory card to several hours for a large drive. The panel at the bottom shows how many files have been found so far, and Cancel stops it; files found up to then are kept. ${r.platform === 'win32' ? (r.elevated ? '' : 'Restart MendKit as administrator first: Windows only lets administrators read a drive directly.') : 'MendKit asks for your password, because reading a drive directly needs administrator rights.'}` }));
+  syncButtons();
+}
 
 async function showBrowserClean() {
   const f = macFrame('Browser cleanup', 'Finds what changes the browsers on this computer: extensions, websites allowed to show notifications (the usual cause of fake virus warnings in the corner of the screen), and settings forced in from outside the browser. Nothing changes until you tick it and press Clean.');

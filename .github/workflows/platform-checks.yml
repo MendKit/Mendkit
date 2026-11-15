@@ -19,6 +19,16 @@ jobs:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npx tsc -p tsconfig.json
       - run: node dist/scripts/windows-check.js
+      - name: Install PhotoRec the way MendKit does (winget), or from its zip if winget is missing
+        shell: pwsh
+        run: |
+          winget install --id CGSecurity.TestDisk -e --accept-source-agreements --accept-package-agreements --disable-interactivity
+          if ($LASTEXITCODE -ne 0) {
+            Invoke-WebRequest https://www.cgsecurity.org/testdisk-7.2.win64.zip -OutFile td.zip
+            Expand-Archive td.zip -DestinationPath C:\td
+            "MENDKIT_PHOTOREC_DIR=$((Get-ChildItem C:\td -Directory | Select-Object -First 1).FullName)" >> $env:GITHUB_ENV
+          }
+      - run: node dist/scripts/recover-check.js
   mac:
     runs-on: macos-latest
     steps:
@@ -31,3 +41,5 @@ jobs:
           ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       - run: npx tsc -p tsconfig.json
       - run: node dist/scripts/distro-check.js
+      - run: brew install testdisk
+      - run: sudo -E node dist/scripts/recover-check.js

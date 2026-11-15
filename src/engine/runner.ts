@@ -44,6 +44,8 @@ export interface ActionStep {
   ok: string;
   problem: string;
   action: StepAction;
+  /** Plain-language results picked from what the step wrote, as for commands. */
+  notes?: NonNullable<CommandDef['friendly']>['notes'];
 }
 
 /**
@@ -121,7 +123,7 @@ export class Engine extends EventEmitter {
   runSteps(id: string, title: string, kind: RunKind, steps: (CommandDef | ActionStep)[], opts: RunOptions): Promise<RunSummary> {
     const items: Item[] = steps.map((s) =>
       'action' in s
-        ? { def: { id: s.id, name: s.name, description: '', exec: '', args: [], admin: s.admin, friendly: { title: s.name, ok: s.ok, problem: s.problem } }, step: { command: s.id, onFail: 'continue' as const }, action: s.action }
+        ? { def: { id: s.id, name: s.name, description: '', exec: '', args: [], admin: s.admin, friendly: { title: s.name, ok: s.ok, problem: s.problem, notes: s.notes } }, step: { command: s.id, onFail: 'continue' as const }, action: s.action }
         : { def: s, step: { command: s.id, onFail: 'continue' as const } },
     );
     return this.run(id, title, kind, items, opts);
@@ -150,7 +152,7 @@ export class Engine extends EventEmitter {
   /** Runs built-in steps through the same logging, progress and results path as commands. */
   runActions(id: string, title: string, kind: RunKind, steps: ActionStep[], opts: RunOptions): Promise<RunSummary> {
     const items: Item[] = steps.map((s) => ({
-      def: { id: s.id, name: s.name, description: '', exec: '', args: [], admin: s.admin, friendly: { title: s.name, ok: s.ok, problem: s.problem } },
+      def: { id: s.id, name: s.name, description: '', exec: '', args: [], admin: s.admin, friendly: { title: s.name, ok: s.ok, problem: s.problem, notes: s.notes } },
       step: { command: s.id },
       action: s.action,
     }));

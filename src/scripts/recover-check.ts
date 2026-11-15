@@ -1,0 +1,82 @@
+/**
+ * Recover deleted files on a real Windows or Mac runner: makes a small FAT drive (a VHD on Windows, a disk
+ * image on the Mac), copies a photo onto it, deletes it, then runs the same search command MendKit runs
+ * and checks the photo comes back. Needs administrator rights (the runners have them).
+ */
+import { execFileSync, spawnSync } from 'child_process';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { Engine } from '../engine/runner';
+import { loadCatalog } from '../engine/catalog';
+import { countRecovered, findPhotorec, macVolumes, photorecScan, sortRecovered, windowsVolumes } from '../engine/recover';
+
+function fail(msg: string): never {
+  console.error(`FAIL: ${msg}`);
+  process.exit(1);
+}
+
+async function main(): Promise<void> {
+  const root = path.join(__dirname, '..', '..');
+  const photo = path.join(root, 'test', 'fixtures', 'photo.jpg');
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-recover-'));
+  const out = path.join(tmp, 'Recovered files');
+  const pr = findPhotorec(process.platform, process.env as Record<string, string>);
+  if (!pr) fail('PhotoRec was not found where MendKit looks for it');
+  console.log(`PhotoRec: ${pr}`);
+  let device = '';
+  let cleanup = () => undefined as unknown;
+
+  if (process.platform === 'win32') {
+    const vhd = path.join(tmp, 'card.vhd');
+    const script = path.join(tmp, 'make.txt');
+    fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\nselect vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
+    console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-4).join(' '));
+    fs.copyFileSync(photo, 'R:\\holiday.jpg');
+    fs.unlinkSync('R:\\holiday.jpg');
+    const vols = windowsVolumes(spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-volumes.ps1')], { encoding: 'utf8' }).stdout.trim(), process.env.SystemDrive);
+    console.log(`volumes: ${vols.map((v) => `${v.mount} ${v.fs} ${v.removable ? 'removable' : 'fixed'}${v.system ? ' system' : ''}${v.internalSsd ? ' ssd' : ''}`).join('; ')}`);
+    const card = vols.find((v) => v.mount === 'R:\\');
+    if (!card || !/FAT32/i.test(card.fs) || !vols.some((v) => v.system)) fail('the volume list is missing the test drive or the system drive');
+    device = card.device;
+    cleanup = () => {
+      fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
+      spawnSync('diskpart.exe', ['/s', script]);
+    };
+    const places = spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-recover-places.ps1')], { encoding: 'utf8' }).stdout.trim();
+    const p = JSON.parse(places);
+    if (typeof p.bin !== 'number' || !('shadows' in p)) fail(`recover places output wrong: ${places}`);
+    console.log(`places: Recycle Bin ${p.bin} items, ${[].concat(p.shadows ?? []).length} shadow copies, File History ${p.fileHistory}`);
+  } else {
+    const dmg = path.join(tmp, 'card.dmg');
+    execFileSync('hdiutil', ['create', '-size', '32m', '-fs', 'MS-DOS FAT32', '-volname', 'CARD', '-layout', 'NONE', dmg]);
+    const att = execFileSync('hdiutil', ['attach', dmg], { encoding: 'utf8' });
+    const m = /^(\/dev\/disk\d+)\s+.*?(\/Volumes\/\S+)/m.exec(att);
+    if (!m) fail(`disk image did not attach: ${att}`);
+    fs.copyFileSync(photo, path.join(m[2], 'holiday.jpg'));
+    fs.unlinkSync(path.join(m[2], 'holiday.jpg'));
+    execFileSync('sync');
+    device = m[1].replace('/dev/', '/dev/r');
+    cleanup = () => spawnSync('hdiutil', ['detach', m[1], '-force']);
+    const list = spawnSync('sh', ['-c', 'diskutil list -plist external physical | plutil -convert json -o - -'], { encoding: 'utf8' }).stdout;
+    JSON.parse(list);
+    console.log(`external drives: ${macVolumes(list).length}`);
+  }
+
+  const owner = process.platform === 'win32' ? { uid: 0, gid: 0 } : { uid: Number(process.env.SUDO_UID ?? process.getuid!()), gid: Number(process.env.SUDO_GID ?? process.getgid!()) };
+  const scan = photorecScan(process.platform, pr, device, out, ['photos', 'documents'], false, 'CARD', owner);
+  const engine = new Engine(loadCatalog(path.join(root, 'definitions'), process.platform === 'win32' ? 'win32' : 'darwin'), tmp);
+  engine.on('event', (e: any) => e.type === 'output' && process.stdout.write(e.text));
+  const s = await engine.runSteps('recover-check', 'Recover deleted files', 'command', [scan], { elevated: true });
+  const st = s.steps[0];
+  console.log(`\nresult: ${st.status}, ${st.friendly?.level}: ${st.friendly?.message}`);
+  const n = countRecovered(out);
+  const sorted = sortRecovered(out);
+  cleanup();
+  if (st.status !== 'ok' || n < 1 || !(sorted.Photos >= 1)) fail(`the deleted photo was not recovered (found ${n}, sorted ${JSON.stringify(sorted)}). photorec.log: ${(() => { try { return fs.readFileSync(path.join(out, 'photorec.log'), 'utf8').slice(-1500); } catch { return 'none'; } })()}`);
+  const back = fs.readdirSync(path.join(out, 'Photos')).map((f) => fs.statSync(path.join(out, 'Photos', f)).size);
+  console.log(`recovered: ${JSON.stringify(sorted)}, photo sizes ${back.join(', ')} (original ${fs.statSync(photo).size})`);
+  if (!back.includes(fs.statSync(photo).size)) fail('the recovered photo is not the same size as the original');
+  console.log('recover check passed');
+}
+main().catch((e) => fail(String(e?.stack ?? e)));

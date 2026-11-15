@@ -173,3 +173,4 @@ ol.guide.steps > li { margin-bottom: 14px; line-height: 1.55; }
 details > summary { cursor: pointer; color: var(--dim); margin: 10px 0; }
 details > summary:hover, details > summary:focus-visible { color: var(--text); }
 details[open] > summary { margin-bottom: 8px; }
+label.check { display: inline-flex; gap: 8px; align-items: baseline; margin: 4px 0; cursor: pointer; }

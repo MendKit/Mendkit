@@ -17,6 +17,7 @@ import { advise, AdvisorFacts } from '../engine/advisor';
 import { exePatterns, loadRemoteTools, matchScan, removalPlan } from '../engine/remote';
 import { readBackup, runBackup, runRestore } from '../engine/backup';
 import * as browsers from '../engine/browsers';
+import * as recover from '../engine/recover';
 
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(msg);
@@ -662,6 +663,58 @@ async function main(): Promise<void> {
     assert(b.browserProcesses('Firefox (Snap)', 'linux').includes('firefox') && b.resetPage('Microsoft Edge').startsWith('edge://'), 'browser process names wrong');
     fs.rmSync(tmp, { recursive: true, force: true });
     console.log('browser cleanup: profiles, extensions, notifications, policies OK');
+  }
+
+  {
+    // Recover deleted files: command line, volume lists, the same-drive guard, and a real PhotoRec run on a disk image when the tools are here.
+    const r = recover;
+    const a = r.photorecArgs('/dev/sdb1', '/media/usb/Recovered', ['photos', 'documents'], false);
+    assert(a[0] === '/log' && a[2] === path.join('/media/usb/Recovered', 'recup_dir') && a[4] === '/dev/sdb1' && /^partition_none,options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,.*pdf,enable.*,freespace,search$/.test(a[5]), `photorec args wrong: ${a}`);
+    assert(/,wholespace,search$/.test(r.photorecArgs('/dev/sdb1', '/x', ['everything'], true)[5]) && !r.photorecArgs('/dev/sdb1', '/x', ['everything'], true)[5].includes('fileopt'), 'whole-drive args wrong');
+    // Names PhotoRec 7.1 rejects stop the whole scan, so none may slip in.
+    const ok71 = new Set('jpg png gif bmp tif raw psd pdf doc zip txt mov mp3 mkv riff flac ogg asf mpg m2ts orf pst sqlite'.split(' '));
+    assert(r.RECOVER_GROUPS.every((g) => g.families.every((f) => ok71.has(f))), 'a PhotoRec family name is not accepted by PhotoRec 7.1');
+    const lsblk = JSON.stringify({ blockdevices: [
+      { name: 'nvme0n1', path: '/dev/nvme0n1', type: 'disk', rm: false, hotplug: false, rota: false, tran: 'nvme', children: [
+        { name: 'nvme0n1p1', path: '/dev/nvme0n1p1', type: 'part', fstype: 'vfat', mountpoint: '/boot/efi', size: 500000000 },
+        { name: 'nvme0n1p2', path: '/dev/nvme0n1p2', type: 'part', fstype: 'ext4', mountpoint: '/', size: 500000000000 },
+        { name: 'nvme0n1p3', path: '/dev/nvme0n1p3', type: 'part', fstype: 'swap', size: 1 }] },
+      { name: 'sdb', path: '/dev/sdb', type: 'disk', rm: true, hotplug: true, rota: false, tran: 'usb', children: [{ name: 'sdb1', path: '/dev/sdb1', type: 'part', fstype: 'exfat', label: 'CARD', mountpoint: '/media/me/CARD', size: 64000000000 }] },
+      { name: 'sdc', path: '/dev/sdc', type: 'disk', rm: '1', fstype: 'vfat', size: 8000000000 }] });
+    const lv = r.linuxVolumes(lsblk);
+    assert(lv.length === 4 && lv.find((v) => v.device === '/dev/nvme0n1p2')!.internalSsd && lv.find((v) => v.device === '/dev/nvme0n1p2')!.system && lv.find((v) => v.device === '/dev/sdb1')!.removable && !lv.find((v) => v.device === '/dev/sdb1')!.internalSsd && lv.some((v) => v.device === '/dev/sdc'), `linux volumes wrong: ${JSON.stringify(lv)}`);
+    const wv = r.windowsVolumes(JSON.stringify([{ letter: 'C', fs: 'NTFS', size: 1, driveType: 'Fixed', bus: 'NVMe', media: 'SSD' }, { letter: 'E', label: 'SD', fs: 'exFAT', size: 2, driveType: 'Removable', bus: 'SD' }]));
+    assert(wv[0].device === '\\\\.\\C:' && wv[0].system && wv[0].internalSsd && wv[1].removable && wv[1].mount === 'E:\\', `windows volumes wrong: ${JSON.stringify(wv)}`);
+    const mv = r.macVolumes(JSON.stringify({ AllDisksAndPartitions: [{ DeviceIdentifier: 'disk4', Content: 'GUID_partition_scheme', Partitions: [{ DeviceIdentifier: 'disk4s1', Content: 'EFI', VolumeName: 'EFI' }, { DeviceIdentifier: 'disk4s2', Content: 'Microsoft Basic Data', VolumeName: 'USB', MountPoint: '/Volumes/USB', Size: 3 }] }, { DeviceIdentifier: 'disk5', Content: 'DOS_FAT_32', VolumeName: 'CARD', Size: 4 }] }));
+    assert(mv.length === 2 && mv[0].device === '/dev/rdisk4s2' && mv[1].device === '/dev/rdisk5', `mac volumes wrong: ${JSON.stringify(mv)}`);
+    assert(r.sameVolume('E:\\Saved', wv[1], 'win32') && !r.sameVolume('D:\\Saved', wv[1], 'win32'), 'windows same-drive check wrong');
+    assert(r.sameVolume('/media/me/CARD/x', lv.find((v) => v.device === '/dev/sdb1')!, 'linux', '/dev/sdb1') && !r.sameVolume('/home/me', lv.find((v) => v.device === '/dev/sdb1')!, 'linux', '/dev/nvme0n1p2') && r.sameVolume('/Volumes/USB/x', mv[0], 'darwin', '/dev/disk4s2'), 'same-drive check wrong');
+    const fake = new Set(['L/Microsoft/WinGet/Packages/CGSecurity.TestDisk_X/testdisk-7.2/photorec_win.exe']);
+    const found = r.findPhotorec('win32', { LOCALAPPDATA: 'L' }, (p) => fake.has(p.split(path.sep).join('/')), (d) => (d.split(path.sep).join('/') === 'L/Microsoft/WinGet/Packages' ? ['CGSecurity.TestDisk_X', 'Other'] : ['testdisk-7.2']));
+    assert(!!found && found.endsWith('photorec_win.exe'), `photorec not found in the winget folder: ${found}`);
+    const tools = ['photorec', 'mkfs.vfat', 'mcopy', 'mdel'].map((t) => r.findPhotorec('linux', { PATH: `${process.env.PATH}:/usr/sbin:/sbin` }, (p) => fs.existsSync(p.replace(/photorec$/, t))));
+    if (process.platform === 'linux' && tools.every(Boolean)) {
+      const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-recover-'));
+      const img = path.join(tmp, 'card.img');
+      fs.writeFileSync(img, Buffer.alloc(16 * 1024 * 1024));
+      const sh = (c: string) => require('child_process').execSync(c, { stdio: 'pipe' }).toString();
+      sh(`mkfs.vfat ${img}`);
+      // A real photo and a small PDF, copied on and then deleted.
+      const pdf = '%PDF-1.4\n1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj 2 0 obj<</Type/Pages/Count 0/Kids[]>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n';
+      fs.copyFileSync(path.join(__dirname, '..', '..', 'test', 'fixtures', 'photo.jpg'), path.join(tmp, 'photo.jpg'));
+      fs.writeFileSync(path.join(tmp, 'letter.pdf'), pdf);
+      sh(`mcopy -i ${img} ${path.join(tmp, 'photo.jpg')} ::/photo.jpg && mcopy -i ${img} ${path.join(tmp, 'letter.pdf')} ::/letter.pdf && mdel -i ${img} ::/photo.jpg ::/letter.pdf`);
+      const out = path.join(tmp, 'out');
+      fs.mkdirSync(out);
+      const args = r.photorecArgs(img, out, ['photos', 'documents'], false);
+      require('child_process').spawnSync(found && tools[0]!, args, { cwd: out, env: { ...process.env, TERM: 'dumb' }, stdio: 'ignore', timeout: 120000 });
+      const n = r.countRecovered(out);
+      const sorted = r.sortRecovered(out);
+      assert(n >= 2 && (sorted.Photos ?? 0) >= 1 && (sorted.Documents ?? 0) + (sorted.Photos ?? 0) === n && !fs.readdirSync(out).some((d) => /^recup_dir/.test(d)), `photorec run wrong: ${n} found, sorted ${JSON.stringify(sorted)}`);
+      console.log(`recover: PhotoRec found ${n} deleted file(s) on a disk image and sorted them (${JSON.stringify(sorted)})`);
+      fs.rmSync(tmp, { recursive: true, force: true });
+    }
+    console.log('recover: command line, volumes, same-drive guard and PhotoRec location OK');
   }
 
   console.log(`Smoke test passed. Log: ${summary.logFile}`);
