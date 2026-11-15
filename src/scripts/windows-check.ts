@@ -13,6 +13,7 @@ import { Engine } from '../engine/runner';
 import { CommandDef } from '../engine/types';
 import { winSpaceCategories } from '../engine/wintools';
 import { forcesFromRegistry, policyConcerns, regRemoveArgs } from '../engine/browsers';
+import { upgradePlan } from '../engine/upgrade';
 
 const root = path.join(__dirname, '..', '..');
 const defs = path.join(root, 'definitions');
@@ -128,6 +129,18 @@ async function main() {
     console.log(`browser cleanup: found ${found.settings.length} policy settings, removed them and saved ${fs.statSync(saveAs).size} bytes`);
   } catch (e) {
     fail(`browser policy: ${(e as Error).message}`);
+  }
+
+  // Windows 11 upgrade readiness reads real values (the runner is Windows Server, so the plan says "already").
+  const up = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(psDir, 'windows-upgrade.ps1')], { encoding: 'utf8', timeout: 180000 });
+  try {
+    const f = JSON.parse(up.stdout.trim());
+    for (const k of ['admin', 'product', 'build', 'cpu', 'ramGb', 'firmware', 'partitionStyle', 'diskGb', 'freeGb', 'verdicts']) if (!(k in f)) throw new Error(`missing ${k}`);
+    if (!(f.build > 0) || !f.cpu || !(f.ramGb > 0) || !(f.diskGb > 0)) throw new Error('empty values');
+    const plan = upgradePlan({ ...f, build: 19045, verdicts: [].concat(f.verdicts ?? []) });
+    console.log(`windows 11 readiness: ${f.product} ${f.build}, ${f.cpu}, TPM ${f.tpm?.version ?? 'unknown'}, Secure Boot ${f.secureBoot}, firmware ${f.firmware}, ${f.partitionStyle}, ${f.freeGb} GB free. As Windows 10: ${plan.state}: ${plan.checks.map((c) => `${c.id} ${c.level}`).join(', ')}`);
+  } catch (e) {
+    fail(`windows-upgrade.ps1 output: ${(e as Error).message}: ${up.stdout.slice(0, 400)} ${up.stderr.slice(0, 400)}`);
   }
 
   const cat = loadCatalog(defs, 'win32');
