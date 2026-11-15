@@ -442,4 +442,25 @@ G('mk-recover',GR,'Recover deleted files','Getting back deleted photos and docum
   'On a Mac, the built-in drive is encrypted and clears deleted space, so only Time Machine or iCloud can bring files back from it. The search is for USB drives and memory cards.']),
  sec('When to stop',['If the drive clicks, is not seen at all, or the files are valuable and the search finds nothing, stop. A drive that is failing gets worse every time it runs. A professional data recovery service can often still help.'])],
  systems=ALL, time='10 minutes to several hours', level='Takes care', screen='repair', related=['testdisk','mk-drive-backup','mk-old-drive']),
+G('mk-phone',GR,'Phone photos and backups','Copying photos and videos off an iPhone or Android phone with a USB cable, and checking iPhone and iPad backups on the computer.',[
+ sec('Get the phone ready',[
+  S('Plug the phone into the computer with its charging cable, and unlock it.',tip='Some cheap cables only charge. If nothing happens, try the cable that came with the phone.'),
+  S('iPhone or iPad: when it asks "Trust This Computer?", tap Trust and enter the passcode.',tip='On Windows, Apple\'s free Devices app (or iTunes) may be needed once so Windows can see an iPhone. MendKit has a button to get it.'),
+  S('Android: pull down from the top of the screen, tap the notification about USB, and choose File transfer (or Transfer files). On a Mac, choose Transfer photos (PTP) instead.'),
+  'Keep the phone unlocked while copying. Turn screen lock off for a big copy, or tap the screen now and then.']),
+ sec('Copy (Windows and Linux)',[
+  S('Tick Technician mode, open Repair, and click Open beside Phone photos and backups under Cleanup and recovery. Click Look for phones.',see='The phone, with how many photos and videos it holds and their size.',tip='On Linux, open the phone once in the file manager first so the desktop connects to it.'),
+  S('Choose the phone, then Choose a folder, such as Pictures or a USB drive.'),
+  S('Click Copy new photos and videos.',see='A folder named after the phone, with one folder per month (2026-07 and so on). The bottom panel shows the count as it goes; thousands of photos take a while.'),
+  S('Click Open the folder and check some photos and videos open.',tip='Nothing on the phone is changed or deleted. Run it again later and only new photos are copied.')],'steps'),
+ sec('Copy (Mac)',[
+  S('Click Open Image Capture.',see='Image Capture lists the phone on the left.'),
+  S('Choose the phone, choose a folder in "Import To" at the bottom, and click Download All.'),
+  S('For an iPhone: to get the original photos rather than converted copies, set the iPhone\'s Settings, Photos, Transfer to Mac or PC, to Keep Originals.')],'steps'),
+ sec('Backups',[
+  'The screen lists the iPhone and iPad backups on this computer: which device, the iOS version, when it was last backed up, and whether it is encrypted.',
+  'A backup more than a month old is missing recent photos and messages. Make a fresh one before resetting or replacing the phone: on a Mac in Finder (choose the phone in the sidebar, Back Up Now), on Windows in Apple Devices or iTunes.',
+  'Encrypted backups also keep saved passwords, Wi-Fi and Health data, and need their password to restore. Write it down for the person.',
+  'Messages, WhatsApp chats and app data are not copied as photos are. They move with the phone\'s own transfer (Quick Start, Smart Switch) or its backup.'])],
+ systems=ALL, time='5 minutes, plus copying time', level='Easy', screen='repair', related=['mk-migrate','mk-drive-backup','mk-recover']),
 ]
