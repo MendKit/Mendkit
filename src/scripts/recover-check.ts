@@ -50,8 +50,11 @@ async function main(): Promise<void> {
     console.log(`places: Recycle Bin ${p.bin} items, ${[].concat(p.shadows ?? []).length} shadow copies, File History ${p.fileHistory}`);
   } else {
     const dmg = path.join(tmp, 'card.dmg');
-    execFileSync('hdiutil', ['create', '-size', '32m', '-fs', 'MS-DOS FAT32', '-volname', 'CARD', '-layout', 'NONE', dmg]);
-    const att = execFileSync('hdiutil', ['attach', dmg], { encoding: 'utf8' });
+    // Disk images are made and attached as the signed-in user, as a person would; only the search runs as root.
+    const asUser = (args: string[]) => (process.env.SUDO_UID ? execFileSync('sudo', ['-u', `#${process.env.SUDO_UID}`, 'hdiutil', ...args], { encoding: 'utf8' }) : execFileSync('hdiutil', args, { encoding: 'utf8' }));
+    fs.chmodSync(tmp, 0o777);
+    asUser(['create', '-size', '32m', '-fs', 'MS-DOS FAT32', '-volname', 'CARD', '-layout', 'NONE', dmg]);
+    const att = asUser(['attach', dmg]);
     const m = /^(\/dev\/disk\d+)\s+.*?(\/Volumes\/\S+)/m.exec(att);
     if (!m) fail(`disk image did not attach: ${att}`);
     fs.copyFileSync(photo, path.join(m[2], 'holiday.jpg'));
@@ -78,6 +81,15 @@ async function main(): Promise<void> {
     // Show what PhotoRec itself says, to see why nothing came back.
     const walk = (d: string): string[] => { try { return fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)])); } catch { return []; } };
     console.log(`files in the results folder: ${walk(out).join(', ') || 'none'}`);
+    if (process.platform === 'win32') {
+      // Which way of naming the drive does this PhotoRec accept?
+      const num = spawnSync('powershell.exe', ['-NoProfile', '-Command', '(Get-Partition -DriveLetter R).DiskNumber; (Get-Partition -DriveLetter R).PartitionNumber'], { encoding: 'utf8' }).stdout.trim().split(/\s+/);
+      for (const [dev, part] of [['\\\\.\\R:', 'partition_none'], ['\\\\.\\r:', 'partition_none'], ['R:', 'partition_none'], [`\\\\.\\PhysicalDrive${num[0]}`, String(num[1])], [`/dev/sd${String.fromCharCode(97 + Number(num[0]))}`, String(num[1])]]) {
+        const t = spawnSync(pr, ['/log', '/d', path.join(tmp, 'try', 'recup_dir'), '/cmd', dev, `${part},options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,freespace,search`], { cwd: tmp, encoding: 'utf8', timeout: 120000 });
+        console.log(`try ${dev} ${part}: status ${t.status}, found ${countRecovered(path.join(tmp, 'try'))}, ${String(t.stdout).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ' ').replace(/\s+/g, ' ').slice(-300)}`);
+        fs.rmSync(path.join(tmp, 'try'), { recursive: true, force: true });
+      }
+    }
     const direct = spawnSync(pr, ['/log', '/d', path.join(tmp, 'direct', 'recup_dir'), '/cmd', device, 'partition_none,options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,freespace,search'], { cwd: tmp, encoding: 'utf8', timeout: 120000, env: { ...process.env, TERM: 'dumb' } });
     console.log(`direct run: status ${direct.status} ${direct.error ?? ''}\n${String(direct.stdout).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ' ').slice(-1500)}\n${direct.stderr}`);
     console.log(`direct found ${countRecovered(path.join(tmp, 'direct'))}; log: ${(() => { try { return fs.readFileSync(path.join(tmp, 'photorec.log'), 'utf8').slice(-2000); } catch { return 'none'; } })()}`);
