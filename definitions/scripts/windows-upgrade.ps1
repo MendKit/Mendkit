@@ -13,6 +13,7 @@ elseif ($admin) { $tpm = [pscustomobject]@{ version = 'none'; enabled = $false; 
 $sb = $null
 try { $sb = Confirm-SecureBootUEFI } catch { if ($_.Exception.Message -match 'not supported') { $sb = 'unsupported' } }
 $fw = (Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control').PEFirmwareType   # 1 BIOS, 2 UEFI
+if (-not $fw) { $fw = @{ UEFI = 2; Legacy = 1 }[[string]$env:firmware_type] }
 
 $sysPart = Get-Partition -DriveLetter ($env:SystemDrive.TrimEnd(':'))
 $disk = if ($sysPart) { Get-Disk -Number $sysPart.DiskNumber } else { $null }
@@ -40,7 +41,7 @@ ConvertTo-Json -Depth 4 -Compress -InputObject ([pscustomobject]@{
   admin = $admin
   product = [string]$cv.ProductName; edition = [string]$cv.EditionID; version = [string]$cv.DisplayVersion
   build = [int]$cv.CurrentBuildNumber; ubr = [int]$cv.UBR; arch = [string]$env:PROCESSOR_ARCHITECTURE
-  cpu = [string]$cpu.Name; cpuMaker = [string]$cpu.Manufacturer; cores = [int]$cpu.NumberOfCores; mhz = [int]$cpu.MaxClockSpeed
+  cpu = [string]$cpu.Name; cpuMaker = [string]$cpu.Manufacturer; cores = [int](Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum; mhz = [int]$cpu.MaxClockSpeed
   ramGb = [math]::Round($os.TotalVisibleMemorySize / 1MB, 1)
   tpm = $tpm; secureBoot = $sb; firmware = $fw
   partitionStyle = [string]$disk.PartitionStyle; diskGb = [math]::Round($disk.Size / 1GB); freeGb = [math]::Round($vol.SizeRemaining / 1GB, 1)

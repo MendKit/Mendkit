@@ -19,6 +19,7 @@ import { readBackup, runBackup, runRestore } from '../engine/backup';
 import * as browsers from '../engine/browsers';
 import * as recover from '../engine/recover';
 import { cpuLikelySupported, upgradePlan, UpgradeFacts } from '../engine/upgrade';
+import * as phone from '../engine/phone';
 
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(msg);
@@ -750,6 +751,49 @@ async function main(): Promise<void> {
     assert(green7.state === 'ready', 'a green verdict should clear an unsure processor');
     assert(upgradePlan({ ...base, freeGb: 12 }).checks.find((c) => c.id === 'free')!.fix === 'space' && upgradePlan({ ...base, arch: 'x86' }).state === 'unsupported', 'space or 32-bit check wrong');
     console.log('Windows 11 upgrade: processor list, readiness, fixes and Windows\' own verdict OK');
+  }
+
+  {
+    // Phone helpers: backup details from property lists, phones opened as folders, and the copy plan.
+    const fx = path.join(__dirname, '..', '..', 'test', 'fixtures');
+    const man = phone.parseBinaryPlist(fs.readFileSync(path.join(fx, 'Manifest.plist')));
+    assert(man.IsEncrypted === true && man.Lockdown.DeviceName === 'Nerd\u2019s iPhone' && man.Sizes[2] === 300000 && man.Date instanceof Date && man.Date.toISOString() === '2026-10-01T12:00:00.000Z' && man.Data.length === 2, `binary plist wrong: ${JSON.stringify(man)}`);
+    const info = phone.parseXmlPlist(fs.readFileSync(path.join(fx, 'Info.plist'), 'utf8'));
+    assert(info['Device Name'] === 'Kitchen iPad' && info['Last Backup Date'].toISOString() === '2026-09-30T18:05:00.000Z' && info.Applications['com.x'].a === 1 && info.Empty === '', `xml plist wrong: ${JSON.stringify(info)}`);
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-phone-'));
+    const bdir = path.join(tmp, 'Backup', '00008110-001A2B3C4D5E');
+    fs.mkdirSync(bdir, { recursive: true });
+    fs.copyFileSync(path.join(fx, 'Info.plist'), path.join(bdir, 'Info.plist'));
+    fs.copyFileSync(path.join(fx, 'Manifest.plist'), path.join(bdir, 'Manifest.plist'));
+    fs.mkdirSync(path.join(tmp, 'Backup', 'not-a-backup'));
+    const bl = phone.listIosBackups([path.join(tmp, 'Backup'), path.join(tmp, 'missing')]);
+    assert(bl.length === 1 && bl[0].name === 'Kitchen iPad' && bl[0].model === 'iPad (iPad13,18)' && bl[0].encrypted === true && bl[0].ios === '17.5.1', `backup list wrong: ${JSON.stringify(bl)}`);
+    assert(phone.iosBackupDirs('win32', 'C:\\Users\\me', { APPDATA: 'C:\\Users\\me\\AppData\\Roaming' }).length === 2, 'Windows backup folders wrong');
+
+    const gv = path.join(tmp, 'gvfs');
+    const dcim = path.join(gv, 'mtp:host=SAMSUNG_SAMSUNG_Android_R58N12345AB', 'Internal shared storage', 'DCIM', 'Camera');
+    fs.mkdirSync(dcim, { recursive: true });
+    fs.mkdirSync(path.join(gv, 'mtp:host=SAMSUNG_SAMSUNG_Android_R58N12345AB', 'Internal shared storage', 'Android', 'data', 'DCIM'), { recursive: true });
+    fs.mkdirSync(path.join(gv, 'gphoto2:host=Apple_Inc._iPhone_00008110001A2B3C4D5E', 'DCIM', '100APPLE'), { recursive: true });
+    fs.mkdirSync(path.join(gv, 'smb-share:server=nas,share=photos'), { recursive: true });
+    const when = new Date('2026-07-04T12:00:00').getTime() / 1000;
+    for (const [n, size] of [['IMG_0001.jpg', 10], ['IMG_0002.jpg', 20], ['VID_0003.mp4', 30], ['notes.txt', 5], ['IMG_0001.jpg.aae', 1]] as [string, number][]) {
+      fs.writeFileSync(path.join(dcim, n), Buffer.alloc(size));
+      fs.utimesSync(path.join(dcim, n), when, when);
+    }
+    const ph = phone.gvfsPhones(gv);
+    assert(ph.length === 2 && ph.find((p) => p.kind === 'android')!.folders.length === 1 && ph.find((p) => p.kind === 'iphone') && ph.find((p) => p.kind === 'android')!.name.startsWith('SAMSUNG'), `gvfs phones wrong: ${JSON.stringify(ph)}`);
+    const android = ph.find((p) => p.kind === 'android')!;
+    const media = phone.listMedia(android.root, android.folders);
+    assert(media.length === 3, `media list wrong: ${JSON.stringify(media)}`);
+    const dest = path.join(tmp, 'Photos');
+    fs.mkdirSync(path.join(dest, '2026-07'), { recursive: true });
+    fs.writeFileSync(path.join(dest, '2026-07', 'IMG_0001.jpg'), Buffer.alloc(10));
+    fs.writeFileSync(path.join(dest, '2026-07', 'IMG_0002.jpg'), Buffer.alloc(99));
+    const plan = phone.copyPlan(media, dest);
+    assert(plan.length === 2 && plan.some((p) => p.to.endsWith(path.join('2026-07', 'IMG_0002-2.jpg'))) && plan.some((p) => p.to.endsWith(path.join('2026-07', 'VID_0003.mp4'))), `copy plan wrong: ${JSON.stringify(plan)}`);
+    fs.rmSync(tmp, { recursive: true, force: true });
+    console.log('phone helpers: backup details, phones as folders and the copy plan OK');
   }
 
   console.log(`Smoke test passed. Log: ${summary.logFile}`);

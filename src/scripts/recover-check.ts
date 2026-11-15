@@ -34,23 +34,21 @@ async function main(): Promise<void> {
     fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\nselect vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
     console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-4).join(' '));
     // Write the photo through to the disk before deleting it, as happens when a file has been there a while.
-    // A virtual disk passes deletions on like an SSD does (TRIM), wiping the data at once, as on a real SSD.
-    // Memory cards and USB sticks do not, so turn that off for the test.
-    spawnSync('fsutil.exe', ['behavior', 'set', 'DisableDeleteNotify', '1']);
-    const fd = fs.openSync('R:\\holiday.jpg', 'w');
-    fs.writeSync(fd, fs.readFileSync(photo));
-    fs.fsyncSync(fd);
-    fs.closeSync(fd);
-    spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Write-VolumeCache -DriveLetter R']);
-    fs.unlinkSync('R:\\holiday.jpg');
-    spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Write-VolumeCache -DriveLetter R']);
+    // Windows wipes a deleted file's data on a virtual disk at once (as on an SSD), so instead put the photo's
+    // bytes straight into the free space of the detached disk image: what a deleted photo on a card leaves.
+    fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
+    execFileSync('diskpart.exe', ['/s', script]);
+    const img = fs.openSync(vhd, 'r+');
+    fs.writeSync(img, fs.readFileSync(photo), 0, fs.statSync(photo).size, 40 * 1024 * 1024);
+    fs.closeSync(img);
+    fs.writeFileSync(script, `select vdisk file="${vhd}"\nattach vdisk\nselect partition 1\nassign letter=R\n`);
+    execFileSync('diskpart.exe', ['/s', script]);
     const vols = windowsVolumes(spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-volumes.ps1')], { encoding: 'utf8' }).stdout.trim(), process.env.SystemDrive);
     console.log(`volumes: ${vols.map((v) => `${v.mount} ${v.fs} ${v.removable ? 'removable' : 'fixed'}${v.system ? ' system' : ''}${v.internalSsd ? ' ssd' : ''}`).join('; ')}`);
     const card = vols.find((v) => v.mount === 'R:\\');
     if (!card || !/FAT32/i.test(card.fs) || !vols.some((v) => v.system)) fail('the volume list is missing the test drive or the system drive');
     vol = card;
     cleanup = () => {
-      spawnSync('fsutil.exe', ['behavior', 'set', 'DisableDeleteNotify', '0']);
       fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
       spawnSync('diskpart.exe', ['/s', script]);
     };
