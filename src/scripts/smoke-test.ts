@@ -20,6 +20,7 @@ import * as browsers from '../engine/browsers';
 import * as recover from '../engine/recover';
 import { cpuLikelySupported, upgradePlan, UpgradeFacts } from '../engine/upgrade';
 import * as phone from '../engine/phone';
+import { addSnapshot, HealthSnapshot, healthTrends, slopePerDay } from '../engine/history';
 
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(msg);
@@ -794,6 +795,26 @@ async function main(): Promise<void> {
     assert(plan.length === 2 && plan.some((p) => p.to.endsWith(path.join('2026-07', 'IMG_0002-2.jpg'))) && plan.some((p) => p.to.endsWith(path.join('2026-07', 'VID_0003.mp4'))), `copy plan wrong: ${JSON.stringify(plan)}`);
     fs.rmSync(tmp, { recursive: true, force: true });
     console.log('phone helpers: backup details, phones as folders and the copy plan OK');
+  }
+
+  {
+    // Health history: one snapshot a day, and trend warnings.
+    const day = (n: number) => new Date(Date.UTC(2026, 9, 1) + n * 86400000).toISOString();
+    const snap = (n: number, o: Partial<HealthSnapshot>): HealthSnapshot => ({ at: day(n), freeGb: 100, freePercent: 40, driveHealthy: true, wear: 10, driveErrors: 0, temperature: 35, batteryPercent: 90, crashes: 0, ...o });
+    let h: HealthSnapshot[] = [];
+    h = addSnapshot(h, snap(0, {}));
+    h = addSnapshot(h, { ...snap(0, { freeGb: 99 }), at: day(0).replace('T00', 'T15') });
+    assert(h.length === 1 && h[0].freeGb === 99, 'one snapshot per day not kept');
+    assert(slopePerDay([{ at: 0, v: 10 }, { at: 86400000 * 5, v: 5 }, { at: 86400000 * 10, v: 0 }]) === -1 && slopePerDay([{ at: 0, v: 1 }, { at: 1, v: 2 }, { at: 2, v: 3 }]) === null, 'slope wrong');
+    const now = Date.UTC(2026, 9, 1) + 30 * 86400000;
+    const calm = Array.from({ length: 30 }, (_x, i) => snap(i, { freeGb: 100 - i * 0.01, batteryPercent: 90 - i * 0.02 }));
+    assert(healthTrends(calm, now).length === 0, `calm history gave warnings: ${JSON.stringify(healthTrends(calm, now))}`);
+    const bad = Array.from({ length: 30 }, (_x, i) => snap(i, { freeGb: 60 - i * 1.5, batteryPercent: 90 - i * 0.2, driveErrors: i > 20 ? 3 : 0, wear: 10 + i * 0.5, crashes: i === 29 ? 4 : 0 }));
+    bad[29].driveHealthy = false;
+    const ids = healthTrends(bad, now).map((x) => x.id).sort().join(',');
+    assert(ids === 'battery,crashes,drive-errors,drive-failing,space,wear', `trend warnings wrong: ${ids}`);
+    assert(healthTrends(bad, now).find((x) => x.id === 'space')!.level === 'problem', 'space running out in under two weeks should be a problem');
+    console.log('health history: daily snapshots, trends and warnings OK');
   }
 
   console.log(`Smoke test passed. Log: ${summary.logFile}`);

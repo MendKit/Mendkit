@@ -37,7 +37,13 @@ async function main(): Promise<void> {
     // Windows wipes a deleted file's data on a virtual disk at once (as on an SSD), so instead put the photo's
     // bytes straight into the free space of the detached disk image: what a deleted photo on a card leaves.
     fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
-    execFileSync('diskpart.exe', ['/s', script]);
+    for (let attempt = 1; ; attempt++) {
+      const det = spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' });
+      if (det.status === 0) break;
+      console.log(`detach attempt ${attempt}: ${det.stdout.replace(/\s+/g, ' ').slice(-400)}`);
+      if (attempt === 5) fail('the test disk could not be detached');
+      spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Seconds 3']);
+    }
     const img = fs.openSync(vhd, 'r+');
     fs.writeSync(img, fs.readFileSync(photo), 0, fs.statSync(photo).size, 40 * 1024 * 1024);
     fs.closeSync(img);

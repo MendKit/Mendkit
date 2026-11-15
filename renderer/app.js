@@ -98,6 +98,58 @@ function adminNotice() {
   return el('div', { className: 'notice' }, el('span', { textContent: 'Most repair steps need administrator rights. Without them those steps are skipped.' }), btn);
 }
 
+/** A small line chart of one value over time. */
+function sparkline(values) {
+  const w = 140;
+  const h = 30;
+  const NS = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(NS, 'svg');
+  svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+  svg.setAttribute('width', w);
+  svg.setAttribute('height', h);
+  svg.setAttribute('class', 'spark');
+  svg.setAttribute('aria-hidden', 'true');
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min || 1;
+  const pts = values.map((v, k) => `${(k / Math.max(1, values.length - 1)) * (w - 4) + 2},${h - 3 - ((v - min) / span) * (h - 6)}`);
+  const line = document.createElementNS(NS, 'polyline');
+  line.setAttribute('points', pts.join(' '));
+  svg.append(line);
+  return svg;
+}
+
+/** Health over time on the Dashboard: warnings from the trends, then a line per measure. */
+function renderHealthHistory(slot, h) {
+  slot.replaceChildren();
+  for (const t of h.trends) {
+    const b = el('button', { className: 'ghost', textContent: t.id === 'space' ? 'Free up space' : t.id === 'crashes' ? 'Crash Analyzer' : 'Back up now' });
+    b.onclick = () => (t.id === 'space' ? (state.info.platform === 'win32' ? showWinSpace() : state.info.platform === 'darwin' ? showMacSpace() : showLinuxSpace()) : t.id === 'crashes' ? show('crash') : show('migrate'));
+    slot.append(el('div', { className: `notice ${t.level === 'problem' ? 'bad' : ''}` }, el('span', {}, el('strong', { textContent: `${t.title}. ` }), t.message), ...(t.id === 'battery' || t.id === 'temperature' || t.id === 'wear' ? [] : [b])));
+  }
+  const hist = h.history;
+  const rows = [
+    ['Free space', 'freeGb', (v) => `${v} GB`],
+    ['Battery capacity', 'batteryPercent', (v) => `${Math.round(v)}%`],
+    ['SSD wear used', 'wear', (v) => `${Math.round(v)}%`],
+    ['Drive read errors', 'driveErrors', (v) => String(v)],
+    ['Crashes in 30 days', 'crashes', (v) => String(v)],
+  ].map(([name, key, fmt]) => [name, hist.filter((x) => typeof x[key] === 'number').map((x) => ({ at: x.at, v: x[key] })), fmt]).filter(([, pts]) => pts.length);
+  const details = el('details', {}, el('summary', { textContent: hist.length > 1 ? `Health over time: ${hist.length} daily records since ${new Date(hist[0].at).toLocaleDateString()}` : 'Health over time' }));
+  if (hist.length < 2) details.append(el('p', { className: 'dim', textContent: 'MendKit writes down this computer\'s free space, drive health, battery capacity and crashes once a day while it is open. After a few days, changes show here and MendKit warns when something is getting worse.' }));
+  else {
+    const t = el('table', { className: 'trend' });
+    for (const [name, pts, fmt] of rows) {
+      const first = pts[0];
+      const last = pts[pts.length - 1];
+      t.append(el('tr', {}, el('td', {}, el('strong', { textContent: name })), el('td', { className: 'act' }, pts.length > 1 ? sparkline(pts.map((p) => p.v)) : ''), el('td', { textContent: pts.length > 1 ? `${fmt(first.v)} on ${new Date(first.at).toLocaleDateString()}, ${fmt(last.v)} now` : `${fmt(last.v)} now` })));
+    }
+    details.append(t);
+  }
+  if (h.trends.length) details.open = true;
+  slot.append(details);
+}
+
 function renderDashboard(view) {
   const i = state.info;
   view.append(el('h1', { textContent: 'Dashboard' }), el('p', { className: 'lead', textContent: 'A quick look at this computer.' }));
@@ -181,6 +233,11 @@ function renderDashboard(view) {
   helpBtn.onclick = () => showHelp();
   view.append(el('div', { className: 'specs-bar toolbar' }, specsBtn, helpBtn), specsBox);
   if (i.platform === 'win32' && !i.elevated) view.append(adminNotice());
+  const healthSlot = el('div');
+  view.append(healthSlot);
+  api.healthHistory().then((h) => {
+    if (healthSlot.isConnected) renderHealthHistory(healthSlot, h);
+  }).catch(() => {});
 
   const std = state.catalog.recipes.find((r) => r.id === 'standard-service');
   if (std) {

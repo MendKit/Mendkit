@@ -77,6 +77,8 @@ contextBridge.exposeInMainWorld('mendkit', {
   phonePickDest: () => ipcRenderer.invoke('phone-pick-dest'),
   phoneCopy: (o: unknown) => ipcRenderer.invoke('phone-copy', o),
   phoneOpen: (what: string) => ipcRenderer.invoke('phone-open', what),
+  healthHistory: () => ipcRenderer.invoke('health-history'),
+  healthHistoryNow: () => ipcRenderer.invoke('health-history-now'),
   linuxStartupScan: () => ipcRenderer.invoke('linux-startup-scan'),
   linuxStartupOff: (ids: string[]) => ipcRenderer.invoke('linux-startup-off', ids),
   linuxStartupOn: (id: string) => ipcRenderer.invoke('linux-startup-on', id),

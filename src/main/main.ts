@@ -26,6 +26,7 @@ import { registerBrowsers } from './browsers';
 import { registerRecover } from './recover';
 import { registerUpgrade } from './upgrade';
 import { registerPhone } from './phone';
+import { registerHistory } from './history';
 import { registerUpdater } from './updater';
 import { offlineInstallSteps, quickOnline, readCache, registerOffline } from './offline';
 import { applyPortableMode, jobScheduled, jobsSupported, registerBatch5, scheduleJob, Job } from './batch5';
@@ -343,6 +344,7 @@ function registerIpc(): void {
   registerRecover({ engine, getWin: () => win });
   registerUpgrade({ engine });
   registerPhone({ engine, getWin: () => win });
+  registerHistory();
   registerUpdater({ getWin: () => win, busy: () => engine.isBusy() || job !== null });
   registerOffline({ engine, catalog, getWin: () => win });
   registerBatch5({ engine, getWin: () => win, portable });
