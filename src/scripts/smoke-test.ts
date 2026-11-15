@@ -16,6 +16,7 @@ import { bookmarksToHtml, countApps, fromWinget, installPlan, loadApps, normaliz
 import { advise, AdvisorFacts } from '../engine/advisor';
 import { exePatterns, loadRemoteTools, matchScan, removalPlan } from '../engine/remote';
 import { readBackup, runBackup, runRestore } from '../engine/backup';
+import * as browsers from '../engine/browsers';
 
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(msg);
@@ -597,6 +598,70 @@ async function main(): Promise<void> {
     assert(threw, 'a zip should not get a silent install command');
     assert(cacheable('7zip.7zip') && !cacheable('9NBLGGH4NNS1') && !cacheable(undefined), 'store apps should not be cacheable');
     console.log('offline cache: manifest reading, silent switches and install commands OK');
+  }
+
+  {
+    // Browser cleanup against a made-up Chrome and Firefox profile.
+    const b = browsers;
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-browsers-'));
+    const roots = b.browserRoots('linux', tmp, {});
+    const chrome = roots.find((r) => r.browser === 'Google Chrome')!;
+    const prof = path.join(chrome.root, 'Default');
+    const bad = 'abcdefghijklmnopabcdefghijklmnop';
+    const good = 'cjpalhdlnbpafiamejdnhcphjbkeiagm';
+    for (const [id, name, ver] of [[bad, '__MSG_appName__', '1.0'], [good, 'uBlock Origin', '2.0']]) {
+      const d = path.join(prof, 'Extensions', id, ver);
+      fs.mkdirSync(d, { recursive: true });
+      fs.writeFileSync(path.join(d, 'manifest.json'), JSON.stringify({ name, default_locale: 'en' }));
+      if (id === bad) {
+        fs.mkdirSync(path.join(d, '_locales', 'en'), { recursive: true });
+        fs.writeFileSync(path.join(d, '_locales', 'en', 'messages.json'), JSON.stringify({ appname: { message: 'Super Search Helper' } }));
+      }
+    }
+    fs.writeFileSync(path.join(prof, 'Preferences'), JSON.stringify({
+      profile: { name: 'Person 1', content_settings: { exceptions: { notifications: { 'https://spam.example:443,*': { setting: 1 }, 'https://mail.example:443,*': { setting: 2 } } } } },
+      extensions: { settings: { [bad]: { location: 4, state: 1 }, [good]: { location: 1, from_webstore: true, state: 1 }, mhjfbmdgcfjbbpaeojofohoefgiehjai: { location: 5 } }, pinned_extensions: [bad, good] },
+      homepage: 'http://search.example/', homepage_is_newtabpage: false, session: { restore_on_startup: 4, startup_urls: ['http://search.example/'] },
+    }));
+    fs.writeFileSync(path.join(prof, 'Secure Preferences'), JSON.stringify({ protection: { macs: { extensions: { settings: { [bad]: 'X', [good]: 'Y' } } } } }));
+    fs.mkdirSync(path.join(chrome.root, 'System Profile'), { recursive: true });
+    fs.writeFileSync(path.join(chrome.root, 'System Profile', 'Preferences'), '{}');
+    const dirs = b.listProfileDirs(chrome);
+    assert(dirs.length === 1 && dirs[0] === prof, 'browser profile discovery wrong');
+    const cp = b.readChromiumProfile(prof, 'Google Chrome', new Set());
+    assert(cp.extensions.length === 2 && cp.extensions.some((e) => e.name === 'Super Search Helper' && e.sideloaded) && cp.extensions.some((e) => e.name === 'uBlock Origin' && e.fromStore && !e.sideloaded), `chromium extensions wrong: ${JSON.stringify(cp.extensions)}`);
+    assert(cp.notifications.length === 1 && cp.notifications[0] === 'https://spam.example' && cp.homepage === 'http://search.example/' && cp.startupPages.length === 1, 'chromium settings wrong');
+    const bk = b.backupFile(path.join(prof, 'Preferences'), path.join(tmp, 'backup'));
+    assert(!!bk && fs.existsSync(bk), 'preferences backup missing');
+    b.removeChromiumExtensions(prof, [bad]);
+    assert(b.removeChromiumNotifications(prof) === 1, 'notification removal count wrong');
+    const after = b.readChromiumProfile(prof, 'Google Chrome');
+    const sec = JSON.parse(fs.readFileSync(path.join(prof, 'Secure Preferences'), 'utf8'));
+    const pref = JSON.parse(fs.readFileSync(path.join(prof, 'Preferences'), 'utf8'));
+    assert(after.extensions.length === 1 && after.notifications.length === 0 && !fs.existsSync(path.join(prof, 'Extensions', bad)) && !(bad in sec.protection.macs.extensions.settings) && 'Y' === sec.protection.macs.extensions.settings[good] && pref.extensions.pinned_extensions.join() === good, 'chromium removal wrong');
+    assert('https://mail.example:443,*' in pref.profile.content_settings.exceptions.notifications, 'blocked notification entry should stay');
+
+    const ff = path.join(roots.find((r) => r.browser === 'Firefox')!.root, 'ab12cd34.default-release');
+    fs.mkdirSync(path.join(ff, 'extensions'), { recursive: true });
+    fs.writeFileSync(path.join(ff, 'prefs.js'), 'user_pref("browser.startup.homepage", "http://search.example/");\n');
+    fs.writeFileSync(path.join(ff, 'extensions', 'bad@example.xpi'), 'x');
+    fs.writeFileSync(path.join(ff, 'extensions.json'), JSON.stringify({ addons: [{ id: 'bad@example', type: 'extension', location: 'app-profile', active: true, foreignInstall: true, defaultLocale: { name: 'Bad Toolbar' } }, { id: 'formautofill@mozilla.org', type: 'extension', location: 'app-builtin', active: true }] }));
+    const fp = b.readFirefoxProfile(ff, 'Firefox');
+    assert(fp.name === 'default-release' && fp.extensions.length === 1 && fp.extensions[0].sideloaded && fp.homepage === 'http://search.example/', `firefox profile wrong: ${JSON.stringify(fp)}`);
+    b.removeFirefoxExtensions(ff, ['bad@example']);
+    assert(!fs.existsSync(path.join(ff, 'extensions', 'bad@example.xpi')), 'firefox extension not removed');
+
+    const reg = 'HKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\r\n    HomepageLocation    REG_SZ    http://search.example/\r\n\r\nHKEY_LOCAL_MACHINE\\SOFTWARE\\Policies\\Google\\Chrome\\ExtensionInstallForcelist\r\n    1    REG_SZ    ' + bad + ';https://clients2.google.com/service/update2/crx\r\n';
+    const ext = 'HKEY_LOCAL_MACHINE\\SOFTWARE\\WOW6432Node\\Google\\Chrome\\Extensions\\' + bad + '\r\n    update_url    REG_SZ    https://clients2.google.com/service/update2/crx\r\n';
+    const fo = b.forcesFromRegistry('HKLM', reg, ext);
+    const pol = fo.find((x) => x.kind === 'policy');
+    assert(fo.length === 2 && !!pol && pol.admin && pol.extensionIds.includes(bad) && pol.location === 'HKLM\\SOFTWARE\\Policies\\Google\\Chrome' && fo.some((x) => x.kind === 'external' && x.extensionIds[0] === bad), `registry policy parsing wrong: ${JSON.stringify(fo)}`);
+    const concerns = b.policyConcerns(pol!.settings);
+    assert(concerns.some((c) => /home page/.test(c)) && concerns.some((c) => /Forces extensions/.test(c)), `policy concerns wrong: ${concerns}`);
+    assert(b.readChromiumProfile(prof, 'Google Chrome', new Set([good])).extensions[0].forced, 'forced flag not applied');
+    assert(b.browserProcesses('Firefox (Snap)', 'linux').includes('firefox') && b.resetPage('Microsoft Edge').startsWith('edge://'), 'browser process names wrong');
+    fs.rmSync(tmp, { recursive: true, force: true });
+    console.log('browser cleanup: profiles, extensions, notifications, policies OK');
   }
 
   console.log(`Smoke test passed. Log: ${summary.logFile}`);

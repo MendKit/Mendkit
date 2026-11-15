@@ -22,6 +22,7 @@ import { registerPermissions } from './permissions';
 import { registerLinuxTools } from './linuxtools';
 import { registerSwitchLinux } from './switchlinux';
 import { registerWinTools } from './wintools';
+import { registerBrowsers } from './browsers';
 import { registerUpdater } from './updater';
 import { offlineInstallSteps, quickOnline, readCache, registerOffline } from './offline';
 import { applyPortableMode, jobScheduled, jobsSupported, registerBatch5, scheduleJob, Job } from './batch5';
@@ -335,6 +336,7 @@ function registerIpc(): void {
   registerPermissions();
   registerLinuxTools({ engine });
   registerWinTools({ engine });
+  registerBrowsers({ engine });
   registerUpdater({ getWin: () => win, busy: () => engine.isBusy() || job !== null });
   registerOffline({ engine, catalog, getWin: () => win });
   registerBatch5({ engine, getWin: () => win, portable });

@@ -358,7 +358,7 @@ G('mk-undo',GR,'Undo Center','Putting back settings MendKit changed, removing to
  sec('What is listed',[
   'Settings MendKit changed: every tweak, with when it was changed and Put back.',
   'Tools MendKit installed: each with Remove.',
-  'Files set aside by the remote access audit and startup items removed on a Mac: each with Put back.']),
+  'Files set aside by MendKit (remote access audit, Browser cleanup, and startup items removed on a Mac): each with Put back.']),
  sec('Put something back',[S('Click Undo Center and click Put back (or Remove) beside the item.', see='A results screen confirming it.')],'steps'),
  sec('Undoing a repair',[
   'Repairs such as system file fixes cannot be reversed one by one.',
@@ -392,4 +392,29 @@ G('remote-audit',GR,'Remote access audit','Finding remote-control programs a sca
   'Removal works on Windows and Linux. On a Mac it reports what it finds; remove those with Startup items and the app\'s own uninstaller.']),
  sec('After a scam',['See "Staying safe: scams and fake support" for what to do next: passwords from another device, calling the bank, and a malware scan.'])],
  systems=ALL, time='5 to 10 minutes', level='Easy', screen='dashboard', related=['basics-safety','mk-undo','mac-tools']),
+G('mk-browsers',GR,'Browser cleanup','Removing unwanted extensions, notification pop-ups and settings forced into Chrome, Edge, Brave, Vivaldi or Firefox.',[
+ sec('When to use it',[
+  'Pop-ups in the corner of the screen saying the computer is infected, even with the browser closed or on a different website. These are almost always a website that was allowed to show notifications.',
+  'The home page or search engine changed and keeps changing back.',
+  'A toolbar, coupon helper or "search assistant" nobody remembers installing.',
+  'The browser says "Managed by your organization" on a home computer.']),
+ sec('Scan',[
+  S('Close every browser window first.',tip='Changes are only made while a browser is closed. Check the taskbar or Dock: the browser icon should not show a dot or line under it.'),
+  S('Tick Technician mode at the bottom left, open Repair, and click Open beside Browser cleanup under Cleanup and recovery.'),
+  S('Click Scan.',see='A section for each browser profile on this account, with its extensions, the sites allowed to show notifications, and its home page, start-up pages and search engine if they were changed. If anything forces settings in from outside the browser, it is listed first under "Set from outside the browser".')],'steps'),
+ sec('Choose what to remove',[
+  S('Extensions marked "not from the store" are ticked for you.',tip='They were put there by another program rather than added from the Chrome Web Store, Edge Add-ons or Firefox Add-ons. That is how adware arrives.'),
+  S('Read the rest. Untick anything the person uses, such as a password manager or an ad blocker they chose.',tip='Not sure what one is? Search its name. A name you cannot find anything about is a good reason to remove it.'),
+  S('Leave "Stop sites showing notifications" ticked.',see='The list under it shows each site. Removing them all is safe: sites the person wants, such as email or chat, can ask again.'),
+  S('Under "Set from outside the browser", tick the policies marked with things like "Sets the search engine" or "Forces extensions in".',warn='On a computer from a workplace or school, these are put there on purpose. Leave them alone and ask their IT department.'),
+  S('Click Clean selected.',see='A result for each browser profile and each outside setting. Settings for every user need MendKit running as administrator (Windows) or your password (Mac and Linux).')],'steps'),
+ sec('If the home page or search engine is still wrong',[
+  S('Beside the changed settings, click Open the reset page.',see='The browser opens on its own reset page. If it opens on a normal page instead, type the address MendKit shows at the bottom of its window into the address bar.'),
+  S('Click Reset settings (Firefox: Refresh Firefox).',see='The home page, start-up pages and search engine go back to normal and extensions are turned off. Bookmarks, passwords and history stay.')],'steps'),
+ sec('If something comes back',[
+  'The browser is signed in with sync turned on and another computer still has the extension. Remove it on that computer too, or from the extensions page while signed in.',
+  'A program on the computer puts it back. Run Startup items and look for unfamiliar entries, and run the malware scan in Pop-ups or strange behaviour.',
+  'Scan again: a policy may have been added after the first scan.']),
+ sec('Putting something back',['The old browser settings files and removed extension files are kept. Open Undo Center and click Put back beside the item, with the browser closed. On Windows, a removed policy is saved as a .reg file in the same folder; double-click it to put it back.'])],
+ systems=ALL, time='10 minutes', level='Easy', screen='repair', related=['mk-undo','basics-safety','remote-audit']),
 ]

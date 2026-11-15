@@ -170,3 +170,6 @@ ol.guide.steps > li { margin-bottom: 14px; line-height: 1.55; }
   body, #view { background: #fff !important; color: #000 !important; overflow: visible !important; height: auto !important; }
   .g-see, .g-tip, .g-warn { border: 1px solid #999; background: none; }
 }
+details > summary { cursor: pointer; color: var(--dim); margin: 10px 0; }
+details > summary:hover, details > summary:focus-visible { color: var(--text); }
+details[open] > summary { margin-bottom: 8px; }

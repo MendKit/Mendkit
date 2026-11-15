@@ -265,6 +265,15 @@ function renderRepair(view) {
     swBtn.onclick = () => show('switch');
     view.append(el('div', { className: 'notice' }, el('span', { textContent: 'Switch to Linux: for computers that cannot run Windows 11. Checks the hardware, lists what replaces each app, and walks through backing up and installing Linux Mint.' }), swBtn));
   }
+  view.append(el('h2', { textContent: 'Cleanup and recovery' }));
+  const at = el('table');
+  at.id = 'allTools';
+  for (const [name, desc, fn] of ALL_TOOLS) {
+    const b = el('button', { className: 'ghost', textContent: 'Open' });
+    b.onclick = () => fn();
+    at.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, b)));
+  }
+  view.append(at);
   if (state.info.platform === 'darwin') {
     view.append(el('h2', { textContent: 'Mac tools' }));
     const mt = el('table');
@@ -522,6 +531,11 @@ function showResults(r) {
   if (r.outcome === 'cancelled') view.append(el('div', { className: 'notice' }, el('span', { textContent: 'This run was cancelled before it finished.' })));
   if (r.needsRestart) view.append(el('div', { className: 'notice' }, el('span', { textContent: 'Restart your computer to finish these changes.' })));
   if (steps.some((s) => s.status === 'needs-admin') && state.info.platform === 'win32' && !state.info.elevated) view.append(adminNotice());
+  if (r.id === 'popups') {
+    const bc = el('button', { className: 'ghost', textContent: 'Browser cleanup' });
+    bc.onclick = () => showBrowserClean();
+    view.append(el('div', { className: 'notice' }, el('span', { textContent: 'Pop-ups usually come from the browser: a website allowed to show notifications, or an unwanted extension. Browser cleanup lists and removes both.' }), bc));
+  }
 
   const list = el('div', { className: 'results' });
   for (const s of [...steps].sort((a, b) => ORDER.indexOf(a.friendly.level) - ORDER.indexOf(b.friendly.level))) {
@@ -857,6 +871,110 @@ async function renderPermissions(view) {
 }
 
 // ---------- Windows tools ----------
+
+/** Tools on every system: [name, description, open function]. */
+const ALL_TOOLS = [
+  ['Browser cleanup', 'Pop-ups, a changed home page or search engine, or toolbars nobody installed: lists every extension, the sites allowed to show notifications, and settings forced in by other programs, then removes the ones you choose. Chrome, Edge, Brave, Vivaldi and Firefox.', () => showBrowserClean()],
+];
+
+async function showBrowserClean() {
+  const f = macFrame('Browser cleanup', 'Finds what changes the browsers on this computer: extensions, websites allowed to show notifications (the usual cause of fake virus warnings in the corner of the screen), and settings forced in from outside the browser. Nothing changes until you tick it and press Clean.');
+  const scan = el('button', { className: 'big', textContent: 'Scan' });
+  f.bar.append(scan, f.back);
+  scan.onclick = async () => {
+    scan.disabled = true;
+    f.status.textContent = 'Reading every browser profile...';
+    let r;
+    try {
+      r = await api.browserScan();
+    } catch (err) {
+      f.status.textContent = errText(err);
+      scan.disabled = false;
+      return;
+    }
+    scan.disabled = false;
+    scan.textContent = 'Scan again';
+    f.holder.replaceChildren();
+    const extPicks = [];
+    const notifPicks = [];
+    const forcePicks = [];
+    const open = [...new Set(r.profiles.filter((p) => p.running).map((p) => p.browser.replace(/ \((Snap|Flatpak)\)$/, '')))];
+    f.status.textContent = r.profiles.length
+      ? `${r.profiles.length} browser profile${r.profiles.length === 1 ? '' : 's'} found.${open.length ? ` Close ${open.join(' and ')} before cleaning: changes are only made while a browser is closed.` : ''}`
+      : 'No Chrome, Edge, Brave, Vivaldi or Firefox profiles were found for this account.';
+    if (r.forces.length) {
+      f.holder.append(el('h2', { textContent: 'Set from outside the browser' }), el('p', { className: 'dim', textContent: 'Policies and extensions put there by another program. Adware uses these so its settings come back and its extensions cannot be removed. Workplaces and schools use them on purpose: if this computer is managed by one, leave these alone.' }));
+      const quiet = el('details', {}, el('summary', { textContent: '' }));
+      for (const fo of [...r.forces].sort((a, b) => b.concerns.length - a.concerns.length)) {
+        const box = el('input', { type: 'checkbox', disabled: !fo.removable });
+        if (fo.removable) forcePicks.push({ id: fo.id, box });
+        const body = el('div', {}, el('strong', { textContent: fo.kind === 'policy' ? `${fo.browser} policy` : `${fo.browser} extension installed by another program` }));
+        if (fo.admin) body.append(el('span', { className: 'tag', textContent: 'needs administrator' }));
+        for (const c of fo.concerns) body.append(el('span', { className: 'tag hot', textContent: c }));
+        const ul = el('ul', { className: 'found' }, el('li', { textContent: `Where: ${fo.location}` }));
+        for (const s of fo.settings.slice(0, 8)) ul.append(el('li', { textContent: s }));
+        if (fo.settings.length > 8) ul.append(el('li', { textContent: `and ${fo.settings.length - 8} more` }));
+        body.append(ul);
+        if (!fo.removable) body.append(el('p', { className: 'dim', textContent: 'This comes from a configuration profile. Remove it in System Settings, General, Device Management, if you do not recognise it.' }));
+        const row = el('div', { className: 'result ' + (fo.concerns.length ? 'attention' : '') }, el('div', { className: 'chk' }, box), body);
+        (fo.concerns.length || !fo.removable ? f.holder : quiet).append(row);
+      }
+      const n = quiet.children.length - 1;
+      if (n) {
+        quiet.firstChild.textContent = `${n} other setting${n === 1 ? '' : 's'} with nothing adware usually changes`;
+        f.holder.append(quiet);
+      }
+    }
+    for (const p of r.profiles) {
+      f.holder.append(el('h2', { textContent: `${p.browser}: ${p.name}` }));
+      if (p.running) f.holder.append(el('p', { className: 'dim', textContent: `${p.browser.replace(/ \((Snap|Flatpak)\)$/, '')} is open. Close every window of it before cleaning.` }));
+      const settings = [p.homepage && `Home page: ${p.homepage}`, p.startupPages.length && `Opens at start: ${p.startupPages.join(', ')}`, p.search && `Search engine: ${p.search}`].filter(Boolean);
+      if (settings.length) {
+        const reset = el('button', { className: 'ghost', textContent: 'Open the reset page' });
+        reset.onclick = async () => {
+          try {
+            const url = await api.browserOpenReset(p.id);
+            migSafeStatus(`Opened ${url}. If the browser did not go there, type that address into its address bar.`);
+          } catch (err) {
+            migSafeStatus(errText(err));
+          }
+        };
+        f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: `${settings.join('. ')}. If you did not choose these, use the browser's own reset, which puts back the home page, start-up pages and search engine and turns off extensions without deleting bookmarks or passwords.` }), reset));
+      }
+      if (!p.extensions.length) f.holder.append(el('p', { className: 'dim', textContent: 'No extensions.' }));
+      for (const x of p.extensions) {
+        const box = el('input', { type: 'checkbox', checked: x.sideloaded && !x.forced });
+        extPicks.push({ profile: p.id, id: x.id, box });
+        const body = el('div', {}, el('strong', { textContent: x.name }));
+        if (!x.enabled) body.append(el('span', { className: 'tag', textContent: 'turned off' }));
+        if (x.sideloaded) body.append(el('span', { className: 'tag hot', textContent: 'not from the store' }));
+        else if (!x.fromStore) body.append(el('span', { className: 'tag', textContent: 'store not recorded' }));
+        if (x.forced) body.append(el('span', { className: 'tag hot', textContent: 'forced in from outside' }));
+        body.append(el('ul', { className: 'found' }, el('li', { textContent: `Added: ${x.installed ? new Date(x.installed).toLocaleDateString() : 'unknown'}` }), el('li', { textContent: `ID: ${x.id}` })));
+        if (x.forced) body.append(el('p', { className: 'dim', textContent: 'Remove the outside setting above as well, or it will come straight back.' }));
+        f.holder.append(el('div', { className: 'result ' + (x.sideloaded || x.forced ? 'attention' : '') }, el('div', { className: 'chk' }, box), body));
+      }
+      if (p.notifications.length) {
+        const box = el('input', { type: 'checkbox', checked: true });
+        notifPicks.push({ id: p.id, box });
+        const ul = el('ul', { className: 'found' });
+        for (const s of p.notifications.slice(0, 12)) ul.append(el('li', { textContent: s }));
+        if (p.notifications.length > 12) ul.append(el('li', { textContent: `and ${p.notifications.length - 12} more` }));
+        f.holder.append(el('div', { className: 'result attention' }, el('div', { className: 'chk' }, box), el('div', {}, el('strong', { textContent: `Stop ${p.notifications.length} site${p.notifications.length === 1 ? '' : 's'} showing notifications` }), ul, el('p', { className: 'dim', textContent: 'Sites can ask again later. Allow only the ones you use, such as email or chat.' }))));
+      }
+    }
+    if (extPicks.length || notifPicks.length || forcePicks.length) {
+      const go = el('button', { className: 'big run', textContent: 'Clean selected' });
+      go.onclick = () => {
+        const pick = { extensions: extPicks.filter((x) => x.box.checked).map(({ profile, id }) => ({ profile, id })), notifications: notifPicks.filter((x) => x.box.checked).map((x) => x.id), forces: forcePicks.filter((x) => x.box.checked).map((x) => x.id) };
+        if (!pick.extensions.length && !pick.notifications.length && !pick.forces.length) return migSafeStatus('Tick at least one item.');
+        run(async () => showResults(await api.browserClean(pick)));
+      };
+      f.holder.append(el('div', { className: 'result-foot' }, go), el('p', { className: 'lead note', textContent: 'Extensions not from the store are ticked for you; check the rest yourself. If the browser is signed in with sync turned on, a removed extension can come back from another computer: remove it there too, or in the browser\'s extension page while signed in. The old settings and extension files are kept and can be put back from the Undo Center.' }));
+    }
+    syncButtons();
+  };
+}
 
 /** Filled in as each Windows tool is added: [name, description, open function]. */
 const WIN_TOOLS = [
@@ -1631,7 +1749,7 @@ async function renderUndo(view) {
   }
   const q = await api.quarantineList();
   if (q.length) {
-    view.append(el('h2', { textContent: 'Files set aside by the remote access audit' }));
+    view.append(el('h2', { textContent: 'Files set aside by MendKit' }));
     const t = el('table');
     for (const f of q) {
       const b = el('button', { className: 'ghost', textContent: 'Put back' });
