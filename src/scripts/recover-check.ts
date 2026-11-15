@@ -34,6 +34,9 @@ async function main(): Promise<void> {
     fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\nselect vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
     console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-4).join(' '));
     // Write the photo through to the disk before deleting it, as happens when a file has been there a while.
+    // A virtual disk passes deletions on like an SSD does (TRIM), wiping the data at once, as on a real SSD.
+    // Memory cards and USB sticks do not, so turn that off for the test.
+    spawnSync('fsutil.exe', ['behavior', 'set', 'DisableDeleteNotify', '1']);
     const fd = fs.openSync('R:\\holiday.jpg', 'w');
     fs.writeSync(fd, fs.readFileSync(photo));
     fs.fsyncSync(fd);
@@ -47,6 +50,7 @@ async function main(): Promise<void> {
     if (!card || !/FAT32/i.test(card.fs) || !vols.some((v) => v.system)) fail('the volume list is missing the test drive or the system drive');
     vol = card;
     cleanup = () => {
+      spawnSync('fsutil.exe', ['behavior', 'set', 'DisableDeleteNotify', '0']);
       fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
       spawnSync('diskpart.exe', ['/s', script]);
     };
