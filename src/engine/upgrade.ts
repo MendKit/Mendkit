@@ -51,7 +51,7 @@ export interface UpgradePlan {
  * name alone cannot tell.
  */
 export function cpuLikelySupported(name: string): 'yes' | 'no' | 'unsure' {
-  const n = name.replace(/\((R|TM)\)/gi, '').replace(/\s+/g, ' ');
+  const n = name.replace(/\((R|TM)\)/gi, '').replace(/\bCPU\b/g, '').replace(/\s+/g, ' ');
   if (/Snapdragon|Microsoft SQ|Apple/i.test(n)) return 'yes';
   if (/Core Ultra|Core [3579] \d{3}|Intel N\d{2,3}\b|Intel Processor (N|U)?\d{3}/i.test(n)) return 'yes';
   const core = /Core i[3579]-(\d{4,5})/i.exec(n) ?? /Core m[357]-(\d{4})/i.exec(n);
@@ -63,7 +63,7 @@ export function cpuLikelySupported(name: string): 'yes' | 'no' | 'unsure' {
   if (/Pentium (Gold|Silver)/i.test(n)) return 'yes';
   const celeron = /Celeron (?:[NJG])?(\d{4})/i.exec(n);
   if (celeron) return Number(celeron[1][0]) >= 4 && !/Celeron N[23]\d{3}|Celeron J[13]\d{3}/i.test(n) ? 'yes' : 'no';
-  if (/Atom|Core 2|Pentium (Dual|D|4|G\d{3,4}\b|N\d|J\d)|Celeron (M|D|E|B)\d/i.test(n)) return 'no';
+  if (/Atom|Core ?2 |Pentium (Dual|D|4|G\d{3,4}\b|N\d|J\d)|Celeron (M|D|E|B)\d/i.test(n)) return 'no';
   const ryzen = /Ryzen (?:Threadripper )?(?:PRO )?(?:\d )?(?:PRO )?(\d)(\d{3})([A-Z]*)/i.exec(n);
   if (ryzen) {
     const series = Number(ryzen[1]);
@@ -96,16 +96,17 @@ export function upgradePlan(f: UpgradeFacts): UpgradePlan {
   if (f.build >= 22000) {
     return { state: 'already', headline: `This computer already runs ${f.product.replace(/Windows 10/, 'Windows 11')}${f.version ? ` version ${f.version}` : ''}.`, checks, bypassPossible: false };
   }
+  const target = (t: string) => (/(\d{2}H\d)$/i.exec(t) ? `Windows 11 ${/(\d{2}H\d)$/i.exec(t)![1].toUpperCase()}` : 'Windows 11');
   const verdict = [...f.verdicts].filter((v) => v.upgEx).sort((a, b) => b.target.localeCompare(a.target))[0];
   const red = verdict?.upgEx === 'Red' ? verdict.red.split(/[,\s]+/).filter(Boolean) : [];
 
   if (verdict)
     add(
       verdict.upgEx === 'Red'
-        ? { id: 'windows', name: 'Windows\' own check', level: 'problem', message: `Windows checked this computer for ${verdict.target} and says it cannot upgrade: ${redInWords(verdict.red).join(', ') || 'no reason given'}.`, fix: 'recheck' }
+        ? { id: 'windows', name: 'Windows\' own check', level: 'problem', message: `Windows checked this computer for ${target(verdict.target)} and says it cannot upgrade: ${redInWords(verdict.red).join(', ') || 'no reason given'}.`, fix: 'recheck' }
         : verdict.gated
           ? { id: 'windows', name: 'Windows\' own check', level: 'attention', message: 'Microsoft is holding the upgrade back on this computer for a known problem with a driver or app (a safeguard hold). It is lifted by a later update; updating drivers and apps can help.', fix: 'recheck' }
-          : { id: 'windows', name: 'Windows\' own check', level: 'good', message: `Windows checked this computer for ${verdict.target} and found nothing that blocks the upgrade.`, fix: 'recheck' },
+          : { id: 'windows', name: 'Windows\' own check', level: 'good', message: `Windows checked this computer for ${target(verdict.target)} and found nothing that blocks the upgrade.`, fix: 'recheck' },
     );
   else add({ id: 'windows', name: 'Windows\' own check', level: 'unknown', message: 'Windows has not checked this computer yet. "Check again" asks it to (a few minutes, needs administrator).', fix: 'recheck' });
 

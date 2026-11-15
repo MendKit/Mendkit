@@ -18,6 +18,7 @@ import { exePatterns, loadRemoteTools, matchScan, removalPlan } from '../engine/
 import { readBackup, runBackup, runRestore } from '../engine/backup';
 import * as browsers from '../engine/browsers';
 import * as recover from '../engine/recover';
+import { cpuLikelySupported, upgradePlan, UpgradeFacts } from '../engine/upgrade';
 
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(msg);
@@ -718,6 +719,37 @@ async function main(): Promise<void> {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
     console.log('recover: command line, volumes, same-drive guard and PhotoRec location OK');
+  }
+
+  {
+    // Windows 11 upgrade assistant.
+    const cpus: [string, string][] = [
+      ['Intel(R) Core(TM) i5-8250U CPU @ 1.60GHz', 'yes'], ['Intel(R) Core(TM) i7-7700HQ CPU @ 2.80GHz', 'unsure'], ['Intel(R) Core(TM) i5-4590 CPU @ 3.30GHz', 'no'],
+      ['12th Gen Intel(R) Core(TM) i7-12700H', 'yes'], ['Intel(R) Core(TM) Ultra 7 155H', 'yes'], ['Intel(R) Core(TM) i3-10110U CPU', 'yes'], ['Intel(R) Core(TM) m3-8100Y', 'yes'],
+      ['Intel(R) Pentium(R) Silver N5000 CPU', 'yes'], ['Intel(R) Celeron(R) N4020 CPU', 'yes'], ['Intel(R) Celeron(R) CPU N3060', 'no'], ['Intel(R) Celeron(R) CPU  N3350', 'no'], ['Intel(R) N100', 'yes'],
+      ['Intel(R) Core(TM)2 Duo CPU E8400', 'no'], ['Intel(R) Atom(TM) x5-Z8350', 'no'],
+      ['AMD Ryzen 5 3600 6-Core Processor', 'yes'], ['AMD Ryzen 5 2600 Six-Core Processor', 'yes'], ['AMD Ryzen 5 2400G with Radeon Vega Graphics', 'no'], ['AMD Ryzen 5 2500U with Radeon Vega Mobile Gfx', 'unsure'],
+      ['AMD Ryzen 7 1700 Eight-Core Processor', 'no'], ['AMD Ryzen 7 PRO 4750U', 'yes'], ['AMD Athlon Silver 3050U', 'yes'], ['AMD A6-9225 RADEON R4', 'no'], ['AMD FX-8350 Eight-Core Processor', 'no'],
+    ];
+    const wrongCpu = cpus.filter(([n, want]) => cpuLikelySupported(n) !== want).map(([n, want]) => `${n}: ${cpuLikelySupported(n)} not ${want}`);
+    assert(!wrongCpu.length, `processor list wrong: ${wrongCpu.join('; ')}`);
+    const base: UpgradeFacts = { admin: true, product: 'Windows 10 Pro', edition: 'Professional', version: '22H2', build: 19045, arch: 'AMD64', cpu: 'Intel(R) Core(TM) i5-8250U CPU', cores: 4, ramGb: 8, tpm: { version: '2.0', enabled: true, activated: true }, secureBoot: true, firmware: 2, partitionStyle: 'GPT', diskGb: 256, freeGb: 80, bitlocker: 'Off', activated: true, verdicts: [], bypass: null };
+    assert(upgradePlan(base).state === 'ready', 'a ready computer was not ready');
+    assert(upgradePlan({ ...base, build: 26100 }).state === 'already', 'Windows 11 not recognised');
+    const legacy = upgradePlan({ ...base, firmware: 1, secureBoot: 'unsupported', partitionStyle: 'MBR' });
+    assert(legacy.state === 'fixable' && legacy.checks.find((c) => c.id === 'uefi')!.fix === 'mbr2gpt', 'legacy BIOS on MBR should offer the GPT conversion');
+    const noTpm = upgradePlan({ ...base, tpm: { version: 'none', enabled: false, activated: false } });
+    assert(noTpm.state === 'fixable' && noTpm.checks.find((c) => c.id === 'tpm')!.fix === 'firmware-tpm', 'a turned-off TPM on a supported processor should be fixable');
+    const old = upgradePlan({ ...base, cpu: 'Intel(R) Core(TM) i5-4590 CPU', tpm: { version: '1.2', enabled: true, activated: true } });
+    assert(old.state === 'unsupported' && old.bypassPossible, 'an old processor with TPM 1.2 should be unsupported, with the registry option');
+    const oldNoTpm = upgradePlan({ ...base, cpu: 'Intel(R) Core(TM) i5-4590 CPU', tpm: { version: 'none', enabled: false, activated: false } });
+    assert(oldNoTpm.state === 'unsupported' && !oldNoTpm.bypassPossible, 'no TPM at all rules out the registry option');
+    const red = upgradePlan({ ...base, cpu: 'Intel(R) Core(TM) i7-7700HQ CPU', verdicts: [{ target: 'GE25H2', upgEx: 'Red', red: 'CpuFms', gated: '', date: '' }, { target: 'GE24H2', upgEx: 'Green', red: '', gated: '', date: '' }] });
+    assert(red.state === 'unsupported' && /not on Microsoft/.test(red.checks.find((c) => c.id === 'cpu')!.message) && /Windows 11 25H2/.test(red.checks[0].message), 'Windows\' own verdict should decide the processor');
+    const green7 = upgradePlan({ ...base, cpu: 'Intel(R) Core(TM) i7-7820HQ CPU', verdicts: [{ target: 'GE25H2', upgEx: 'Green', red: '', gated: '', date: '' }] });
+    assert(green7.state === 'ready', 'a green verdict should clear an unsure processor');
+    assert(upgradePlan({ ...base, freeGb: 12 }).checks.find((c) => c.id === 'free')!.fix === 'space' && upgradePlan({ ...base, arch: 'x86' }).state === 'unsupported', 'space or 32-bit check wrong');
+    console.log('Windows 11 upgrade: processor list, readiness, fixes and Windows\' own verdict OK');
   }
 
   console.log(`Smoke test passed. Log: ${summary.logFile}`);

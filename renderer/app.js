@@ -105,10 +105,15 @@ function renderDashboard(view) {
     const slot = el('div');
     view.append(slot);
     api.windowsEol().then((e) => {
-      if (!e || e.state !== 'ended' || !slot.isConnected) return;
-      const b = el('button', { className: 'ghost', textContent: 'Switch to Linux' });
-      b.onclick = () => show('switch');
-      slot.append(el('div', { className: 'notice' }, el('span', { textContent: `Windows 10 stopped getting security updates on ${new Date(e.ends + 'T12:00:00').toLocaleDateString()}. Upgrade to Windows 11 if this computer qualifies ("Is this computer worth fixing?" checks), or switch it to Linux.` }), b));
+      if (!e || e.state === 'ok' || !slot.isConnected) return;
+      const date = (d) => new Date(d + 'T12:00:00').toLocaleDateString();
+      const up = el('button', { className: 'ghost', textContent: 'Windows 11 upgrade' });
+      up.onclick = () => showWinUpgrade();
+      if (e.esuEnds) {
+        const b = el('button', { className: 'ghost', textContent: 'Switch to Linux' });
+        b.onclick = () => show('switch');
+        slot.append(el('div', { className: 'notice' }, el('span', { textContent: `Windows 10 stopped getting regular security updates on ${date(e.ends)}. Extended Security Updates keep it safe until ${date(e.esuEnds)} if it is enrolled (Settings, Windows Update). Upgrade to Windows 11 if this computer qualifies, or switch it to Linux.` }), up, b));
+      } else slot.append(el('div', { className: 'notice' }, el('span', { textContent: `${e.name} ${e.state === 'ended' ? 'stopped getting' : 'stops getting'} security updates on ${date(e.ends)}. Install the newest version of Windows 11 from Windows Update.` }), up));
     }).catch(() => {});
   }
   if (i.platform === 'linux') {
@@ -1072,9 +1077,133 @@ async function showBrowserClean() {
 
 /** Filled in as each Windows tool is added: [name, description, open function]. */
 const WIN_TOOLS = [
+  ['Windows 11 upgrade', 'Can this computer run Windows 11? Checks every requirement in plain words, fixes what can be fixed (firmware settings, the drive layout, space), then starts Microsoft\'s own upgrade. Keeps files and apps.', () => showWinUpgrade()],
   ['Startup items', 'Programs, scheduled tasks and background services that start with Windows, who made each one, and a switch to turn it off or back on. Uses the same setting as Task Manager.', () => showWinStartup()],
   ['Free up space', 'Measure temporary files, downloaded updates, upgrade leftovers, browser caches, old iPhone backups, Windows.old and large files, then choose what to delete.', () => showWinSpace()],
 ];
+
+/** A button that needs a second click, with the warning shown in between. */
+function twoStep(label, warning, action) {
+  const b = el('button', { className: 'ghost', textContent: label });
+  let armed = false;
+  b.onclick = () => {
+    if (!armed) {
+      armed = true;
+      b.textContent = 'Click again to go ahead';
+      migSafeStatus(warning);
+      setTimeout(() => { armed = false; b.textContent = label; }, 15000);
+      return;
+    }
+    armed = false;
+    b.textContent = label;
+    action();
+  };
+  return b;
+}
+
+async function showWinUpgrade() {
+  const f = macFrame('Windows 11 upgrade', 'Checks whether this computer can run Windows 11, fixes what a setting can fix, then starts Microsoft\'s own upgrade. Files, apps and settings are kept.');
+  const again = el('button', { className: 'ghost', textContent: 'Check again' });
+  again.onclick = () => showWinUpgrade();
+  f.bar.append(again, f.back);
+  f.status.textContent = 'Checking this computer...';
+  let r;
+  try {
+    r = await api.upgradeCheck();
+  } catch (err) {
+    f.status.textContent = errText(err);
+    return;
+  }
+  const { plan, facts } = r;
+  f.status.textContent = '';
+  const level = { already: 'good', ready: 'good', fixable: 'attention', unsupported: 'problem' }[plan.state];
+  f.holder.append(el('div', { className: 'result-head ' + level }, el('div', { className: 'icon big ' + level, textContent: ICONS[level] }), el('div', {}, el('h2', { textContent: plan.headline }), el('p', { className: 'lead', textContent: `${facts.product}${facts.version ? ` ${facts.version}` : ''}, build ${facts.build}. ${facts.cpu}, ${facts.ramGb} GB memory.` }))));
+  if (!r.elevated && plan.state !== 'already') f.holder.append(adminNotice());
+
+  if (plan.state === 'already') {
+    const e = await api.windowsEol().catch(() => null);
+    const wu = el('button', { className: 'ghost', textContent: 'Open Windows Update' });
+    wu.onclick = () => api.upgradeOpen('esu');
+    const msg = e && e.ends ? (e.state === 'ended' ? `${e.name} stopped getting security updates on ${new Date(e.ends + 'T12:00:00').toLocaleDateString()}. Install the newest version from Windows Update.` : `${e.name} gets security updates until ${new Date(e.ends + 'T12:00:00').toLocaleDateString()}.`) : 'Keep it up to date with Windows Update.';
+    f.holder.append(el('div', { className: 'notice' }, el('span', { textContent: msg }), wu));
+    return;
+  }
+
+  const fixButton = (c) => {
+    const go = (fn, after) => run(async () => {
+      const res = await fn();
+      showResults(res);
+      if (after) after();
+    });
+    switch (c.fix) {
+      case 'firmware-tpm':
+      case 'firmware-uefi':
+        return twoStep('Restart into firmware settings', 'The computer will restart in 10 seconds into its firmware settings. Save your work first. There, look under Security or Advanced for TPM, Intel PTT or AMD fTPM, and under Boot for Secure Boot and UEFI. Save and exit with the key shown (often F10).', () => go(api.upgradeFirmware));
+      case 'mbr2gpt':
+        return twoStep('Convert the drive to GPT', 'Microsoft\'s MBR2GPT tool checks the drive first and only converts if it is safe. Afterwards the computer will NOT start until you switch the firmware from Legacy/CSM to UEFI. Back up first, and save the BitLocker recovery key if the drive is encrypted.', () => go(api.upgradeMbr2gpt));
+      case 'space': {
+        const b = el('button', { className: 'ghost', textContent: 'Free up space' });
+        b.onclick = () => showWinSpace();
+        return b;
+      }
+      case 'activate':
+      case 'bitlocker-key': {
+        const b = el('button', { className: 'ghost', textContent: c.fix === 'activate' ? 'Open activation' : 'Find the recovery key' });
+        b.onclick = () => api.upgradeOpen(c.fix);
+        return b;
+      }
+      case 'recheck': {
+        const b = el('button', { className: 'ghost', textContent: 'Ask Windows to check' });
+        b.onclick = () => go(api.upgradeRecheck, () => {
+          const back = el('button', { textContent: 'Back to the upgrade check' });
+          back.onclick = () => showWinUpgrade();
+          $('#view').append(el('div', { className: 'result-foot' }, back));
+        });
+        return b;
+      }
+      default:
+        return null;
+    }
+  };
+  const list = el('div', { className: 'results' });
+  for (const c of plan.checks) {
+    const lvl = c.level === 'unknown' ? 'skipped' : c.level;
+    const body = el('div', {}, el('strong', { textContent: c.name }), el('p', { textContent: c.message }));
+    const btn = fixButton(c);
+    if (btn) body.append(el('div', { className: 'toolbar' }, btn));
+    list.append(el('div', { className: 'result ' + lvl }, el('div', { className: 'icon ' + lvl, textContent: ICONS[lvl] }), body));
+  }
+  f.holder.append(list);
+
+  if (plan.state === 'ready') {
+    const start = el('button', { className: 'big run', textContent: 'Start the upgrade' });
+    start.onclick = () => run(async () => showResults(await api.upgradeStart()));
+    const backup = el('button', { className: 'ghost', textContent: 'Back up first' });
+    backup.onclick = () => show('migrate');
+    f.holder.append(el('div', { className: 'result-foot' }, start, backup), el('p', { className: 'lead note', textContent: 'MendKit downloads Microsoft\'s Windows 11 Installation Assistant, checks Microsoft signed it, and opens it. It takes about an hour and restarts a few times. Keep a laptop plugged in. For 10 days afterwards, Settings, System, Recovery can go back to Windows 10.' }));
+  }
+  if (plan.state === 'fixable') f.holder.append(el('p', { className: 'lead note', textContent: 'Work through the items marked above, then click Check again at the top. After changing firmware settings, "Ask Windows to check" updates Windows\' own answer.' }));
+  if (plan.state === 'unsupported') {
+    f.holder.append(el('h2', { textContent: 'Choices for this computer' }));
+    const t = el('table');
+    const row = (name, desc, ...buttons) => t.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, ...buttons)));
+    const esu = el('button', { className: 'ghost', textContent: 'Open Windows Update' });
+    esu.onclick = () => api.upgradeOpen('esu');
+    row('Keep Windows 10, with security updates until 12 October 2027', 'Microsoft\'s Extended Security Updates are free for home computers. In Windows Update, look for "Enroll now" (it may ask to sign in with a Microsoft account). It buys time; the computer still needs a plan before then.', esu);
+    const sw = el('button', { className: 'ghost', textContent: 'Switch to Linux' });
+    sw.onclick = () => show('switch');
+    row('Switch to Linux', 'Free, kept up to date for years, and runs well on older hardware. The Switch to Linux assistant checks the hardware and lists what replaces each app.', sw);
+    if (plan.bypassPossible) {
+      const allow = twoStep('Allow the upgrade', 'Microsoft does not support Windows 11 on this processor: it may not get every update, and Microsoft may ask you to go back. Back up first. After this, get the Windows 11 ISO from the ISO Library, open it, and run setup.exe.', () => run(async () => showResults(await api.upgradeAllowUnsupported())));
+      const iso = el('button', { className: 'ghost', textContent: 'ISO Library' });
+      iso.onclick = () => show('isos');
+      row('Upgrade anyway', 'Microsoft documents a setting that lets Windows Setup upgrade a computer whose processor is not on the list, as long as it has a TPM 1.2 or 2.0 chip. It still needs UEFI start-up, so fix that above first. It works, but is unsupported: updates are not guaranteed.', allow, iso);
+    }
+    row('Replace the computer', 'Often the best value when several things are missing. "Is this computer worth fixing?" on the Dashboard weighs it up.');
+    f.holder.append(t);
+  }
+  syncButtons();
+}
 
 async function showWinSpace() {
   const f = macFrame('Free up space', 'Measures what can safely go. Nothing is deleted until you tick it and press Delete. Run MendKit as administrator so Windows\' own files can be cleared too.');

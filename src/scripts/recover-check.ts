@@ -34,7 +34,10 @@ async function main(): Promise<void> {
     fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\nselect vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
     console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-4).join(' '));
     // Write the photo through to the disk before deleting it, as happens when a file has been there a while.
-    fs.copyFileSync(photo, 'R:\\holiday.jpg');
+    const fd = fs.openSync('R:\\holiday.jpg', 'w');
+    fs.writeSync(fd, fs.readFileSync(photo));
+    fs.fsyncSync(fd);
+    fs.closeSync(fd);
     spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Write-VolumeCache -DriveLetter R']);
     fs.unlinkSync('R:\\holiday.jpg');
     spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Write-VolumeCache -DriveLetter R']);
@@ -55,7 +58,7 @@ async function main(): Promise<void> {
     const dmg = path.join(tmp, 'card.dmg');
     // This runs as the signed-in user, as a person would; only the search runs as root, through sudo.
     const asUser = (args: string[]) => execFileSync('hdiutil', args, { encoding: 'utf8' });
-    asUser(['create', '-size', '32m', '-fs', 'MS-DOS FAT32', '-volname', 'CARD', '-layout', 'NONE', dmg]);
+    asUser(['create', '-size', '64m', '-fs', 'MS-DOS FAT32', '-volname', 'CARD', '-layout', 'NONE', dmg]);
     const att = asUser(['attach', dmg]);
     const m = /^(\/dev\/disk\d+)\s+.*?(\/Volumes\/\S+)/m.exec(att);
     if (!m) fail(`disk image did not attach: ${att}`);
@@ -86,6 +89,19 @@ async function main(): Promise<void> {
     console.log(`files in the results folder: ${walk(out).join(', ') || 'none'}`);
     const direct = spawnSync(pr, ['/log', '/d', path.join(tmp, 'direct', 'recup_dir'), '/cmd', vol.device, `${vol.partition},options,keep_corrupted_file_no,fileopt,everything,disable,jpg,enable,wholespace,search`], { cwd: tmp, encoding: 'utf8', timeout: 120000, env: { ...process.env, TERM: 'dumb' } });
     console.log(`direct run: status ${direct.status} ${direct.error ?? ''}\n${String(direct.stdout).replace(/\x1b\[[0-9;?]*[A-Za-z]/g, ' ').slice(-1500)}\n${direct.stderr}`);
+    if (process.platform === 'win32') {
+      // Is the photo's data on the disk at all? Look for its first bytes in the raw disk.
+      try {
+        const head = fs.readFileSync(photo).subarray(0, 64);
+        const raw = fs.openSync(vol.device, 'r');
+        const buf = Buffer.alloc(64 * 1024 * 1024);
+        const got = fs.readSync(raw, buf, 0, buf.length, 0);
+        fs.closeSync(raw);
+        console.log(`raw disk: read ${got} bytes, photo data ${buf.subarray(0, got).indexOf(head) >= 0 ? 'present' : 'NOT present'} at ${buf.subarray(0, got).indexOf(head)}`);
+      } catch (e) {
+        console.log(`raw disk read failed: ${(e as Error).message}`);
+      }
+    }
     console.log(`direct found ${countRecovered(path.join(tmp, 'direct'))}; log: ${(() => { try { return fs.readFileSync(path.join(tmp, 'photorec.log'), 'utf8').slice(-2000); } catch { return 'none'; } })()}`);
   }
   if (st.status !== 'ok' || n < 1 || !(sorted.Photos >= 1)) fail(`the deleted photo was not recovered (found ${n}, sorted ${JSON.stringify(sorted)}). photorec.log: ${(() => { try { return fs.readFileSync(path.join(out, 'photorec.log'), 'utf8').slice(-1500); } catch { return 'none'; } })()}`);
