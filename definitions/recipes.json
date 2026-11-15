@@ -275,6 +275,18 @@
     {
      "command": "app-updates-list",
      "onFail": "continue"
+    },
+    {
+     "command": "sec-antivirus",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-firewall",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-updates",
+     "onFail": "continue"
     }
    ],
    "darwin": [
@@ -929,6 +941,14 @@
     },
     {
      "command": "startup-apps",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-antivirus",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-uac-smartscreen",
      "onFail": "continue"
     }
    ],
@@ -1616,6 +1636,123 @@
     },
     {
      "command": "security-status",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "windows-security",
+  "name": "Security checkup",
+  "description": "Checks antivirus, firewall, drive encryption, account protection, SmartScreen, Windows Update, Secure Boot, administrator accounts and remote access, each with what to do.",
+  "simpleMode": true,
+  "steps": {
+   "win32": [
+    {
+     "command": "sec-antivirus",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-firewall",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-encryption",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-uac-smartscreen",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-updates",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-secureboot",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-accounts",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-remote",
+     "onFail": "continue"
+    }
+   ]
+  }
+ },
+ {
+  "id": "windows-secure",
+  "name": "Secure this computer",
+  "description": "Turns on the firewall, Defender, User Account Control and SmartScreen, resumes Windows Update, updates Defender and turns off the Guest account, then checks everything again.",
+  "simpleMode": false,
+  "steps": {
+   "win32": [
+    {
+     "command": "restore-point",
+     "gate": true,
+     "overridable": true
+    },
+    {
+     "command": "fix-firewall-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "fix-defender-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "defender-update",
+     "onFail": "continue"
+    },
+    {
+     "command": "fix-uac-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "fix-smartscreen-on",
+     "onFail": "continue"
+    },
+    {
+     "command": "fix-updates-resume",
+     "onFail": "continue"
+    },
+    {
+     "command": "fix-guest-off",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-antivirus",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-firewall",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-encryption",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-uac-smartscreen",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-updates",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-secureboot",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-accounts",
+     "onFail": "continue"
+    },
+    {
+     "command": "sec-remote",
      "onFail": "continue"
     }
    ]

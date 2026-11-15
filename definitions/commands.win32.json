@@ -988,5 +988,490 @@
     }
    ]
   }
+ },
+ {
+  "id": "sec-antivirus",
+  "name": "Antivirus",
+  "description": "Checks that an antivirus is on and its definitions are current, including Microsoft Defender and any other installed antivirus.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $m = Get-MpComputerStatus\n$av = @(Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct)\n$on = @(); $old = @()\nforeach ($a in $av) { $h = '{0:x6}' -f [int]$a.productState; $en = $h.Substring(2,2) -in @('10','11'); $cur = $h.Substring(4,2) -eq '00'; \"AV: $($a.displayName), $(if($en){'on'}else{'off'}), $(if($cur){'up to date'}else{'out of date'})\"; if ($en) { $on += $a.displayName; if (-not $cur) { $old += $a.displayName } } }\nif ($m) { \"DEFENDER: real-time $($m.RealTimeProtectionEnabled), definitions $($m.AntivirusSignatureAge) days old, tamper protection $($m.IsTamperProtected), mode $($m.AMRunningMode)\" }\nif (-not $av.Count -and $m) { if ($m.RealTimeProtectionEnabled) { $on += 'Microsoft Defender' }; if ($m.AntivirusSignatureAge -gt 7) { $old += 'Microsoft Defender' } }\nif (-not $on.Count) { 'ANTIVIRUS_OFF' } elseif ($old.Count) { \"ANTIVIRUS_OUTDATED: $($old -join ', ')\" } else { \"ANTIVIRUS_OK: $($on -join ', ')\" }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Antivirus",
+   "ok": "The antivirus was checked.",
+   "problem": "The antivirus could not be checked.",
+   "notes": [
+    {
+     "pattern": "ANTIVIRUS_OFF",
+     "level": "problem",
+     "message": "No antivirus is protecting this computer. Run \"Secure this computer\" to turn Microsoft Defender back on, or check the installed antivirus is running and paid up."
+    },
+    {
+     "pattern": "ANTIVIRUS_OUTDATED: (.+)",
+     "level": "attention",
+     "message": "$1 is on, but its definitions are out of date, so new threats are missed. Run \"Secure this computer\" (updates Defender), or open the antivirus and update it."
+    },
+    {
+     "pattern": "ANTIVIRUS_OK: (.+)",
+     "level": "good",
+     "message": "$1 is on and up to date."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sec-firewall",
+  "name": "Firewall",
+  "description": "Checks the Windows Firewall for home, work and public networks, and any other firewall installed.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $p = Get-NetFirewallProfile; $p | ForEach-Object { \"$($_.Name): $(if($_.Enabled){'on'}else{'off'})\" }\n$third = @(Get-CimInstance -Namespace root/SecurityCenter2 -ClassName FirewallProduct | Where-Object { ('{0:x6}' -f [int]$_.productState).Substring(2,2) -in @('10','11') })\n$off = @($p | Where-Object { -not $_.Enabled } | ForEach-Object { $_.Name })\nif ($off.Count -and $third.Count) { \"THIRD_PARTY_FIREWALL: $($third[0].displayName)\" } elseif ($off.Count) { \"FIREWALL_OFF: $($off -join ', ')\" } else { 'FIREWALL_ON' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Firewall",
+   "ok": "The firewall was checked.",
+   "problem": "The firewall could not be checked.",
+   "notes": [
+    {
+     "pattern": "THIRD_PARTY_FIREWALL: (.+)",
+     "level": "good",
+     "message": "$1 is protecting this computer in place of Windows Firewall."
+    },
+    {
+     "pattern": "FIREWALL_OFF: (.+)",
+     "level": "problem",
+     "message": "Windows Firewall is off for: $1. Run \"Secure this computer\" to turn it on."
+    },
+    {
+     "pattern": "FIREWALL_ON",
+     "level": "good",
+     "message": "Windows Firewall is on for every kind of network."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sec-encryption",
+  "name": "Drive encryption",
+  "description": "Checks whether the Windows drive is encrypted with BitLocker or Device encryption, so a lost or stolen computer's files cannot be read.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $b = (New-Object -ComObject Shell.Application).NameSpace($env:SystemDrive).Self.ExtendedProperty('System.Volume.BitLockerProtection')\n\"EDITION: $((Get-CimInstance Win32_OperatingSystem).Caption)\"\nif ($b -in 1,3,5) { 'ENCRYPTION_ON' } elseif ($b -in 2,4,6) { 'ENCRYPTION_OFF' } else { 'ENCRYPTION_UNAVAILABLE' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Drive encryption",
+   "ok": "Drive encryption was checked.",
+   "problem": "Drive encryption could not be checked.",
+   "notes": [
+    {
+     "pattern": "ENCRYPTION_ON",
+     "level": "good",
+     "message": "The Windows drive is encrypted. Make sure the owner can find the recovery key: aka.ms/myrecoverykey."
+    },
+    {
+     "pattern": "ENCRYPTION_OFF",
+     "level": "attention",
+     "message": "The Windows drive is not encrypted, so anyone with the computer can read its files. Important for laptops: turn on Device encryption or BitLocker in Settings, Privacy & security, and save the recovery key first."
+    },
+    {
+     "pattern": "ENCRYPTION_UNAVAILABLE",
+     "level": "info",
+     "message": "Drive encryption is not available on this edition or hardware."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sec-uac-smartscreen",
+  "name": "Account protection and SmartScreen",
+  "description": "Checks that Windows asks before programs make changes (User Account Control) and that SmartScreen warns about unknown downloads.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $s = Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System'\nif ($s.EnableLUA -eq 0) { 'UAC_OFF' } elseif ($s.ConsentPromptBehaviorAdmin -eq 0) { 'UAC_NEVER_NOTIFY' } else { 'UAC_ON' }\n$e = (Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer').SmartScreenEnabled\n$pol = (Get-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System').EnableSmartScreen\nif ($e -eq 'Off' -or $pol -eq 0) { 'SMARTSCREEN_OFF' } else { 'SMARTSCREEN_ON' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Account protection and SmartScreen",
+   "ok": "Account protection was checked.",
+   "problem": "Account protection could not be checked.",
+   "notes": [
+    {
+     "pattern": "UAC_OFF",
+     "level": "problem",
+     "message": "User Account Control is off, so any program can change Windows without asking. Run \"Secure this computer\" to turn it back on (needs a restart)."
+    },
+    {
+     "pattern": "UAC_NEVER_NOTIFY",
+     "level": "attention",
+     "message": "User Account Control is set to never notify, so programs can make changes silently. Run \"Secure this computer\" to set it back to the default."
+    },
+    {
+     "pattern": "SMARTSCREEN_OFF",
+     "level": "attention",
+     "message": "SmartScreen is off, so Windows does not warn about unknown or dangerous downloads. Run \"Secure this computer\" to turn it on."
+    },
+    {
+     "pattern": "UAC_ON[\\s\\S]*SMARTSCREEN_ON",
+     "level": "good",
+     "message": "Windows asks before programs make changes, and SmartScreen is on."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sec-updates",
+  "name": "Windows Update status",
+  "description": "Checks when updates last installed, and whether updates are paused or switched off.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $se = (New-Object -ComObject Microsoft.Update.Session).CreateUpdateSearcher(); $n = $se.GetTotalHistoryCount()\n$last = $null; if ($n -gt 0) { $last = $se.QueryHistory(0, [Math]::Min($n, 100)) | Where-Object { $_.ResultCode -eq 2 } | Sort-Object Date -Descending | Select-Object -First 1 }\nif ((Get-Service wuauserv).StartType -eq 'Disabled') { 'SERVICE_DISABLED' }\nif ((Get-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU').NoAutoUpdate -eq 1) { 'POLICY_DISABLED' }\n$p = (Get-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings').PauseUpdatesExpiryTime\nif ($p -and ([datetime]$p) -gt (Get-Date)) { \"PAUSED_UNTIL: $(([datetime]$p).ToString('d'))\" }\nif ($last) { \"LAST_UPDATE_DAYS: $([int]((Get-Date) - $last.Date).TotalDays) ($($last.Title))\" } else { 'LAST_UPDATE_DAYS: unknown' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Windows Update status",
+   "ok": "Windows Update was checked.",
+   "problem": "Windows Update could not be checked.",
+   "notes": [
+    {
+     "pattern": "SERVICE_DISABLED",
+     "level": "problem",
+     "message": "The Windows Update service is disabled, so no security updates install. Run \"Secure this computer\" to turn it back on."
+    },
+    {
+     "pattern": "POLICY_DISABLED",
+     "level": "problem",
+     "message": "A setting (often left by a \"tweak\" program) stops Windows installing updates. Run \"Secure this computer\" to remove it."
+    },
+    {
+     "pattern": "PAUSED_UNTIL: (\\S+)",
+     "level": "attention",
+     "message": "Updates are paused until $1. Run \"Secure this computer\" to resume them."
+    },
+    {
+     "pattern": "LAST_UPDATE_DAYS: ([4-9]\\d|\\d{3,})\\b",
+     "level": "attention",
+     "message": "No update has installed for $1 days. Open Updates in MendKit, or run \"Updates will not install\"."
+    },
+    {
+     "pattern": "LAST_UPDATE_DAYS: (\\d|[1-3]\\d)\\b",
+     "level": "good",
+     "message": "Updates are installing; the last one was $1 days ago."
+    },
+    {
+     "pattern": "LAST_UPDATE_DAYS: unknown",
+     "level": "info",
+     "message": "No update history was found."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sec-secureboot",
+  "name": "Secure Boot and memory integrity",
+  "description": "Checks Secure Boot, which stops malware loading before Windows, and Memory integrity (core isolation).",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; try { $sb = Confirm-SecureBootUEFI -ErrorAction Stop; if ($sb) { 'SECUREBOOT_ON' } else { 'SECUREBOOT_OFF' } } catch { if (\"$_\" -match 'not supported') { 'LEGACY_BIOS' } else { 'SECUREBOOT_UNKNOWN' } }\n$h = (Get-ItemProperty 'HKLM:\\SYSTEM\\CurrentControlSet\\Control\\DeviceGuard\\Scenarios\\HypervisorEnforcedCodeIntegrity').Enabled\n\"MEMORY_INTEGRITY: $(if($h -eq 1){'on'}else{'off'})\" "
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Secure Boot and memory integrity",
+   "ok": "Secure Boot was checked.",
+   "problem": "Secure Boot could not be checked.",
+   "notes": [
+    {
+     "pattern": "SECUREBOOT_OFF",
+     "level": "attention",
+     "message": "Secure Boot is off. Turn it on in the computer's firmware settings (often F2 or Del at start-up, under Boot or Security). Windows 11 needs it."
+    },
+    {
+     "pattern": "LEGACY_BIOS",
+     "level": "info",
+     "message": "This computer starts in legacy BIOS mode, which has no Secure Boot. Windows 11 needs UEFI mode."
+    },
+    {
+     "pattern": "SECUREBOOT_ON",
+     "level": "good",
+     "message": "Secure Boot is on."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sec-accounts",
+  "name": "Administrator accounts",
+  "description": "Lists accounts with administrator rights and checks the built-in Administrator and Guest accounts are off.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $a = @(Get-LocalGroupMember -SID 'S-1-5-32-544' | ForEach-Object { $_.Name })\nif (-not $a.Count) { $a = @((net localgroup administrators | Select-Object -Skip 6 | Where-Object { $_ -and $_ -notmatch 'command completed' })) }\n\"ADMINS: $($a -join ', ')\"\nif ((Get-LocalUser | Where-Object { $_.SID -like '*-501' }).Enabled) { 'GUEST_ENABLED' }\nif ((Get-LocalUser | Where-Object { $_.SID -like '*-500' }).Enabled) { 'BUILTIN_ADMIN_ENABLED' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Administrator accounts",
+   "ok": "Administrator accounts were listed.",
+   "problem": "The accounts could not be listed.",
+   "notes": [
+    {
+     "pattern": "GUEST_ENABLED",
+     "level": "attention",
+     "message": "The Guest account is on, letting anyone sign in without a password. Run \"Secure this computer\" to turn it off."
+    },
+    {
+     "pattern": "BUILTIN_ADMIN_ENABLED",
+     "level": "attention",
+     "message": "The hidden built-in Administrator account is on. Unless you sign in with it, turn it off: net user administrator /active:no"
+    },
+    {
+     "pattern": "ADMINS: (.+)",
+     "level": "info",
+     "message": "Accounts with administrator rights: $1. Check each one should have that power."
+    }
+   ]
+  }
+ },
+ {
+  "id": "sec-remote",
+  "name": "Remote access settings",
+  "description": "Checks Remote Desktop, Remote Assistance and the old SMBv1 file sharing protocol.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $ts = Get-ItemProperty 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server'\nif ($ts.fDenyTSConnections -eq 0) { 'RDP_ON' } else { 'RDP_OFF' }\nif ($ts.fAllowToGetHelp -eq 1) { 'REMOTE_ASSISTANCE_ON' }\nif ((Get-SmbServerConfiguration).EnableSMB1Protocol) { 'SMB1_ON' }"
+  ],
+  "admin": false,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Remote access settings",
+   "ok": "Remote access settings were checked.",
+   "problem": "Remote access settings could not be checked.",
+   "notes": [
+    {
+     "pattern": "SMB1_ON",
+     "level": "attention",
+     "message": "The old SMBv1 file-sharing protocol is on. It was used by the WannaCry ransomware. Turn it off with \"Turn off SMBv1\" unless an old network drive or printer needs it."
+    },
+    {
+     "pattern": "RDP_ON",
+     "level": "attention",
+     "message": "Remote Desktop is on, so this computer accepts remote sign-ins. If nobody connects to it remotely, turn it off with \"Turn off Remote Desktop\"."
+    },
+    {
+     "pattern": "RDP_OFF",
+     "level": "good",
+     "message": "Remote Desktop is off."
+    }
+   ]
+  }
+ },
+ {
+  "id": "fix-firewall-on",
+  "name": "Turn on Windows Firewall",
+  "description": "Turns Windows Firewall on for home, work and public networks.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Set-NetFirewallProfile -Profile Domain,Private,Public -Enabled True -ErrorAction Stop; 'FIREWALL_ON'"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Turn on Windows Firewall",
+   "ok": "Windows Firewall is on for every kind of network.",
+   "problem": "Windows Firewall could not be turned on."
+  }
+ },
+ {
+  "id": "fix-defender-on",
+  "name": "Turn on Microsoft Defender",
+  "description": "Turns Defender's real-time protection back on, unless another antivirus is protecting the computer.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $third = @(Get-CimInstance -Namespace root/SecurityCenter2 -ClassName AntiVirusProduct | Where-Object { $_.displayName -notmatch 'Defender' -and ('{0:x6}' -f [int]$_.productState).Substring(2,2) -in @('10','11') })\nif ($third.Count) { \"OTHER_ANTIVIRUS: $($third[0].displayName)\"; exit 0 }\nSet-MpPreference -DisableRealtimeMonitoring $false -ErrorAction Stop; 'DEFENDER_ON'"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Turn on Microsoft Defender",
+   "ok": "Microsoft Defender's real-time protection is on.",
+   "problem": "Defender could not be turned on. If tamper protection or a policy blocks it, open Windows Security, Virus & threat protection.",
+   "notes": [
+    {
+     "pattern": "OTHER_ANTIVIRUS: (.+)",
+     "level": "info",
+     "message": "$1 is protecting this computer, so Defender stays in the background."
+    }
+   ]
+  }
+ },
+ {
+  "id": "fix-uac-on",
+  "name": "Turn User Account Control back on",
+  "description": "Sets User Account Control to Windows' default, so programs must ask before making changes.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $k='HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Policies\\System'; Set-ItemProperty $k EnableLUA 1 -Type DWord -ErrorAction Stop; Set-ItemProperty $k ConsentPromptBehaviorAdmin 5 -Type DWord; Set-ItemProperty $k PromptOnSecureDesktop 1 -Type DWord; 'UAC_DEFAULT'"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Turn User Account Control back on",
+   "ok": "User Account Control is back at its default. Restart the computer to finish.",
+   "problem": "User Account Control could not be changed."
+  },
+  "needsRestart": true
+ },
+ {
+  "id": "fix-smartscreen-on",
+  "name": "Turn on SmartScreen",
+  "description": "Turns SmartScreen back on so Windows warns about unknown downloads.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Set-ItemProperty 'HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Explorer' SmartScreenEnabled 'Warn' -ErrorAction Stop\n$p='HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\System'; if ((Get-ItemProperty $p).EnableSmartScreen -eq 0) { Remove-ItemProperty $p EnableSmartScreen }; 'SMARTSCREEN_ON'"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Turn on SmartScreen",
+   "ok": "SmartScreen is on.",
+   "problem": "SmartScreen could not be turned on."
+  }
+ },
+ {
+  "id": "fix-updates-resume",
+  "name": "Resume Windows Update",
+  "description": "Unpauses updates, removes settings that block them and turns the update service back on.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; $k='HKLM:\\SOFTWARE\\Microsoft\\WindowsUpdate\\UX\\Settings'; foreach ($n in 'PauseUpdatesExpiryTime','PauseUpdatesStartTime','PauseFeatureUpdatesStartTime','PauseFeatureUpdatesEndTime','PauseQualityUpdatesStartTime','PauseQualityUpdatesEndTime') { Remove-ItemProperty $k $n }\n$a='HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\WindowsUpdate\\AU'; if ((Get-ItemProperty $a).NoAutoUpdate -eq 1) { Remove-ItemProperty $a NoAutoUpdate; 'POLICY_REMOVED' }\nif ((Get-Service wuauserv).StartType -eq 'Disabled') { Set-Service wuauserv -StartupType Manual; 'SERVICE_ENABLED' }\nStart-Service wuauserv; UsoClient.exe StartScan; 'UPDATES_RESUMED'"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Resume Windows Update",
+   "ok": "Windows Update is running again and checking for updates.",
+   "problem": "Windows Update could not be resumed."
+  }
+ },
+ {
+  "id": "fix-guest-off",
+  "name": "Turn off the Guest account",
+  "description": "Turns off the Guest account so nobody can sign in without a password.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Get-LocalUser | Where-Object { $_.SID -like '*-501' -and $_.Enabled } | Disable-LocalUser -ErrorAction Stop; 'GUEST_OFF'"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Turn off the Guest account",
+   "ok": "The Guest account is off.",
+   "problem": "The Guest account could not be turned off."
+  }
+ },
+ {
+  "id": "fix-rdp-off",
+  "name": "Turn off Remote Desktop",
+  "description": "Stops this computer accepting Remote Desktop sign-ins. Use only if nobody connects to it remotely.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Set-ItemProperty 'HKLM:\\System\\CurrentControlSet\\Control\\Terminal Server' fDenyTSConnections 1 -Type DWord -ErrorAction Stop; Disable-NetFirewallRule -DisplayGroup 'Remote Desktop'; 'RDP_OFF'"
+  ],
+  "admin": true,
+  "typicalMinutes": 1,
+  "friendly": {
+   "title": "Turn off Remote Desktop",
+   "ok": "Remote Desktop is off.",
+   "problem": "Remote Desktop could not be turned off."
+  }
+ },
+ {
+  "id": "fix-smb1-off",
+  "name": "Turn off SMBv1",
+  "description": "Turns off the old SMBv1 file-sharing protocol. Very old network drives and printers that scan to a folder may stop working.",
+  "exec": "powershell.exe",
+  "args": [
+   "-NoProfile",
+   "-ExecutionPolicy",
+   "Bypass",
+   "-Command",
+   "$ProgressPreference='SilentlyContinue'; $ErrorActionPreference='SilentlyContinue'; Set-SmbServerConfiguration -EnableSMB1Protocol $false -Force -ErrorAction Stop; Disable-WindowsOptionalFeature -Online -FeatureName SMB1Protocol -NoRestart | Out-Null; 'SMB1_OFF'"
+  ],
+  "admin": true,
+  "typicalMinutes": 2,
+  "friendly": {
+   "title": "Turn off SMBv1",
+   "ok": "SMBv1 is off. Restart the computer to finish.",
+   "problem": "SMBv1 could not be turned off."
+  },
+  "needsRestart": true
  }
 ]

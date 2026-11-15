@@ -2063,6 +2063,69 @@
   ]
  },
  {
+  "id": "win-security",
+  "group": "Windows",
+  "title": "Securing a Windows computer",
+  "summary": "Checking antivirus, firewall, encryption, updates and accounts, and fixing what is off.",
+  "systems": "Windows 10 and 11",
+  "time": "10 minutes",
+  "level": "Easy",
+  "screen": "dashboard",
+  "related": [
+   "basics-safety",
+   "remote-audit",
+   "mk-win-tools"
+  ],
+  "sections": [
+   {
+    "heading": "Check",
+    "steps": [
+     {
+      "t": "On the Dashboard, under Other fixes, click Run beside Security checkup, then Start.",
+      "tip": "Restart MendKit as administrator first so Secure Boot can be checked."
+     },
+     {
+      "t": "Read each line.",
+      "see": "One result each for antivirus, firewall, drive encryption, account protection and SmartScreen, Windows Update, Secure Boot, administrator accounts and remote access. Each red or amber line says what to do."
+     }
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Fix in one run",
+    "steps": [
+     {
+      "t": "Tick Technician mode, open Repair, and run Secure this computer.",
+      "see": "A restore point first, then: firewall on, Defender on (unless another antivirus is protecting the computer), Defender updated, User Account Control and SmartScreen back to normal, Windows Update resumed, Guest account off, then the checkup again."
+     },
+     "Restart if the results ask you to."
+    ],
+    "kind": "steps"
+   },
+   {
+    "heading": "Fixes that are not automatic",
+    "steps": [
+     {
+      "t": "Remote Desktop: if nobody connects to this computer remotely, run \"Turn off Remote Desktop\" from Repair.",
+      "warn": "If a technician or employer connects with Remote Desktop, leave it on."
+     },
+     "SMBv1: run \"Turn off SMBv1\" unless a very old network drive or a printer that scans to a folder needs it. Restart afterwards.",
+     {
+      "t": "Drive encryption: on Windows Pro, Settings, Privacy & security, Device encryption or BitLocker. Save the recovery key to the person's Microsoft account first.",
+      "warn": "Without the recovery key, an encrypted drive cannot be read if Windows breaks."
+     },
+     "Secure Boot: turn it on in the computer's firmware settings (usually F2 or Del at start-up, under Boot or Security)."
+    ]
+   },
+   {
+    "heading": "After a scam",
+    "steps": [
+     "Run the remote access audit and Pop-ups or strange behaviour as well. See \"Staying safe: scams and fake support\"."
+    ]
+   }
+  ]
+ },
+ {
   "id": "mac-safe-mode",
   "group": "Mac",
   "title": "Start a Mac in Safe Mode",

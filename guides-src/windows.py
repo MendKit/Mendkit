@@ -19,4 +19,18 @@ G('mk-win-tools', 'Using MendKit', 'Windows tools', 'The Windows tools on the Re
   S('Click Delete selected.', see='Results for each item. Windows.old and upgrade leftovers open Windows\' own Disk Cleanup progress window; let it finish.'),
   S('Large files and the Downloads folder are only listed. Click Show in folder and decide about them yourself.')], 'steps')],
  systems=W, time='10 minutes', level='Takes care', screen='repair', related=['autoruns', 'mk-repair']),
+G('win-security', GR, 'Securing a Windows computer', 'Checking antivirus, firewall, encryption, updates and accounts, and fixing what is off.', [
+ sec('Check', [
+  S('On the Dashboard, under Other fixes, click Run beside Security checkup, then Start.', tip='Restart MendKit as administrator first so Secure Boot can be checked.'),
+  S('Read each line.', see='One result each for antivirus, firewall, drive encryption, account protection and SmartScreen, Windows Update, Secure Boot, administrator accounts and remote access. Each red or amber line says what to do.')], 'steps'),
+ sec('Fix in one run', [
+  S('Tick Technician mode, open Repair, and run Secure this computer.', see='A restore point first, then: firewall on, Defender on (unless another antivirus is protecting the computer), Defender updated, User Account Control and SmartScreen back to normal, Windows Update resumed, Guest account off, then the checkup again.'),
+  S('Restart if the results ask you to.')], 'steps'),
+ sec('Fixes that are not automatic', [
+  S('Remote Desktop: if nobody connects to this computer remotely, run "Turn off Remote Desktop" from Repair.', warn='If a technician or employer connects with Remote Desktop, leave it on.'),
+  S('SMBv1: run "Turn off SMBv1" unless a very old network drive or a printer that scans to a folder needs it. Restart afterwards.'),
+  S('Drive encryption: on Windows Pro, Settings, Privacy & security, Device encryption or BitLocker. Save the recovery key to the person\'s Microsoft account first.', warn='Without the recovery key, an encrypted drive cannot be read if Windows breaks.'),
+  S('Secure Boot: turn it on in the computer\'s firmware settings (usually F2 or Del at start-up, under Boot or Security).')]),
+ sec('After a scam', ['Run the remote access audit and Pop-ups or strange behaviour as well. See "Staying safe: scams and fake support".'])],
+ systems=W, time='10 minutes', level='Easy', screen='dashboard', related=['basics-safety', 'remote-audit', 'mk-win-tools']),
 ]
