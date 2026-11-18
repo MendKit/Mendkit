@@ -15,7 +15,7 @@ import { notify, registerBatch3, unattendedRecipe } from './batch3';
 import { gatherFacts } from './advisor';
 import { JobHandle, readBackup, runBackup, runImport, runRestore } from '../engine/backup';
 import { currentDesktops, gsettings, linuxDesktop, linuxTweaksAvailable, loadTweaks, macDefaults, memoryRegistry, TweakManager, windowsRegistry } from '../engine/tweaks';
-import { findProfiles, oldApps, oldItems, OldProfile } from '../engine/olddrive';
+import { findProfiles, grantAccessCommand, lockedFolders, oldApps, oldItems, OldProfile } from '../engine/olddrive';
 import { registerBatch4 } from './batch4';
 import { registerMacTools } from './mactools';
 import { registerPermissions } from './permissions';
@@ -665,7 +665,19 @@ function registerIpc(): void {
     const here = new Set(migrateItems().map((i) => i.id));
     const items = await scanItems(oldItems(p));
     const apps = oldApps(p, appTable);
-    return { items: items.map((i) => ({ ...i, available: here.has(i.id) })), apps: apps ? apps.apps.map((id) => appTable.find((a) => a.id === id)?.name ?? id) : [] };
+    return { items: items.map((i) => ({ ...i, available: here.has(i.id) })), apps: apps ? apps.apps.map((id) => appTable.find((a) => a.id === id)?.name ?? id) : [], locked: lockedFolders(p).map((d) => path.relative(p.home, d) || p.name), elevated: isElevated() };
+  });
+  /** Lets this account read an old profile the old computer's permissions keep closed. */
+  ipcMain.handle('old-grant', async (_e, index: number) => {
+    const p = oldProfiles[Number(index)];
+    if (!p) throw new Error('Choose the old drive first');
+    const me = os.userInfo();
+    let sid: string | undefined;
+    if (process.platform === 'win32') {
+      const out = await new Promise<string>((resolve) => execFile('whoami.exe', ['/user', '/fo', 'csv', '/nh'], { windowsHide: true }, (_err, o) => resolve(String(o ?? ''))));
+      sid = /"(S-1-[\d-]+)"/.exec(out)?.[1];
+    }
+    return engine.runSteps('old-access', 'Get permission to read the old files', 'command', [grantAccessCommand(process.platform, p.home, { user: me.username, uid: me.uid, sid })], { elevated: isElevated() });
   });
   ipcMain.handle('old-import', async (_e, index: number, ids: string[], includeApps: boolean) => {
     const p = oldProfiles[Number(index)];

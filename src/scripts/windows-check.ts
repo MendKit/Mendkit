@@ -14,6 +14,7 @@ import { CommandDef } from '../engine/types';
 import { winSpaceCategories } from '../engine/wintools';
 import { forcesFromRegistry, policyConcerns, regRemoveArgs } from '../engine/browsers';
 import { upgradePlan } from '../engine/upgrade';
+import { grantAccessCommand, lockedFolders } from '../engine/olddrive';
 
 const root = path.join(__dirname, '..', '..');
 const defs = path.join(root, 'definitions');
@@ -151,6 +152,26 @@ async function main() {
     console.log(`phones: ${j.length} found`);
   } catch (e) {
     fail(`windows-phone.ps1 -List output: ${(e as Error).message}: ${phones.stdout.slice(0, 300)} ${phones.stderr.slice(0, 300)}`);
+  }
+
+  // Old drive: a profile only its old owner may open is locked, and MendKit's command opens it.
+  try {
+    const home = path.join(os.tmpdir(), 'mk-old', 'Users', 'Ann');
+    fs.mkdirSync(path.join(home, 'Documents'), { recursive: true });
+    fs.writeFileSync(path.join(home, 'Documents', 'letter.txt'), 'hello');
+    spawnSync('icacls.exe', [home, '/inheritance:r', '/grant:r', 'SYSTEM:(OI)(CI)F', '/T', '/C', '/Q']);
+    spawnSync('icacls.exe', [home, '/setowner', 'SYSTEM', '/T', '/C', '/Q']);
+    const prof = { name: 'Ann', home, platform: 'win32' as const, systemRoot: path.dirname(path.dirname(home)) };
+    const before = lockedFolders(prof);
+    const sid = /"(S-1-[\d-]+)"/.exec(spawnSync('whoami.exe', ['/user', '/fo', 'csv', '/nh'], { encoding: 'utf8' }).stdout)?.[1];
+    const cmd = grantAccessCommand('win32', home, { user: os.userInfo().username, uid: 0, sid });
+    const r = spawnSync(cmd.exec, cmd.args, { encoding: 'utf8', timeout: 300000 });
+    const after = lockedFolders(prof);
+    const text = fs.readFileSync(path.join(home, 'Documents', 'letter.txt'), 'utf8');
+    if (!before.length || after.length || text !== 'hello' || !/ACCESS_GRANTED/.test(r.stdout)) throw new Error(`before ${before.length}, after ${after.length}: ${r.stdout.slice(-400)} ${r.stderr.slice(-300)}`);
+    console.log(`old drive access: ${before.length} closed folder(s) opened`);
+  } catch (e) {
+    fail(`old drive access: ${(e as Error).message}`);
   }
 
   const cat = loadCatalog(defs, 'win32');

@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { AppDef, AppList } from './apps';
 import { ItemSpec } from './migrate';
-import { Platform } from './types';
+import { CommandDef, Platform } from './types';
 
 /**
  * Reading user data off a drive taken out of another computer (or a mounted backup image).
@@ -177,4 +177,60 @@ export function oldApps(p: OldProfile, table: AppDef[]): AppList | null {
     })
     .map((a) => a.id);
   return apps.length ? { format: 2, platform: p.platform, winget: null, apps, other: [] } : null;
+}
+
+/** Folders in an old profile that this account is not allowed to open (the old computer's permissions). */
+export function lockedFolders(p: OldProfile): string[] {
+  const names = ['', 'Desktop', 'Documents', 'Pictures', 'Downloads', 'Music', 'Videos', 'Movies', p.platform === 'win32' ? 'AppData' : p.platform === 'darwin' ? 'Library' : '.config'];
+  const out: string[] = [];
+  for (const n of names) {
+    const d = n ? child(p.home, n) : p.home;
+    if (!d) continue;
+    try {
+      fs.readdirSync(d);
+    } catch (e) {
+      if (['EACCES', 'EPERM'].includes((e as NodeJS.ErrnoException).code ?? '')) out.push(d);
+    }
+  }
+  return out;
+}
+
+const psq = (s: string) => `'${s.replace(/'/g, "''")}'`;
+const shq = (s: string) => `'${s.replace(/'/g, `'\\''`)}'`;
+
+/**
+ * The command that lets this account read an old profile. Windows: give this account read access (taking
+ * ownership for the Administrators group first where even that is refused). Mac: for a drive plugged in,
+ * ignore the old computer's ownership on that volume (nothing on it changes); otherwise add a read-only
+ * permission for this account. Linux: add a read-only permission for this account.
+ */
+export function grantAccessCommand(platform: string, home: string, who: { user: string; uid: number; sid?: string }): CommandDef {
+  const ok = 'This account can now read the old files. The old drive\'s files were not changed, only who may read them.';
+  const base = { id: 'old-access', name: 'Get permission to read the old user folder', description: '', admin: true, typicalMinutes: 3, timeoutMinutes: 60 };
+  const notes = [{ pattern: 'ACCESS_PARTIAL', level: 'attention' as const, message: 'Most folders can now be read, but some still refused. Files in those are skipped when copying.' }];
+  if (platform === 'win32') {
+    const sid = who.sid ? `*${who.sid}` : who.user;
+    const script = [
+      "$ErrorActionPreference='Continue'",
+      `$h = ${psq(home)}`,
+      `$r = icacls $h /grant ${psq(`${sid}:(OI)(CI)RX`)} /T /C /Q 2>&1 | Out-String`,
+      "if ($r -match 'Failed processing ([1-9]\\d*)') {",
+      "  'Taking ownership of the old folder for the Administrators group, then trying again (this can take a few minutes)...'",
+      '  takeown /F $h /R /D Y /A *> $null',
+      `  $r = icacls $h /grant ${psq(`${sid}:(OI)(CI)RX`)} /T /C /Q 2>&1 | Out-String`,
+      '}',
+      '$r.Trim()',
+      "if ($r -match 'Failed processing ([1-9]\\d*)') { 'ACCESS_PARTIAL' } else { 'ACCESS_GRANTED' }",
+    ].join('\n');
+    return { ...base, exec: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', script], friendly: { title: base.name, ok, problem: 'Permission could not be given.', notes } };
+  }
+  if (platform === 'darwin') {
+    const vol = /^\/Volumes\/[^/]+/.exec(home)?.[0];
+    const script = vol
+      ? `diskutil disableOwnership ${shq(vol)} && echo ACCESS_GRANTED`
+      : `chmod -R +a ${shq(`${who.user} allow list,search,readattr,readextattr,readsecurity,read,file_inherit,directory_inherit`)} ${shq(home)} 2>/dev/null; echo ACCESS_GRANTED`;
+    return { ...base, exec: 'sh', args: ['-c', script], friendly: { title: base.name, ok: vol ? 'The old drive\'s ownership is now ignored on this Mac, so every file on it can be read. Nothing on the drive was changed.' : ok, problem: 'Permission could not be given.', notes } };
+  }
+  const script = `if command -v setfacl >/dev/null 2>&1 && setfacl -R -m u:${who.uid}:rX ${shq(home)} 2>/dev/null; then echo ACCESS_GRANTED; else chmod -R o+rX ${shq(home)} && echo ACCESS_GRANTED; fi`;
+  return { ...base, exec: 'sh', args: ['-c', script], friendly: { title: base.name, ok, problem: 'Permission could not be given.', notes } };
 }

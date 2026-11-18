@@ -3143,7 +3143,7 @@ function renderOldDrive(view) {
     const kinds = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' };
     const who = el('select', { className: 'text' }, ...d.profiles.map((p, i) => el('option', { value: i, textContent: `${p.name} (${kinds[p.platform]})` })));
     const detail = el('div');
-    const load = async () => {
+    const load = async (granted = false) => {
       detail.replaceChildren(el('p', { className: 'lead', textContent: 'Looking at what is in that folder...' }));
       let scan;
       try {
@@ -3151,7 +3151,25 @@ function renderOldDrive(view) {
       } catch (err) {
         return detail.replaceChildren(el('p', { className: 'lead', textContent: errText(err) }));
       }
+      // The old computer's permissions keep some folders closed: open them for this account, once.
+      if (scan.locked.length && !granted) {
+        const platform = state.info.platform;
+        if (platform === 'win32' && !scan.elevated) {
+          detail.replaceChildren(el('div', { className: 'notice' }, el('span', { textContent: `The old computer's permissions keep ${scan.locked.join(', ')} closed. Restart MendKit as administrator; it then opens them for you and carries on.` })), adminNotice());
+          return;
+        }
+        detail.replaceChildren(el('p', { className: 'lead', textContent: `The old computer's permissions keep ${scan.locked.join(', ')} closed. Getting permission to read them${platform === 'win32' ? '' : ' (enter this computer\'s password if asked)'}...` }));
+        try {
+          const r = await api.oldGrant(Number(who.value));
+          const st = r.steps[0];
+          if (st && st.status !== 'ok') migStatus(st.friendly?.message || 'Permission could not be given.');
+        } catch (err) {
+          migStatus(errText(err));
+        }
+        return load(true);
+      }
       detail.replaceChildren(el('h2', { textContent: '3. What to copy' }));
+      if (scan.locked.length) detail.append(el('div', { className: 'notice' }, el('span', { textContent: `Still closed: ${scan.locked.join(', ')}. Files in ${scan.locked.length === 1 ? 'it' : 'them'} are skipped. ${state.info.platform === 'darwin' ? 'Check MendKit has Full Disk Access (Permissions in the menu).' : 'A drive protected by BitLocker or FileVault has to be unlocked first.'}` })));
       if (!scan.items.length) detail.append(el('p', { className: 'lead', textContent: 'No files could be read there. If the old drive came from a Windows computer, start MendKit as administrator and try again. A drive protected by BitLocker or FileVault has to be unlocked first.' }));
       const t = el('table');
       const checks = [];
@@ -3176,7 +3194,7 @@ function renderOldDrive(view) {
       detail.append(t, el('p', { className: 'lead note', textContent: 'Nothing on the old drive is changed. Files already on this computer are not overwritten; a different file with the same name is kept alongside as "name (restored)". Saved passwords and cookies are not copied.' }), el('div', { className: 'toolbar' }, go));
       syncButtons();
     };
-    who.onchange = load;
+    who.onchange = () => load();
     info.replaceChildren(el('p', { className: 'lead', textContent: `Folder: ${d.dir}` }), el('h2', { textContent: '2. Whose files' }), el('div', { className: 'toolbar' }, who), detail);
     load();
   };

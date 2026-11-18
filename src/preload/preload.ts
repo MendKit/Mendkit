@@ -32,6 +32,7 @@ contextBridge.exposeInMainWorld('mendkit', {
   openOptionalUpdates: () => ipcRenderer.invoke('open-optional-updates'),
   oldPick: () => ipcRenderer.invoke('old-pick'),
   oldScan: (index: number) => ipcRenderer.invoke('old-scan', index),
+  oldGrant: (index: number) => ipcRenderer.invoke('old-grant', index),
   oldImport: (index: number, ids: string[], includeApps: boolean) => ipcRenderer.invoke('old-import', index, ids, includeApps),
   imageInfo: () => ipcRenderer.invoke('image-info'),
   imageStart: (id: string) => ipcRenderer.invoke('image-start', id),

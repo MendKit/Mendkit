@@ -817,6 +817,38 @@ async function main(): Promise<void> {
     console.log('health history: daily snapshots, trends and warnings OK');
   }
 
+  {
+    // Old drive: folders the old computer's permissions keep closed are found, and the command opens them.
+    const od = require('../engine/olddrive');
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-oldperm-'));
+    const home = path.join(tmp, 'Users', 'Ann');
+    for (const d of ['AppData', 'Documents', 'Pictures']) fs.mkdirSync(path.join(home, d), { recursive: true });
+    fs.writeFileSync(path.join(home, 'Documents', 'a.txt'), 'x');
+    const prof = { name: 'Ann', home, platform: 'win32', systemRoot: tmp };
+    assert(od.lockedFolders(prof).length === 0, 'open folders reported as locked');
+    if (process.getuid && process.getuid() !== 0) {
+      fs.chmodSync(path.join(home, 'Documents'), 0o000);
+      const locked = od.lockedFolders(prof);
+      fs.chmodSync(path.join(home, 'Documents'), 0o755);
+      assert(locked.length === 1 && locked[0].endsWith('Documents'), `locked folders wrong: ${locked}`);
+    }
+    const w = od.grantAccessCommand('win32', 'E:\\Users\\Ann O\'Neil', { user: 'tech', uid: 0, sid: 'S-1-5-21-1-2-3-1001' });
+    assert(w.admin && w.exec === 'powershell.exe' && w.args[3].includes("'E:\\Users\\Ann O''Neil'") && w.args[3].includes('*S-1-5-21-1-2-3-1001:(OI)(CI)RX') && /takeown/.test(w.args[3]), 'Windows access command wrong');
+    assert(/diskutil disableOwnership '\/Volumes\/Old Mac'/.test(od.grantAccessCommand('darwin', '/Volumes/Old Mac/Users/ann', { user: 'tech', uid: 501 }).args[1]), 'Mac access command wrong');
+    const l = od.grantAccessCommand('linux', home, { user: 'tech', uid: 1000 });
+    assert(l.args[1].includes('setfacl -R -m u:1000:rX'), 'Linux access command wrong');
+    if (process.getuid && process.getuid() === 0) {
+      fs.chmodSync(path.join(home, 'Documents'), 0o700);
+      fs.chownSync(path.join(home, 'Documents'), 4242, 4242);
+      require('child_process').execFileSync('sh', ['-c', od.grantAccessCommand('linux', home, { user: 'x', uid: 4343 }).args[1]]);
+      const mode = fs.statSync(path.join(home, 'Documents')).mode & 0o7;
+      const acl = require('child_process').spawnSync('getfacl', ['-p', path.join(home, 'Documents')], { encoding: 'utf8' }).stdout ?? '';
+      assert(/user:4343:r-x/.test(acl) || mode >= 5, `Linux access not given: ${acl} mode ${mode}`);
+    }
+    fs.rmSync(tmp, { recursive: true, force: true });
+    console.log('old drive: closed folders found, access commands for each system OK');
+  }
+
   console.log(`Smoke test passed. Log: ${summary.logFile}`);
 }
 
