@@ -3,7 +3,7 @@ name: Linux distributions
 # package manager detection, and the read-only commands. Runs on every change to the definitions or engine.
 on:
   push:
-    paths: ['definitions/**', 'src/**', '.github/workflows/linux-distros.yml']
+    paths: ['definitions/**', 'src/**', '.github/workflows/linux-distros.yml', '.github/scripts/*linux-repos.sh']
   pull_request:
     paths: ['definitions/**', 'src/**']
   workflow_dispatch:
