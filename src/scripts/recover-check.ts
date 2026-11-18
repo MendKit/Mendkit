@@ -36,6 +36,7 @@ async function main(): Promise<void> {
     // Windows wipes a deleted file's data on a virtual disk at once (as on an SSD), so instead take the volume
     // offline and put the photo's bytes straight into its free space: what a deleted photo on a card leaves.
     const diskNo = spawnSync('powershell.exe', ['-NoProfile', '-Command', '(Get-Partition -DriveLetter R).DiskNumber'], { encoding: 'utf8' }).stdout.trim();
+    const guid = spawnSync('powershell.exe', ['-NoProfile', '-Command', '(Get-Partition -DriveLetter R | Get-Volume).Path'], { encoding: 'utf8' }).stdout.trim();
     spawnSync('mountvol.exe', ['R:', '/p']);
     const data = fs.readFileSync(photo);
     const buf = Buffer.alloc(Math.ceil(data.length / 4096) * 4096);
@@ -43,8 +44,10 @@ async function main(): Promise<void> {
     const raw = fs.openSync(`\\\\.\\PhysicalDrive${diskNo}`, 'r+');
     fs.writeSync(raw, buf, 0, buf.length, 40 * 1024 * 1024);
     fs.closeSync(raw);
-    fs.writeFileSync(script, `select vdisk file="${vhd}"\nselect partition 1\nassign letter=R\n`);
-    console.log(spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).stdout.split('\n').slice(-4).join(' '));
+    // Mount it again by its volume name, as it was.
+    const back = spawnSync('mountvol.exe', ['R:', guid], { encoding: 'utf8' });
+    for (let i = 0; i < 20 && !fs.existsSync('R:\\'); i++) spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Milliseconds 500']);
+    console.log(`volume ${guid} back as R: ${fs.existsSync('R:\\')} ${back.stdout.trim()} ${back.stderr.trim()}`);
     const vols = windowsVolumes(spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-volumes.ps1')], { encoding: 'utf8' }).stdout.trim(), process.env.SystemDrive);
     console.log(`volumes: ${vols.map((v) => `${v.mount} ${v.fs} ${v.removable ? 'removable' : 'fixed'}${v.system ? ' system' : ''}${v.internalSsd ? ' ssd' : ''}`).join('; ')}`);
     const card = vols.find((v) => v.mount === 'R:\\');
