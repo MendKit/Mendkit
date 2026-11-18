@@ -23,6 +23,7 @@ const SCREENS = [
   { id: 'isos', name: 'ISO Library', simple: true },
   { id: 'undo', name: 'Undo Center', simple: true },
   { id: 'guides', name: 'How-To Guides', simple: true },
+  { id: 'checkin', name: 'Check-in', simple: false },
   { id: 'reports', name: 'Reports', simple: true },
   { id: 'permissions', name: 'Permissions', simple: true },
 ];
@@ -77,6 +78,7 @@ function show(id) {
   else if (cur.id === 'migrate') renderMigrate(view);
   else if (cur.id === 'permissions') renderPermissions(view);
   else if (cur.id === 'switch') renderSwitch(view);
+  else if (cur.id === 'checkin') renderCheckIn(view);
   else if (cur.id === 'reports') renderReports(view);
   if (state.online === false && ['tools', 'updates', 'isos', 'setup'].includes(state.screen)) view.prepend(el('div', { className: 'notice offline' }, el('span', { textContent: 'This computer has no internet connection. Installs, updates and downloads will fail until it is back. Repairs, hardware tests, migration, tweaks and erasing still work.' })));
 }
@@ -402,6 +404,63 @@ function renderRepair(view) {
   }
   view.append(ct);
   syncButtons();
+}
+
+/** Check-in form, open check-ins, and the before/after speed score. */
+async function renderCheckIn(view) {
+  view.append(el('h1', { textContent: 'Check-in' }), el('p', { className: 'lead', textContent: 'Write down who left the computer and why, measure its speed now, and measure again when it is done. The printed sheet shows both scores.' }));
+  const input = (label, opts = {}) => {
+    const i = opts.area ? el('textarea', { className: 'text', rows: 3 }) : el('input', { className: 'text', type: opts.type || 'text' });
+    const row = el('label', { className: 'field' }, el('span', { textContent: label }), i);
+    return [row, i];
+  };
+  const [nameRow, name] = input('Customer name');
+  const [phoneRow, phone] = input('Phone', { type: 'tel' });
+  const [mailRow, mail] = input('Email', { type: 'email' });
+  const [devRow, dev] = input('Computer (make, model, colour)');
+  const [probRow, prob] = input('What is wrong, in their words', { area: true });
+  const [accRow, acc] = input('Left with it (charger, bag, mouse)');
+  const [condRow, cond] = input('Condition (scratches, cracks, missing keys)', { area: true });
+  const [noteRow, note] = input('Notes', { area: true });
+  dev.value = `${state.info.hostname}: ${state.info.osName}`;
+  const backup = el('input', { type: 'checkbox', checked: true });
+  const save = el('button', { className: 'big run', textContent: 'Check in and measure speed' });
+  const form = el('div', { className: 'form' }, nameRow, phoneRow, mailRow, devRow, probRow, accRow, condRow, noteRow, el('label', { className: 'check' }, backup, ' The customer agrees to a backup of their files if the work needs one'), el('div', { className: 'result-foot' }, save));
+  view.append(el('h2', { textContent: 'New check-in' }), form, el('p', { className: 'dim', textContent: 'The speed test takes about 10 seconds: it writes and deletes a 256 MB test file, times the processor, and counts memory, free space and start-up programs. Kept on this computer only.' }));
+  const listBox = el('div');
+  view.append(el('h2', { textContent: 'Check-ins' }), listBox);
+  const draw = async () => {
+    const list = await api.checkinList();
+    listBox.replaceChildren();
+    if (!list.length) return listBox.append(el('p', { className: 'dim', textContent: 'None yet.' }));
+    const t = el('table');
+    for (const c of list) {
+      const after = el('button', { className: 'ghost run', textContent: c.after ? 'Measure again' : 'Measure after' });
+      after.onclick = () => run(async () => {
+        migSafeStatus('Measuring...');
+        await api.checkinMeasure(c.id, 'after');
+        migSafeStatus('Measured.');
+        show('checkin');
+      });
+      const print = el('button', { className: 'ghost', textContent: 'Print' });
+      print.onclick = () => api.checkinPrint(c.id).catch((e) => migSafeStatus(errText(e)));
+      const del = twoStep('Delete', 'Deletes this check-in from this computer.', async () => {
+        await api.checkinDelete(c.id);
+        draw();
+      });
+      const score = c.beforeScore ? `${c.beforeScore.score}${c.afterScore ? ` \u2192 ${c.afterScore.score}` : ''}` : 'not measured';
+      t.append(el('tr', {}, el('td', {}, el('strong', { textContent: c.customer.name }), el('br'), el('small', { textContent: `${new Date(c.created).toLocaleDateString()}: ${c.device}${c.problem ? `. ${c.problem.slice(0, 120)}` : ''}` })), el('td', { textContent: `Speed ${score}` }), el('td', { className: 'act' }, after, print, del)));
+    }
+    listBox.append(t);
+  };
+  save.onclick = () => run(async () => {
+    const c = await api.checkinSave({ customer: { name: name.value, phone: phone.value, email: mail.value }, device: dev.value, problem: prob.value, accessories: acc.value, condition: cond.value, notes: note.value, backupOk: backup.checked });
+    migSafeStatus('Saved. Measuring speed...');
+    const m = await api.checkinMeasure(c.id, 'before');
+    migSafeStatus(`Checked in. Speed score ${m.beforeScore.score} out of 100.`);
+    show('checkin');
+  });
+  draw();
 }
 
 async function renderReports(view) {

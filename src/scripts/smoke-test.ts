@@ -21,6 +21,7 @@ import * as recover from '../engine/recover';
 import { cpuLikelySupported, upgradePlan, UpgradeFacts } from '../engine/upgrade';
 import * as phone from '../engine/phone';
 import { addSnapshot, HealthSnapshot, healthTrends, slopePerDay } from '../engine/history';
+import { compareSpeed, speedScore } from '../engine/speed';
 
 function assert(cond: unknown, msg: string): void {
   if (!cond) throw new Error(msg);
@@ -849,6 +850,17 @@ async function main(): Promise<void> {
     }
     fs.rmSync(tmp, { recursive: true, force: true });
     console.log('old drive: closed folders found, access commands for each system OK');
+  }
+
+  {
+    // Speed score: a slow, full, cluttered computer scores low; after a service it scores higher.
+    const slow = { at: '', writeMBs: 40, readMBs: null, cpuMs: 1800, memoryUsed: 92, freePercent: 4, startupItems: 28 };
+    const fast = { ...slow, writeMBs: 900, memoryUsed: 55, freePercent: 30, startupItems: 6 };
+    const a = speedScore(slow).score;
+    const b = speedScore(fast).score;
+    const cmp = compareSpeed(slow, fast);
+    assert(a < 25 && b > 75 && cmp.before === a && cmp.after === b && cmp.lines.length === 4 && speedScore({ at: '', writeMBs: null, readMBs: null, cpuMs: null, memoryUsed: null, freePercent: null, startupItems: null }).score === 0, `speed score wrong: ${a} ${b} ${JSON.stringify(cmp)}`);
+    console.log(`speed score: ${a} before, ${b} after OK`);
   }
 
   console.log(`Smoke test passed. Log: ${summary.logFile}`);
