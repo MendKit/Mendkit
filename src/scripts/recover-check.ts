@@ -33,28 +33,18 @@ async function main(): Promise<void> {
     const script = path.join(tmp, 'make.txt');
     fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\nselect vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
     console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-4).join(' '));
-    // Write the photo through to the disk before deleting it, as happens when a file has been there a while.
-    // Windows wipes a deleted file's data on a virtual disk at once (as on an SSD), so instead put the photo's
-    // bytes straight into the free space of the detached disk image: what a deleted photo on a card leaves.
-    fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
-    for (let attempt = 1; ; attempt++) {
-      const det = spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' });
-      if (det.status === 0 || /already detached/i.test(det.stdout)) break;
-      console.log(`detach attempt ${attempt}: ${det.stdout.replace(/\s+/g, ' ').slice(-400)}`);
-      if (attempt === 5) fail('the test disk could not be detached');
-      spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Seconds 3']);
-    }
-    const img = fs.openSync(vhd, 'r+');
-    fs.writeSync(img, fs.readFileSync(photo), 0, fs.statSync(photo).size, 40 * 1024 * 1024);
-    fs.closeSync(img);
-    fs.writeFileSync(script, `select vdisk file="${vhd}"\nattach vdisk\n`);
-    console.log(spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).stdout.split('\n').slice(-3).join(' '));
-    // Windows usually gives the volume its letter back by itself.
-    for (let i = 0; i < 20 && !fs.existsSync('R:\\'); i++) spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Milliseconds 500']);
-    if (!fs.existsSync('R:\\')) {
-      fs.writeFileSync(script, `select vdisk file="${vhd}"\nselect partition 1\nassign letter=R\n`);
-      console.log(spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).stdout.split('\n').slice(-4).join(' '));
-    }
+    // Windows wipes a deleted file's data on a virtual disk at once (as on an SSD), so instead take the volume
+    // offline and put the photo's bytes straight into its free space: what a deleted photo on a card leaves.
+    const diskNo = spawnSync('powershell.exe', ['-NoProfile', '-Command', '(Get-Partition -DriveLetter R).DiskNumber'], { encoding: 'utf8' }).stdout.trim();
+    spawnSync('mountvol.exe', ['R:', '/p']);
+    const data = fs.readFileSync(photo);
+    const buf = Buffer.alloc(Math.ceil(data.length / 4096) * 4096);
+    data.copy(buf);
+    const raw = fs.openSync(`\\\\.\\PhysicalDrive${diskNo}`, 'r+');
+    fs.writeSync(raw, buf, 0, buf.length, 40 * 1024 * 1024);
+    fs.closeSync(raw);
+    fs.writeFileSync(script, `select vdisk file="${vhd}"\nselect partition 1\nassign letter=R\n`);
+    console.log(spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).stdout.split('\n').slice(-4).join(' '));
     const vols = windowsVolumes(spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-volumes.ps1')], { encoding: 'utf8' }).stdout.trim(), process.env.SystemDrive);
     console.log(`volumes: ${vols.map((v) => `${v.mount} ${v.fs} ${v.removable ? 'removable' : 'fixed'}${v.system ? ' system' : ''}${v.internalSsd ? ' ssd' : ''}`).join('; ')}`);
     const card = vols.find((v) => v.mount === 'R:\\');
