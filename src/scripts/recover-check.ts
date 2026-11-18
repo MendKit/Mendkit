@@ -39,7 +39,7 @@ async function main(): Promise<void> {
     fs.writeFileSync(script, `select vdisk file="${vhd}"\ndetach vdisk\n`);
     for (let attempt = 1; ; attempt++) {
       const det = spawnSync('diskpart.exe', ['/s', script], { encoding: 'utf8' });
-      if (det.status === 0) break;
+      if (det.status === 0 || /already detached/i.test(det.stdout)) break;
       console.log(`detach attempt ${attempt}: ${det.stdout.replace(/\s+/g, ' ').slice(-400)}`);
       if (attempt === 5) fail('the test disk could not be detached');
       spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Seconds 3']);
