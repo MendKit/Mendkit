@@ -31,23 +31,17 @@ async function main(): Promise<void> {
   if (process.platform === 'win32') {
     const vhd = path.join(tmp, 'card.vhd');
     const script = path.join(tmp, 'make.txt');
-    fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\nselect vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
+    // Windows wipes a deleted file's data on a virtual disk at once (as on an SSD), and will not let the raw
+    // disk be written while it is in use. So put the photo's bytes into the empty disk image first, where the
+    // FAT32 volume's free space will be: what a deleted photo on a memory card leaves behind.
+    fs.writeFileSync(script, `create vdisk file="${vhd}" maximum=64 type=fixed\n`);
+    console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-3).join(' '));
+    const img = fs.openSync(vhd, 'r+');
+    fs.writeSync(img, fs.readFileSync(photo), 0, fs.statSync(photo).size, 40 * 1024 * 1024);
+    fs.closeSync(img);
+    fs.writeFileSync(script, `select vdisk file="${vhd}"\nattach vdisk\ncreate partition primary\nformat fs=fat32 quick label=CARD\nassign letter=R\n`);
     console.log(execFileSync('diskpart.exe', ['/s', script], { encoding: 'utf8' }).split('\n').slice(-4).join(' '));
-    // Windows wipes a deleted file's data on a virtual disk at once (as on an SSD), so instead take the volume
-    // offline and put the photo's bytes straight into its free space: what a deleted photo on a card leaves.
-    const diskNo = spawnSync('powershell.exe', ['-NoProfile', '-Command', '(Get-Partition -DriveLetter R).DiskNumber'], { encoding: 'utf8' }).stdout.trim();
-    const guid = spawnSync('powershell.exe', ['-NoProfile', '-Command', '(Get-Partition -DriveLetter R | Get-Volume).Path'], { encoding: 'utf8' }).stdout.trim();
-    spawnSync('mountvol.exe', ['R:', '/p']);
-    const data = fs.readFileSync(photo);
-    const buf = Buffer.alloc(Math.ceil(data.length / 4096) * 4096);
-    data.copy(buf);
-    const raw = fs.openSync(`\\\\.\\PhysicalDrive${diskNo}`, 'r+');
-    fs.writeSync(raw, buf, 0, buf.length, 40 * 1024 * 1024);
-    fs.closeSync(raw);
-    // Mount it again by its volume name, as it was.
-    const back = spawnSync('mountvol.exe', ['R:', guid], { encoding: 'utf8' });
     for (let i = 0; i < 20 && !fs.existsSync('R:\\'); i++) spawnSync('powershell.exe', ['-NoProfile', '-Command', 'Start-Sleep -Milliseconds 500']);
-    console.log(`volume ${guid} back as R: ${fs.existsSync('R:\\')} ${back.stdout.trim()} ${back.stderr.trim()}`);
     const vols = windowsVolumes(spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', path.join(root, 'definitions', 'scripts', 'windows-volumes.ps1')], { encoding: 'utf8' }).stdout.trim(), process.env.SystemDrive);
     console.log(`volumes: ${vols.map((v) => `${v.mount} ${v.fs} ${v.removable ? 'removable' : 'fixed'}${v.system ? ' system' : ''}${v.internalSsd ? ' ssd' : ''}`).join('; ')}`);
     const card = vols.find((v) => v.mount === 'R:\\');

@@ -48,7 +48,7 @@ cp "$rpmfile" "$out/rpm/"
 cat > "$GNUPGHOME/rpmmacros" <<EOF
 %_gpg_name $key
 %_gpg_path $GNUPGHOME
-%__gpg_sign_cmd %{__gpg} gpg --batch --no-verbose --no-armor --pinentry-mode loopback --passphrase "${LINUX_REPO_GPG_PASSPHRASE:-}" --no-secmem-warning -u "%{_gpg_name}" -sbo %{__signature_filename} %{__plaintext_filename}
+%__gpg_sign_cmd %{__gpg} --batch --no-verbose --no-armor --pinentry-mode loopback --passphrase "${LINUX_REPO_GPG_PASSPHRASE:-}" --no-secmem-warning -u "%{_gpg_name}" -sbo %{__signature_filename} %{__plaintext_filename}
 EOF
 rpmsign --macros="/usr/lib/rpm/macros:$GNUPGHOME/rpmmacros" --addsign "$out/rpm/$(basename "$rpmfile")" >/dev/null
 createrepo_c --quiet "$out/rpm"
