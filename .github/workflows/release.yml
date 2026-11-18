@@ -77,17 +77,28 @@ jobs:
         run: npm version "${{ needs.prepare.outputs.version }}" --no-git-tag-version --allow-same-version
       - run: npm test
         if: matrix.os == 'ubuntu-latest'
-      # Code signing: add CSC_LINK and CSC_KEY_PASSWORD as repository secrets once you have certificates.
-      # They are only passed to the build when they exist; an empty value makes the macOS build fail.
+      # Code signing switches on by itself when the repository secrets exist (see docs/SIGNING.md):
+      # CSC_LINK/CSC_KEY_PASSWORD (Mac Developer ID), WIN_CSC_LINK/WIN_CSC_KEY_PASSWORD (Windows),
+      # APPLE_ID/APPLE_APP_SPECIFIC_PASSWORD/APPLE_TEAM_ID (notarization). Missing ones are left out.
       - name: Set up code signing
         shell: bash
         env:
-          CSC_LINK_SECRET: ${{ secrets.CSC_LINK }}
-          CSC_KEY_PASSWORD_SECRET: ${{ secrets.CSC_KEY_PASSWORD }}
+          CSC_LINK_SECRET: ${{ runner.os == 'Windows' && secrets.WIN_CSC_LINK || secrets.CSC_LINK }}
+          CSC_KEY_PASSWORD_SECRET: ${{ runner.os == 'Windows' && secrets.WIN_CSC_KEY_PASSWORD || secrets.CSC_KEY_PASSWORD }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD_SECRET: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_SECRET: ${{ secrets.APPLE_TEAM_ID }}
         run: |
           if [ -n "$CSC_LINK_SECRET" ]; then
             echo "CSC_LINK=$CSC_LINK_SECRET" >> "$GITHUB_ENV"
             echo "CSC_KEY_PASSWORD=$CSC_KEY_PASSWORD_SECRET" >> "$GITHUB_ENV"
+            # Mac: with an Apple ID app password and team, the app is also notarized, so it opens with no warning.
+            if [ "$RUNNER_OS" = "macOS" ] && [ -n "$APPLE_ID_SECRET" ]; then
+              echo "APPLE_ID=$APPLE_ID_SECRET" >> "$GITHUB_ENV"
+              echo "APPLE_APP_SPECIFIC_PASSWORD=$APPLE_PASSWORD_SECRET" >> "$GITHUB_ENV"
+              echo "APPLE_TEAM_ID=$APPLE_TEAM_SECRET" >> "$GITHUB_ENV"
+              echo "EXTRA_BUILD_ARGS=-c.mac.notarize=true" >> "$GITHUB_ENV"
+            fi
           else
             echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
             # Without a certificate the Mac app is signed ad hoc: Apple-silicon Macs call a

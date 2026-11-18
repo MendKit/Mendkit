@@ -41,7 +41,8 @@
         {
           "target": "nsis",
           "arch": [
-            "x64"
+            "x64",
+            "arm64"
           ]
         },
         {
@@ -66,7 +67,13 @@
     },
     "mac": {
       "target": [
-        "dmg"
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "category": "public.app-category.utilities",
       "icon": "build/icon.png",
@@ -82,7 +89,8 @@
         "NSDownloadsFolderUsageDescription": "MendKit backs up, moves and measures files in Downloads when you ask it to.",
         "NSRemovableVolumesUsageDescription": "MendKit backs up to, restores from and checks USB drives when you ask it to.",
         "NSNetworkVolumesUsageDescription": "MendKit backs up to and restores from network drives when you ask it to."
-      }
+      },
+      "artifactName": "MendKit-${version}-${arch}.${ext}"
     },
     "linux": {
       "target": [

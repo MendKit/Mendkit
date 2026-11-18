@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, net, shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { isNewer, latestFileName, parseLatest } from '../engine/update';
+import { installerFor, isNewer, latestFileName, parseLatest } from '../engine/update';
 
 /**
  * MendKit's own updates. The release bucket holds each installer plus a small "latest" file.
@@ -105,7 +105,7 @@ export function registerUpdater(ctx: { getWin: () => BrowserWindow | null; busy:
     try {
       const info = parseLatest(await fetchText(`${feed}/${latestFileName(process.platform)}?t=${Date.now()}`));
       if (!info) throw new Error('unreadable');
-      if (isNewer(info.version, state.current)) push({ status: 'available', version: info.version, url: `${feed}/${encodeURI(linuxPackageFile(info.version) ?? info.path)}` });
+      if (isNewer(info.version, state.current)) push({ status: 'available', version: info.version, url: `${feed}/${encodeURI(linuxPackageFile(info.version) ?? installerFor(info, process.arch))}` });
       else push({ status: 'none' });
     } catch (e) {
       push({ status: 'error', message: friendly(e) });

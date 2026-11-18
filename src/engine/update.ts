@@ -5,6 +5,8 @@ export interface LatestInfo {
   /** File name of the installer, relative to the bucket. */
   path: string;
   releaseDate?: string;
+  /** Every installer listed (a Mac release has one for Apple silicon and one for Intel). */
+  files: string[];
 }
 
 /** The file electron-builder writes next to each installer: latest.yml, latest-mac.yml or latest-linux.yml. */
@@ -17,7 +19,14 @@ export function parseLatest(text: string): LatestInfo | null {
   const version = get('version');
   const path = get('path');
   if (!version || !path || !/^\d+\.\d+\.\d+/.test(version) || /[\\]|\.\.|^[a-z]+:/i.test(path)) return null;
-  return { version, path, releaseDate: get('releaseDate') };
+  const files = [...text.matchAll(/^\s*-\s*url:\s*['"]?([^'"\r\n]+?)['"]?\s*$/gm)].map((m) => m[1]).filter((f) => !/[\\]|\.\.|^[a-z]+:/i.test(f));
+  return { version, path, releaseDate: get('releaseDate'), files };
+}
+
+/** The installer for this processor: arm64 or x64 by its name, else the default one. */
+export function installerFor(info: LatestInfo, arch: string): string {
+  const want = arch === 'arm64' ? /arm64/i : /x64|x86_64|amd64/i;
+  return info.files.find((f) => want.test(f) && !/\.(blockmap|zip)$/.test(f)) ?? info.path;
 }
 
 /** True when `candidate` is a later release than `current` (numeric compare of major.minor.patch). */

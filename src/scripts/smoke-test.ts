@@ -564,7 +564,9 @@ async function main(): Promise<void> {
   }
 
   {
-    const { isNewer, latestFileName, parseLatest } = await import('../engine/update');
+    const { isNewer, latestFileName, parseLatest, installerFor } = await import('../engine/update');
+    const mac = parseLatest('version: 0.19.0\nfiles:\n  - url: MendKit-0.19.0-arm64.dmg\n    sha512: x\n  - url: MendKit-0.19.0-x64.dmg\n    sha512: y\npath: MendKit-0.19.0-arm64.dmg\n')!;
+    assert(installerFor(mac, 'x64') === 'MendKit-0.19.0-x64.dmg' && installerFor(mac, 'arm64') === 'MendKit-0.19.0-arm64.dmg' && installerFor({ ...mac, files: [] }, 'x64') === mac.path, 'installer for this processor wrong');
     const yml = "version: 0.18.0\nfiles:\n  - url: MendKit-Setup-0.18.0.exe\n    sha512: abc==\n    size: 90000000\npath: MendKit-Setup-0.18.0.exe\nsha512: abc==\nreleaseDate: '2026-11-20T10:00:00.000Z'\n";
     const li = parseLatest(yml);
     assert(li?.version === '0.18.0' && li.path === 'MendKit-Setup-0.18.0.exe' && li.releaseDate === '2026-11-20T10:00:00.000Z', 'latest.yml not parsed');

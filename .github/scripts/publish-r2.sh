@@ -17,6 +17,7 @@ declare -A latest=(
   ["MendKit-Setup-$v.exe"]="MendKit-Setup-latest.exe"
   ["MendKit-Portable-$v.exe"]="MendKit-Portable-latest.exe"
   ["MendKit-$v-arm64.dmg"]="MendKit-latest-arm64.dmg"
+  ["MendKit-$v-x64.dmg"]="MendKit-latest-x64.dmg"
   ["MendKit-$v-x86_64.AppImage"]="MendKit-latest-x86_64.AppImage"
   ["MendKit-$v-x64.tar.gz"]="MendKit-latest-x64.tar.gz"
   ["MendKit-$v-amd64.deb"]="MendKit-latest-amd64.deb"
