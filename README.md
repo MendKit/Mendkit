@@ -16,7 +16,7 @@ It has two modes. **Simple mode** asks "What is the problem?", shows the plan be
 - **Switch to Linux:** checks a Windows 10 computer for Linux, lists what replaces each app, and walks through backup, install and a one-run first setup.
 - **106 How-To Guides** inside the app, written for people who do not fix computers: numbered steps with what you will see, tips and warnings, for every screen and every tool.
 
-**Status:** version 0.18.0. Windows has had the most real-world use. The macOS and Linux packs pass automated checks on real Windows and Mac machines and in seven Linux distributions (Ubuntu 24.04 and 22.04, Debian, Linux Mint 22, Fedora, Arch and openSUSE), but have had little hands-on use. Builds are not yet signed.
+**Status:** version 0.19.0. Windows has had the most real-world use. The macOS and Linux packs pass automated checks on real Windows and Mac machines and in seven Linux distributions (Ubuntu 24.04 and 22.04, Debian, Linux Mint 22, Fedora, Arch and openSUSE), but have had little hands-on use. Builds are not yet signed.
 
 ## Download
 
@@ -28,11 +28,12 @@ These links always give the newest version:
 | --- | --- | --- |
 | Windows 10 and 11 | [Installer](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-Setup-latest.exe), or [portable](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-Portable-latest.exe) | SmartScreen may warn: More info, then Run anyway. |
 | macOS (Apple silicon) | [Disk image](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-arm64.dmg) | Not yet registered with Apple: open it once, then System Settings, Privacy & Security, Open Anyway. |
+| macOS (Intel) | [Disk image](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x64.dmg) | As above. |
 | Linux: Ubuntu, Mint, Debian | [.deb](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-amd64.deb) | Double-click, Install, or `sudo apt install ./MendKit-*.deb`. |
 | Linux: Fedora, openSUSE | [.rpm](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x86_64.rpm) | Double-click, Install, or `sudo dnf install ./MendKit-*.rpm`. |
 | Linux: other | [AppImage](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x86_64.AppImage) or [tar.gz](https://pub-a4ba3af629e94c87a8e9aec1b8e48df7.r2.dev/MendKit-latest-x64.tar.gz) | AppImage on Ubuntu 22.04 and later also needs `libfuse2t64` (`libfuse2` on 22.04). |
 
-The files are served from the project's release bucket, the same place installed copies check for updates. Versioned names (for example `MendKit-Setup-0.18.0.exe`) stay available there too.
+The files are served from the project's release bucket, the same place installed copies check for updates. Versioned names (for example `MendKit-Setup-0.19.0.exe`) stay available there too.
 
 ## What it does
 
@@ -108,7 +109,7 @@ The builds are unsigned, so Windows SmartScreen and macOS Gatekeeper warn on fir
 
 MendKit checks the release bucket named in `definitions/update.json` (the Cloudflare R2 bucket; `build.publish` in `package.json` must name the same address) a few seconds after it starts and from the Updates screen. The logic is in `src/main/updater.ts` and `src/engine/update.ts`.
 
-To publish a new version, open **Actions > Build and publish > Run workflow**, type the new version number (for example `0.18.0`) and click **Run workflow**. In about ten minutes it:
+To publish a new version, open **Actions > Build and publish > Run workflow**, type the new version number (for example `0.19.0`) and click **Run workflow**. In about ten minutes it:
 
 1. builds Windows, macOS and Linux,
 2. uploads the installers to the bucket under their versioned names and under fixed `-latest` names (the website links to those),
