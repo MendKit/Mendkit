@@ -81,6 +81,7 @@ cat > version.json <<JSON
     "windows": { "name": "MendKit-Setup-$v.exe", "size": $(size "MendKit-Setup-$v.exe") },
     "portable": { "name": "MendKit-Portable-$v.exe", "size": $(size "MendKit-Portable-$v.exe") },
     "mac": { "name": "MendKit-$v-arm64.dmg", "size": $(size "MendKit-$v-arm64.dmg") },
+    "macIntel": { "name": "MendKit-$v-x64.dmg", "size": $(size "MendKit-$v-x64.dmg") },
     "appimage": { "name": "MendKit-$v-x86_64.AppImage", "size": $(size "MendKit-$v-x86_64.AppImage") },
     "targz": { "name": "MendKit-$v-x64.tar.gz", "size": $(size "MendKit-$v-x64.tar.gz") },
     "deb": { "name": "MendKit-$v-amd64.deb", "size": $(size "MendKit-$v-amd64.deb") },

@@ -38,3 +38,47 @@ jobs:
       - name: Check MendKit's Linux commands on this distribution
         shell: sh
         run: node dist/scripts/distro-check.js
+
+  # The apt and dnf/zypper repositories: build them from test packages with a throwaway key, then install
+  # through each distribution's own package manager with signature checks on.
+  repo-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq apt-utils createrepo-c rpm
+      - run: bash .github/scripts/test-linux-repos.sh
+      - uses: actions/upload-artifact@v6
+        with:
+          name: repo-test
+          path: repo-test/out
+
+  repo-install:
+    needs: repo-build
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ['debian:stable', 'ubuntu:24.04', 'fedora:latest']
+    runs-on: ubuntu-latest
+    container: ${{ matrix.image }}
+    steps:
+      - uses: actions/download-artifact@v7
+        with:
+          name: repo-test
+          path: /repo
+      - name: Install MendKit from the repository
+        shell: bash
+        run: |
+          set -e
+          if command -v apt-get >/dev/null; then
+            cp /repo/mendkit.gpg /usr/share/keyrings/mendkit.gpg
+            echo "deb [signed-by=/usr/share/keyrings/mendkit.gpg] file:///repo/apt stable main" > /etc/apt/sources.list.d/mendkit.list
+            apt-get update
+            apt-get install -y mendkit
+            dpkg -s mendkit | grep -q '^Version: 0.0.1'
+          else
+            cp /repo/rpm/mendkit.repo /etc/yum.repos.d/mendkit.repo
+            cat /etc/yum.repos.d/mendkit.repo
+            dnf install -y mendkit
+            rpm -q mendkit
+          fi
+          test -f /usr/share/mendkit/test && echo "Installed from the signed repository"
