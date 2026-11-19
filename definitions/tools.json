@@ -222,10 +222,6 @@
         {
           "page": "https://www.hwinfo.com/download/",
           "base": "https://www.hwinfo.com/files/"
-        },
-        {
-          "page": "https://sourceforge.net/projects/hwinfo/rss?path=/Windows_Installer",
-          "base": "https://downloads.sourceforge.net/project/hwinfo/Windows_Installer/"
         }
       ],
       "link": "hwi64_\\d+\\.exe",

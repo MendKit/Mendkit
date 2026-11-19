@@ -507,7 +507,7 @@ export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager
         ? [
             { pattern: 'already installed|is already the newest|No newer package versions', level: 'good', message: `${tool.name} is already installed.` },
             { pattern: 'MK_DIRECT_OK', level: 'good', message: `${tool.name} was installed from the publisher's own download (winget's copy was out of date). It is in the Start menu.` },
-            { pattern: 'MK_GONE', level: 'problem', message: `The publisher has removed the download that winget's catalog lists for ${tool.name}, and the catalog has not caught up yet. Try again in a day or two, or download it from the publisher's website.` },
+            { pattern: 'MK_GONE', level: 'problem', message: `The publisher has removed the download that winget's catalog lists for ${tool.name}, and the catalog has not caught up yet. Try again in a day or two, or download it from the publisher's website${tool.windowsDownload ? ` (${tool.windowsDownload.sources[0].page})` : ''}.` },
           ]
         : [],
     },

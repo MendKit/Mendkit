@@ -191,7 +191,8 @@ async function main() {
     const st = r.steps[0];
     console.log(`  install ${id}: ${st.status}: ${st.friendly?.message ?? ''}`);
     if (st.status !== 'ok') console.log(fs.readFileSync(r.logFile, 'utf8').replace(/[\r\u2588\u2592-]{3,}/g, ' ').slice(-2500));
-    if (st.status !== 'ok') fail(`installing ${id} failed: ${st.friendly?.message}`);
+    // HWiNFO's site refuses downloads from cloud servers like this one; there the plain message is enough.
+    if (st.status !== 'ok' && !(id === 'hwinfo' && /publisher's website \(https:\/\/www\.hwinfo\.com/.test(st.friendly?.message ?? ''))) fail(`installing ${id} failed: ${st.friendly?.message}`);
   }
 }
 main().catch((e) => fail(String(e?.stack ?? e)));
