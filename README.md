@@ -16,7 +16,7 @@ It has two modes. **Simple mode** asks "What is the problem?", shows the plan be
 - **Switch to Linux:** checks a Windows 10 computer for Linux, lists what replaces each app, and walks through backup, install and a one-run first setup.
 - **106 How-To Guides** inside the app, written for people who do not fix computers: numbered steps with what you will see, tips and warnings, for every screen and every tool.
 
-**Status:** version 0.19.3. Windows has had the most real-world use. The macOS and Linux packs pass automated checks on real Windows and Mac machines and in seven Linux distributions (Ubuntu 24.04 and 22.04, Debian, Linux Mint 22, Fedora, Arch and openSUSE), but have had little hands-on use. Builds are not yet signed.
+**Status:** version 0.19.4. Windows has had the most real-world use. The macOS and Linux packs pass automated checks on real Windows and Mac machines and in seven Linux distributions (Ubuntu 24.04 and 22.04, Debian, Linux Mint 22, Fedora, Arch and openSUSE), but have had little hands-on use. Builds are not yet signed.
 
 ## Download
 
