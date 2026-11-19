@@ -62,6 +62,12 @@ export interface ToolDef {
    * downloads in place, so winget's recorded checksum goes stale). The exe must be signed by the publisher.
    */
   windowsZip?: { url: string; exe: string };
+  /**
+   * Windows: the publisher's download page, used when winget's catalog points at a removed file. The newest
+   * installer linked there (link is a pattern for its file name) is downloaded, its signature checked against
+   * signer, and run with the silent-install args.
+   */
+  windowsDownload?: { page: string; link: string; base: string; signer: string; args: string };
 }
 
 export type PackageManager = 'winget' | 'brew' | 'apt' | 'dnf' | 'pacman' | 'zypper' | 'flatpak';

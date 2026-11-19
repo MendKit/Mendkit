@@ -216,6 +216,13 @@
     "homeUseOnly": true,
     "packages": {
       "winget": "REALiX.HWiNFO"
+    },
+    "windowsDownload": {
+      "page": "https://www.hwinfo.com/download/",
+      "link": "hwi64_\\d+\\.exe",
+      "base": "https://www.hwinfo.com/files/",
+      "signer": "REALiX|Martin Malik",
+      "args": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
     }
   },
   {
