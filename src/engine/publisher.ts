@@ -48,6 +48,31 @@ async function save(fetch: Fetch, url: string, file: string): Promise<void> {
   fs.writeFileSync(file, Buffer.from(await r.arrayBuffer()));
 }
 
+/** winget's listed version as digits ("8.54" -> 854), or 0. */
+async function wingetVersion(id: string): Promise<number> {
+  const out = await new Promise<string>((resolve) =>
+    execFile('winget', ['show', '--id', id, '--exact', '--accept-source-agreements', '--disable-interactivity'], { windowsHide: true, timeout: 120000 }, (_e, o) => resolve(String(o ?? ''))),
+  );
+  const v = /^\s*Version:\s*([\d.]+)/im.exec(out)?.[1] ?? '';
+  return Number(v.replace(/\D/g, '')) || 0;
+}
+
+/** Tries prefix + number + .exe from newest guess down to the listed version; keeps the first that exists. */
+export async function probeNewest(fetch: Fetch, base: string, probe: { prefix: string; ahead?: number }, listed: number, dir: string, write: (s: string) => void): Promise<string | null> {
+  if (!listed) return null;
+  for (let n = listed + (probe.ahead ?? 24); n >= listed; n--) {
+    const name = `${probe.prefix}${n}.exe`;
+    const r = await fetch(base + name).catch(() => null);
+    if (!r) continue;
+    if (r.status === 403) throw new Error(`${base} refused the download (403)`);
+    if (!r.ok) continue;
+    write(`Found ${base}${name}\n`);
+    fs.writeFileSync(path.join(dir, name), Buffer.from(await r.arrayBuffer()));
+    return name;
+  }
+  return null;
+}
+
 /** Downloads the tool from its publisher into dir and checks the signature. Throws with a plain reason. */
 export async function publisherDownload(tool: ToolDef, dir: string, fetch: Fetch, write: (s: string) => void): Promise<PublisherFile> {
   fs.mkdirSync(dir, { recursive: true });
@@ -72,12 +97,19 @@ export async function publisherDownload(tool: ToolDef, dir: string, fetch: Fetch
       write(`Reading ${src.page}\n`);
       const page = await fetch(src.page);
       if (!page.ok) throw new Error(`${src.page} answered ${page.status}`);
-      const name = newestLink(await page.text(), d.link);
+      let name = newestLink(await page.text(), d.link);
+      const file0 = name ? path.join(dir, name) : '';
+      if (name) {
+        const url = `${src.base}${name}${src.suffix ?? ''}`;
+        write(`Downloading ${url}\n`);
+        await save(fetch, url, file0);
+      } else if (d.probe && tool.packages.winget) {
+        // The page builds its links with script: try the file names that follow winget's listed version.
+        write(`No installer link on the page; trying the versions after the one winget lists.\n`);
+        name = await probeNewest(fetch, src.base, d.probe, await wingetVersion(tool.packages.winget), dir, write);
+      }
       if (!name) throw new Error(`no installer link on ${src.page}`);
       const file = path.join(dir, name);
-      const url = `${src.base}${name}${src.suffix ?? ''}`;
-      write(`Downloading ${url}\n`);
-      await save(fetch, url, file);
       const sig = await signatureOf(file);
       write(`Signature: ${sig}\n`);
       if (!signedBy(sig, d.signer)) {

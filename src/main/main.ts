@@ -232,7 +232,10 @@ function registerIpc(): void {
           write(`${out}\n`);
           return /MK_DIRECT_OK/.test(out) ? { ok: true } : { ok: false, note: out.replace(/^MK_DIRECT_FAILED\s*/, 'It did not install: ') };
         } catch (e) {
-          return { ok: false, note: (e as Error).message };
+          // Last resort: open the publisher's download page so the file can be fetched by hand in the browser.
+          const page = t.windowsDownload?.sources[0]?.page;
+          if (page && page.startsWith('https://')) shell.openExternal(page);
+          return { ok: false, note: `${(e as Error).message}${page ? ' The download page has been opened in your web browser.' : ''}` };
         } finally {
           fs.rmSync(dir, { recursive: true, force: true });
         }

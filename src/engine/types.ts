@@ -67,7 +67,7 @@ export interface ToolDef {
    * installer linked there (link is a pattern for its file name) is downloaded, its signature checked against
    * signer, and run with the silent-install args.
    */
-  windowsDownload?: { sources: { page: string; base: string; suffix?: string }[]; link: string; signer: string; args: string; type?: string };
+  windowsDownload?: { sources: { page: string; base: string; suffix?: string }[]; link: string; signer: string; args: string; type?: string; probe?: { prefix: string; ahead?: number } };
 }
 
 export type PackageManager = 'winget' | 'brew' | 'apt' | 'dnf' | 'pacman' | 'zypper' | 'flatpak';

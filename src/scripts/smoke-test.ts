@@ -882,6 +882,14 @@ async function main(): Promise<void> {
     console.log('search: printer, pop-ups, wifi, sound and slow find their fixes OK');
   }
 
+  {
+    const { probeNewest } = require('../engine/publisher');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'probe-'));
+    const fake = async (u: string) => ({ ok: /hwi64_858/.test(u), status: /hwi64_858/.test(u) ? 200 : 404, text: async () => '', arrayBuffer: async () => new ArrayBuffer(4) });
+    const got = await probeNewest(fake, 'https://x/files/', { prefix: 'hwi64_' }, 854, dir, () => {});
+    if (got !== 'hwi64_858.exe') throw new Error(`publisher probe found ${got}`);
+    console.log('publisher probe: finds the newer installer after the one winget lists OK');
+  }
   console.log(`Smoke test passed. Log: ${summary.logFile}`);
 }
 

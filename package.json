@@ -1,6 +1,6 @@
 {
   "name": "mendkit",
-  "version": "0.19.1",
+  "version": "0.19.2",
   "description": "MendKit - repair, tool, tune and migrate Windows, macOS and Linux computers",
   "main": "dist/main/main.js",
   "private": true,

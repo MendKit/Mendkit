@@ -824,6 +824,22 @@ const stepText = (st) => (typeof st === 'string' ? st : [st.t, st.see, st.tip, s
 const guideText = (g) => [g.title, g.summary, ...(g.need || []), ...g.sections.flatMap((x) => [x.heading, ...x.steps.map(stepText)])].join(' ');
 
 /** One guide, laid out for someone following along at the computer: numbered steps, what they will see, tips and warnings. */
+function isStepSection(sec) {
+  return sec.kind ? sec.kind === 'steps' : /^How to|^Step|^Install/.test(sec.heading);
+}
+
+const GUIDE_EMOJI = [
+  [/print/i, '🖨️'], [/getting started|first run/i, '👋'], [/dashboard/i, '📊'], [/permission|admin/i, '🔑'], [/preview|result|report/i, '📋'], [/tweak|setting/i, '🎛️'], [/crash|blue screen|bsod/i, '💥'], [/hardware test|memory|ram|cpu/i, '🔧'], [/iso|usb stick|bootable/i, '💿'], [/erase|wipe/i, '🧽'], [/undo|restore point/i, '↩️'], [/wi-?fi|network|internet|router/i, '📶'], [/virus|malware|pop-?up|scam|browser/i, '🛡️'], [/backup|transfer|migrat|old drive|copy/i, '📦'],
+  [/recover|deleted|undelete/i, '🛟'], [/phone|iphone|android/i, '📱'], [/disk|drive|space|ssd|storage/i, '💽'], [/slow|speed|startup|tune/i, '🚀'],
+  [/update|upgrade|windows 11/i, '⬆️'], [/password|account|login|sign/i, '🔑'], [/sound|audio|speaker/i, '🔊'], [/screen|display|monitor/i, '🖥️'],
+  [/battery|power/i, '🔋'], [/install|tool/i, '🧰'], [/report|check-?in|history|health/i, '🩺'], [/search|find/i, '🔎'],
+];
+function guideEmoji(g) {
+  const t = `${g.title} ${g.tool || ''}`;
+  for (const [re, e] of GUIDE_EMOJI) if (re.test(t)) return e;
+  return { Mac: '🍎', Linux: '🐧', Windows: '🪟', Tools: '🧰', 'Start here': '👋' }[g.group] || '📘';
+}
+
 function renderGuide(view, g, all) {
   const back = el('button', { className: 'ghost', textContent: 'All guides' });
   back.onclick = () => {
@@ -857,37 +873,66 @@ function renderGuide(view, g, all) {
     };
     bar.append(b);
   }
-  view.append(bar, el('h1', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary }));
+  const LEVEL = { Easy: 'easy', 'Needs care': 'care', 'Takes care': 'hard' };
+  const hero = el('div', { className: 'guide-hero' }, el('div', { className: 'guide-icon', textContent: guideEmoji(g) }), el('div', {}, el('h1', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary })));
+  view.append(bar, hero);
   const meta = el('div', { className: 'guide-meta' });
-  for (const [k, v] of [['Works on', g.systems], ['Time', g.time], ['Difficulty', g.level]]) if (v) meta.append(el('span', {}, el('small', { textContent: k }), el('strong', { textContent: v })));
+  for (const [icon, k, v, cls] of [['🖥️', 'Works on', g.systems, ''], ['⏱️', 'Time', g.time, ''], ['🎯', 'Difficulty', g.level, LEVEL[g.level] || '']]) if (v) meta.append(el('span', { className: cls }, el('b', { textContent: icon }), el('span', {}, el('small', { textContent: k }), el('strong', { textContent: v }))));
   if (meta.childNodes.length) view.append(meta);
-  if (g.need && g.need.length) view.append(el('div', { className: 'guide-need' }, el('strong', { textContent: 'You will need' }), el('ul', {}, ...g.need.map((n) => el('li', { textContent: n })))));
+  const stepCount = g.sections.reduce((n, sec) => n + (isStepSection(sec) ? sec.steps.length : 0), 0);
+  state.guideDone = state.guideDone || {};
+  const done = (state.guideDone[g.id] = state.guideDone[g.id] || new Set());
+  const bar2 = el('div', { className: 'guide-progress no-print' });
+  const fill = el('i');
+  const label = el('span');
+  bar2.append(el('div', { className: 'track' }, fill), label);
+  const paintProgress = () => {
+    const n = done.size;
+    fill.style.width = stepCount ? `${(100 * n) / stepCount}%` : '0';
+    label.textContent = n === stepCount && n ? '🎉 All done. Nice work!' : `${n} of ${stepCount} steps done. Tick each step as you go.`;
+    bar2.classList.toggle('complete', n === stepCount && n > 0);
+  };
+  if (stepCount) view.append(bar2);
+  if (g.need && g.need.length) view.append(el('div', { className: 'guide-need' }, el('strong', { textContent: '🧰 You will need' }), el('ul', {}, ...g.need.map((n) => el('li', { textContent: n })))));
   if (g.sections.length > 3) {
-    const toc = el('ol', { className: 'guide-toc no-print' });
+    const toc = el('div', { className: 'guide-toc no-print' });
     g.sections.forEach((sec, i) => {
-      const a = el('a', { className: 'link', textContent: sec.heading });
+      const a = el('button', { className: 'chip', textContent: `${i + 1}. ${sec.heading}` });
       a.onclick = () => view.querySelector(`#gs-${i}`).scrollIntoView({ behavior: 'smooth' });
-      toc.append(el('li', {}, a));
+      toc.append(a);
     });
-    view.append(el('div', { className: 'guide-need no-print' }, el('strong', { textContent: 'In this guide' }), toc));
+    view.append(el('div', { className: 'guide-jump no-print' }, el('strong', { textContent: '🧭 Jump to' }), toc));
   }
+  let stepNo = 0;
   g.sections.forEach((sec, i) => {
-    view.append(el('h2', { id: `gs-${i}`, textContent: sec.heading }));
-    const numbered = sec.kind ? sec.kind === 'steps' : /^How to|^Step|^Install/.test(sec.heading);
-    const list = el(numbered ? 'ol' : 'ul', { className: 'guide' + (numbered ? ' steps' : '') });
+    view.append(el('h2', { id: `gs-${i}`, className: 'guide-h2' }, el('span', { className: 'part', textContent: String(i + 1) }), sec.heading));
+    const numbered = isStepSection(sec);
+    const list = el(numbered ? 'ol' : 'ul', { className: 'guide' + (numbered ? ' steps' : ' points') });
     for (const st of sec.steps) {
-      if (typeof st === 'string') {
-        list.append(el('li', { textContent: st }));
+      const o = typeof st === 'string' ? { t: st } : st;
+      const body = el('div', { className: 'g-body' }, el('p', { className: 'g-text', textContent: o.t }));
+      if (o.see) body.append(el('div', { className: 'g-call g-see' }, el('b', { textContent: '👀' }), el('div', {}, el('strong', { textContent: "What you'll see" }), el('span', { textContent: o.see }))));
+      if (o.tip) body.append(el('div', { className: 'g-call g-tip' }, el('b', { textContent: '💡' }), el('div', {}, el('strong', { textContent: 'Tip' }), el('span', { textContent: o.tip }))));
+      if (o.warn) body.append(el('div', { className: 'g-call g-warn' }, el('b', { textContent: '⚠️' }), el('div', {}, el('strong', { textContent: 'Careful' }), el('span', { textContent: o.warn }))));
+      if (!numbered) {
+        list.append(el('li', {}, body));
         continue;
       }
-      const li = el('li', {}, el('span', { textContent: st.t }));
-      if (st.see) li.append(el('div', { className: 'g-see' }, el('strong', { textContent: 'You will see: ' }), st.see));
-      if (st.tip) li.append(el('div', { className: 'g-tip' }, el('strong', { textContent: 'Tip: ' }), st.tip));
-      if (st.warn) li.append(el('div', { className: 'g-warn' }, el('strong', { textContent: 'Careful: ' }), st.warn));
+      const key = `${i}:${stepNo++}`;
+      const li = el('li', { className: done.has(key) ? 'done' : '' });
+      const tick = el('button', { className: 'g-num', title: 'Mark this step done', ariaLabel: 'Mark this step done' });
+      tick.onclick = () => {
+        if (done.has(key)) done.delete(key);
+        else done.add(key);
+        li.classList.toggle('done', done.has(key));
+        paintProgress();
+      };
+      li.append(tick, body);
       list.append(li);
     }
     view.append(list);
   });
+  paintProgress();
   const rel = (g.related || []).map((id) => all.find((x) => x.id === id)).filter(Boolean);
   if (rel.length) {
     view.append(el('h2', { className: 'no-print', textContent: 'Related guides' }));
@@ -923,7 +968,7 @@ async function renderGuides(view) {
       if (GROUP_LEAD[group]) holder.append(el('p', { className: 'dim', textContent: GROUP_LEAD[group] }));
       const cards = el('div', { className: 'cards' });
       for (const g of hits) {
-        const c = el('div', { className: 'card guide-card', tabIndex: 0 }, el('strong', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary }), el('small', { className: 'dim', textContent: [g.systems, g.time, g.level].filter(Boolean).join(', ') }));
+        const c = el('div', { className: 'card guide-card', tabIndex: 0 }, el('strong', {}, el('span', { className: 'gc-emoji', textContent: guideEmoji(g) }), g.title), el('p', { className: 'lead', textContent: g.summary }), el('small', { className: 'dim', textContent: [g.systems, g.time, g.level].filter(Boolean).join(', ') }));
         c.onkeydown = (e) => e.key === 'Enter' && c.onclick();
         c.onclick = () => {
           state.guide = g.id;
