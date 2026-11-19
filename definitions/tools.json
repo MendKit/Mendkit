@@ -218,9 +218,18 @@
       "winget": "REALiX.HWiNFO"
     },
     "windowsDownload": {
-      "page": "https://www.hwinfo.com/download/",
+      "sources": [
+        {
+          "page": "https://www.hwinfo.com/download/",
+          "base": "https://www.hwinfo.com/files/"
+        },
+        {
+          "page": "https://sourceforge.net/projects/hwinfo/files/Windows_Installer/",
+          "base": "https://sourceforge.net/projects/hwinfo/files/Windows_Installer/",
+          "suffix": "/download"
+        }
+      ],
       "link": "hwi64_\\d+\\.exe",
-      "base": "https://www.hwinfo.com/files/",
       "signer": "REALiX|Martin Malik",
       "args": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
     }

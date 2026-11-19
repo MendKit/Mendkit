@@ -2,7 +2,7 @@ import { app, ipcMain, net, shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { execFile } from 'child_process';
-import { ActionStep, Engine } from '../engine/runner';
+import { ActionStep, childEnv, Engine } from '../engine/runner';
 import { CommandDef } from '../engine/types';
 import { upgradePlan, UpgradeFacts } from '../engine/upgrade';
 import { isElevated } from './system';
@@ -105,7 +105,7 @@ export function registerUpgrade(ctx: { engine: Engine }): void {
         fs.writeFileSync(file, Buffer.from(await res.arrayBuffer()));
         write(`Saved ${file} (${Math.round(fs.statSync(file).size / 1024)} KB)\n`);
         const sig = await new Promise<string>((resolve) =>
-          execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `$s = Get-AuthenticodeSignature -LiteralPath '${file.replace(/'/g, "''")}'; "$($s.Status)|$($s.SignerCertificate.Subject)"`], { windowsHide: true }, (_e, out) => resolve(String(out ?? '').trim())),
+          execFile('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', `$s = Get-AuthenticodeSignature -LiteralPath '${file.replace(/'/g, "''")}'; "$($s.Status)|$($s.SignerCertificate.Subject)"`], { windowsHide: true, env: childEnv('powershell.exe') }, (_e, out) => resolve(String(out ?? '').trim())),
         );
         write(`Signature: ${sig}\n`);
         if (!/^Valid\|.*O=Microsoft Corporation/.test(sig)) {

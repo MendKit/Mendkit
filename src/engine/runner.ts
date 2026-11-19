@@ -326,7 +326,7 @@ export class Engine extends EventEmitter {
       let child: ChildProcess;
       try {
         // No stdin: a tool that stops to ask a question gets end-of-file instead of waiting for ever.
-        child = spawn(expandEnv(def.exec), def.args.map(expandEnv), { windowsHide: true, shell: false, stdio: ['ignore', 'pipe', 'pipe'] });
+        child = spawn(expandEnv(def.exec), def.args.map(expandEnv), { windowsHide: true, shell: false, stdio: ['ignore', 'pipe', 'pipe'], env: childEnv(def.exec) });
       } catch (err) {
         resolve(done('error', null, (err as Error).message));
         return;
@@ -364,6 +364,18 @@ export class Engine extends EventEmitter {
 
 const NONINTERACTIVE = ['env', 'DEBIAN_FRONTEND=noninteractive'];
 
+/**
+ * The environment for a step. Windows PowerShell 5.1 cannot load its own modules (Get-AuthenticodeSignature
+ * and others) when it inherits PowerShell 7's module path, as happens when MendKit is started from pwsh, so
+ * it gets none and builds its own.
+ */
+export function childEnv(exec: string, env: NodeJS.ProcessEnv = process.env): NodeJS.ProcessEnv {
+  if (!/powershell(\.exe)?$/i.test(exec)) return env;
+  const { PSModulePath: _drop, ...rest } = env;
+  void _drop;
+  return rest;
+}
+
 /** Where a tool installed from its publisher's zip lives: for all users when elevated, else for this user. */
 export function directToolDirs(env: Record<string, string | undefined>): string[] {
   return [path.join(env.ProgramFiles ?? 'C:\\Program Files', 'Sysinternals'), path.join(env.LOCALAPPDATA ?? '', 'Programs', 'Sysinternals')];
@@ -373,26 +385,31 @@ export function directToolDirs(env: Record<string, string | undefined>): string[
 function pageInstallScript(tool: ToolDef): string[] {
   const d = tool.windowsDownload!;
   const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
+  const sources = d.sources.map((x) => `@{ page = ${q(x.page)}; base = ${q(x.base)}; suffix = ${q(x.suffix ?? '')} }`).join(', ');
   return [
     'if ($code -ne 0) {',
-    `  "MK_DIRECT: getting the newest installer from the publisher's download page (${d.page})..."`,
-    '  try {',
-    "    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
-    `    $html = (Invoke-WebRequest -UseBasicParsing -Uri ${q(d.page)}).Content`,
-    `    $names = [regex]::Matches($html, ${q(d.link)}) | ForEach-Object { $_.Value } | Sort-Object { [int](($_ -replace '\\D', '')) } -Descending -Unique`,
-    "    if (-not $names) { throw 'no installer link found on the download page' }",
-    `    $url = ${q(d.base)} + @($names)[0]`,
-    "    $file = Join-Path $env:TEMP ('mendkit-' + [guid]::NewGuid() + '.exe')",
-    '    "Downloading $url"',
-    '    Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $file',
-    '    $sig = Get-AuthenticodeSignature -LiteralPath $file',
-    `    if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch ${q(d.signer)}) { Remove-Item $file -Force; throw "the download is not signed by the publisher ($($sig.Status) $($sig.SignerCertificate.Subject))" }`,
-    `    $p = Start-Process -FilePath $file -ArgumentList ${q(d.args)} -Wait -PassThru`,
-    '    Remove-Item $file -Force -ErrorAction SilentlyContinue',
-    "    if ($p.ExitCode -ne 0) { throw \"the installer stopped with code $($p.ExitCode)\" }",
-    "    'MK_DIRECT_OK: installed from the publisher, signature checked.'",
-    '    $code = 0',
-    '  } catch { "MK_DIRECT_FAILED: $($_.Exception.Message)" }',
+    `  "MK_DIRECT: getting the newest installer from the publisher instead..."`,
+    "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
+    '  $ua = [Microsoft.PowerShell.Commands.PSUserAgent]::Chrome',
+    `  foreach ($src in @(${sources})) {`,
+    '    try {',
+    '      $html = (Invoke-WebRequest -UseBasicParsing -UserAgent $ua -Uri $src.page).Content',
+    `      $names = [regex]::Matches($html, ${q(d.link)}) | ForEach-Object { $_.Value } | Sort-Object { [int](($_ -replace '\\D', '')) } -Descending -Unique`,
+    "      if (-not $names) { throw \"no installer link on $($src.page)\" }",
+    '      $url = $src.base + @($names)[0] + $src.suffix',
+    "      $file = Join-Path $env:TEMP ('mendkit-' + [guid]::NewGuid() + '.exe')",
+    '      "Downloading $url"',
+    '      Invoke-WebRequest -UseBasicParsing -UserAgent $ua -Uri $url -OutFile $file',
+    '      $sig = Get-AuthenticodeSignature -LiteralPath $file',
+    `      if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch ${q(d.signer)}) { Remove-Item $file -Force; throw "the download is not signed by the publisher ($($sig.Status) $($sig.SignerCertificate.Subject))" }`,
+    `      $p = Start-Process -FilePath $file -ArgumentList ${q(d.args)} -Wait -PassThru`,
+    '      Remove-Item $file -Force -ErrorAction SilentlyContinue',
+    "      if ($p.ExitCode -ne 0) { throw \"the installer stopped with code $($p.ExitCode)\" }",
+    "      'MK_DIRECT_OK: installed from the publisher, signature checked.'",
+    '      $code = 0',
+    '      break',
+    '    } catch { "MK_DIRECT_FAILED: $($_.Exception.Message)" }',
+    '  }',
     '}',
   ];
 }

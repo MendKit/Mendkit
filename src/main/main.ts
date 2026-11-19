@@ -857,6 +857,10 @@ app.on('second-instance', (_e, argv) => {
 /** Set by registerIpc: runs the planned file backup and returns its summary. */
 let plannedBackup: (() => Promise<RunSummary>) | null = null;
 
+// Windows PowerShell 5.1, which MendKit runs for its checks, cannot load its own modules when it inherits
+// PowerShell 7's module path (MendKit started from pwsh); without one it builds its own.
+if (process.platform === 'win32') delete process.env.PSModulePath;
+
 app.whenReady().then(() => {
   // Apps started from the Finder or a desktop menu get a short PATH that misses Homebrew and local tools.
   if (process.platform !== 'win32') process.env.PATH = [process.env.PATH, '/opt/homebrew/bin', '/usr/local/bin', '/usr/sbin', '/sbin'].filter(Boolean).join(':');
