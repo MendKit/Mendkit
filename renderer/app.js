@@ -820,24 +820,48 @@ const GROUP_LEAD = {
   Linux: 'Installing MendKit on Linux, switching from Windows, drivers, startup repair, upgrades and everyday fixes.',
   Tools: 'Every tool on the Tools screen: what it is for, how to install it, how to use it step by step, and what the results mean.',
 };
-const stepText = (st) => (typeof st === 'string' ? st : [st.t, st.see, st.tip, st.warn].filter(Boolean).join(' '));
+const stepText = (st) => (typeof st === 'string' ? st : [st.t, st.see, st.tip, st.warn, ...(st.ex || [])].filter(Boolean).join(' '));
 const guideText = (g) => [g.title, g.summary, ...(g.need || []), ...g.sections.flatMap((x) => [x.heading, ...x.steps.map(stepText)])].join(' ');
 
 /** One guide, laid out for someone following along at the computer: numbered steps, what they will see, tips and warnings. */
+/** An example box. Lines starting with "> " are things to type, shown as code with a Copy button. */
+function guideExample(lines) {
+  const box = el('div', { className: 'g-call g-ex' }, el('strong', { textContent: lines.length > 1 ? 'Examples' : 'Example' }));
+  for (const line of lines) {
+    if (line.startsWith('> ')) {
+      const cmd = line.slice(2);
+      const copy = el('button', { className: 'ghost g-copy no-print', textContent: 'Copy' });
+      copy.onclick = (e) => {
+        e.stopPropagation();
+        navigator.clipboard.writeText(cmd).then(() => {
+          copy.textContent = 'Copied';
+          setTimeout(() => (copy.textContent = 'Copy'), 1500);
+        });
+      };
+      box.append(el('div', { className: 'g-cmd' }, el('code', { textContent: cmd }), copy));
+    } else box.append(el('div', { className: 'g-ex-line', textContent: line }));
+  }
+  return box;
+}
+
 function isStepSection(sec) {
   return sec.kind ? sec.kind === 'steps' : /^How to|^Step|^Install/.test(sec.heading);
 }
 
-const GUIDE_EMOJI = [
-  [/print/i, '🖨️'], [/getting started|first run/i, '👋'], [/dashboard/i, '📊'], [/permission|admin/i, '🔑'], [/preview|result|report/i, '📋'], [/tweak|setting/i, '🎛️'], [/crash|blue screen|bsod/i, '💥'], [/hardware test|memory|ram|cpu/i, '🔧'], [/iso|usb stick|bootable/i, '💿'], [/erase|wipe/i, '🧽'], [/undo|restore point/i, '↩️'], [/wi-?fi|network|internet|router/i, '📶'], [/virus|malware|pop-?up|scam|browser/i, '🛡️'], [/backup|transfer|migrat|old drive|copy/i, '📦'],
-  [/recover|deleted|undelete/i, '🛟'], [/phone|iphone|android/i, '📱'], [/disk|drive|space|ssd|storage/i, '💽'], [/slow|speed|startup|tune/i, '🚀'],
-  [/update|upgrade|windows 11/i, '⬆️'], [/password|account|login|sign/i, '🔑'], [/sound|audio|speaker/i, '🔊'], [/screen|display|monitor/i, '🖥️'],
-  [/battery|power/i, '🔋'], [/install|tool/i, '🧰'], [/report|check-?in|history|health/i, '🩺'], [/search|find/i, '🔎'],
-];
-function guideEmoji(g) {
-  const t = `${g.title} ${g.tool || ''}`;
-  for (const [re, e] of GUIDE_EMOJI) if (re.test(t)) return e;
-  return { Mac: '🍎', Linux: '🐧', Windows: '🪟', Tools: '🧰', 'Start here': '👋' }[g.group] || '📘';
+// Simple line icons per guide group, drawn in the group's colour.
+const GUIDE_ICON = {
+  'Start here': '<path d="M12 3l9 4.5-9 4.5-9-4.5z"/><path d="M6 10v5c3 2 9 2 12 0v-5"/>',
+  'Using MendKit': '<path d="M14.5 6.5a4 4 0 0 0-5.3 5.3L4 17l3 3 5.2-5.2a4 4 0 0 0 5.3-5.3l-2.4 2.4-2.6-.6-.6-2.6z"/>',
+  Windows: '<rect x="3.5" y="3.5" width="7.5" height="7.5"/><rect x="13" y="3.5" width="7.5" height="7.5"/><rect x="3.5" y="13" width="7.5" height="7.5"/><rect x="13" y="13" width="7.5" height="7.5"/>',
+  Mac: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/>',
+  Linux: '<path d="M4 6l5 5-5 5"/><path d="M12 18h8"/>',
+  Tools: '<rect x="3" y="7" width="18" height="12" rx="2"/><path d="M9 7V5h6v2M3 12h18"/>',
+};
+const GROUP_CLASS = { 'Start here': 'g-start', 'Using MendKit': 'g-mk', Windows: 'g-win', Mac: 'g-mac', Linux: 'g-linux', Tools: 'g-tools' };
+function guideIcon(g) {
+  const d = el('div', { className: `guide-icon ${GROUP_CLASS[g.group] || ''}` });
+  d.innerHTML = `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">${GUIDE_ICON[g.group] || GUIDE_ICON.Tools}</svg>`;
+  return d;
 }
 
 function renderGuide(view, g, all) {
@@ -874,10 +898,10 @@ function renderGuide(view, g, all) {
     bar.append(b);
   }
   const LEVEL = { Easy: 'easy', 'Needs care': 'care', 'Takes care': 'hard' };
-  const hero = el('div', { className: 'guide-hero' }, el('div', { className: 'guide-icon', textContent: guideEmoji(g) }), el('div', {}, el('h1', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary })));
+  const hero = el('div', { className: 'guide-hero' }, guideIcon(g), el('div', {}, el('h1', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary })));
   view.append(bar, hero);
   const meta = el('div', { className: 'guide-meta' });
-  for (const [icon, k, v, cls] of [['🖥️', 'Works on', g.systems, ''], ['⏱️', 'Time', g.time, ''], ['🎯', 'Difficulty', g.level, LEVEL[g.level] || '']]) if (v) meta.append(el('span', { className: cls }, el('b', { textContent: icon }), el('span', {}, el('small', { textContent: k }), el('strong', { textContent: v }))));
+  for (const [k, v, cls] of [['Works on', g.systems, ''], ['Time', g.time, ''], ['Difficulty', g.level, LEVEL[g.level] || '']]) if (v) meta.append(el('span', { className: cls }, el('small', { textContent: k }), el('strong', { textContent: v })));
   if (meta.childNodes.length) view.append(meta);
   const stepCount = g.sections.reduce((n, sec) => n + (isStepSection(sec) ? sec.steps.length : 0), 0);
   state.guideDone = state.guideDone || {};
@@ -889,11 +913,11 @@ function renderGuide(view, g, all) {
   const paintProgress = () => {
     const n = done.size;
     fill.style.width = stepCount ? `${(100 * n) / stepCount}%` : '0';
-    label.textContent = n === stepCount && n ? '🎉 All done. Nice work!' : `${n} of ${stepCount} steps done. Tick each step as you go.`;
+    label.textContent = n === stepCount && n ? 'All steps done. Nice work.' : `${n} of ${stepCount} steps done. Tick each step as you go.`;
     bar2.classList.toggle('complete', n === stepCount && n > 0);
   };
   if (stepCount) view.append(bar2);
-  if (g.need && g.need.length) view.append(el('div', { className: 'guide-need' }, el('strong', { textContent: '🧰 You will need' }), el('ul', {}, ...g.need.map((n) => el('li', { textContent: n })))));
+  if (g.need && g.need.length) view.append(el('div', { className: 'guide-need' }, el('strong', { textContent: 'You will need' }), el('ul', {}, ...g.need.map((n) => el('li', { textContent: n })))));
   if (g.sections.length > 3) {
     const toc = el('div', { className: 'guide-toc no-print' });
     g.sections.forEach((sec, i) => {
@@ -901,7 +925,7 @@ function renderGuide(view, g, all) {
       a.onclick = () => view.querySelector(`#gs-${i}`).scrollIntoView({ behavior: 'smooth' });
       toc.append(a);
     });
-    view.append(el('div', { className: 'guide-jump no-print' }, el('strong', { textContent: '🧭 Jump to' }), toc));
+    view.append(el('div', { className: 'guide-jump no-print' }, el('strong', { textContent: 'Jump to' }), toc));
   }
   let stepNo = 0;
   g.sections.forEach((sec, i) => {
@@ -911,9 +935,10 @@ function renderGuide(view, g, all) {
     for (const st of sec.steps) {
       const o = typeof st === 'string' ? { t: st } : st;
       const body = el('div', { className: 'g-body' }, el('p', { className: 'g-text', textContent: o.t }));
-      if (o.see) body.append(el('div', { className: 'g-call g-see' }, el('b', { textContent: '👀' }), el('div', {}, el('strong', { textContent: "What you'll see" }), el('span', { textContent: o.see }))));
-      if (o.tip) body.append(el('div', { className: 'g-call g-tip' }, el('b', { textContent: '💡' }), el('div', {}, el('strong', { textContent: 'Tip' }), el('span', { textContent: o.tip }))));
-      if (o.warn) body.append(el('div', { className: 'g-call g-warn' }, el('b', { textContent: '⚠️' }), el('div', {}, el('strong', { textContent: 'Careful' }), el('span', { textContent: o.warn }))));
+      if (o.see) body.append(el('div', { className: 'g-call g-see' }, el('div', {}, el('strong', { textContent: "What you'll see" }), el('span', { textContent: o.see }))));
+      if (o.tip) body.append(el('div', { className: 'g-call g-tip' }, el('div', {}, el('strong', { textContent: 'Tip' }), el('span', { textContent: o.tip }))));
+      if (o.warn) body.append(el('div', { className: 'g-call g-warn' }, el('div', {}, el('strong', { textContent: 'Careful' }), el('span', { textContent: o.warn }))));
+      if (o.ex && o.ex.length) body.append(guideExample(o.ex));
       if (!numbered) {
         list.append(el('li', {}, body));
         continue;
@@ -968,7 +993,7 @@ async function renderGuides(view) {
       if (GROUP_LEAD[group]) holder.append(el('p', { className: 'dim', textContent: GROUP_LEAD[group] }));
       const cards = el('div', { className: 'cards' });
       for (const g of hits) {
-        const c = el('div', { className: 'card guide-card', tabIndex: 0 }, el('strong', {}, el('span', { className: 'gc-emoji', textContent: guideEmoji(g) }), g.title), el('p', { className: 'lead', textContent: g.summary }), el('small', { className: 'dim', textContent: [g.systems, g.time, g.level].filter(Boolean).join(', ') }));
+        const c = el('div', { className: `card guide-card ${GROUP_CLASS[g.group] || ''}`, tabIndex: 0 }, el('strong', { textContent: g.title }), el('p', { className: 'lead', textContent: g.summary }), el('small', { className: 'dim', textContent: [g.systems, g.time, g.level].filter(Boolean).join(', ') }));
         c.onkeydown = (e) => e.key === 'Enter' && c.onclick();
         c.onclick = () => {
           state.guide = g.id;
@@ -2427,6 +2452,59 @@ api.onSelfUpdate((u) => {
   if (box) paintSelfUpdate(box, u);
 });
 
+/** Lists apps with updates waiting and lets the user tick which ones to update. */
+async function paintAppUpdates(chk, list) {
+  if (state.running) return;
+  chk.disabled = true;
+  chk.textContent = 'Checking...';
+  list.replaceChildren(el('p', { className: 'dim', textContent: 'Looking for updates. This can take a minute.' }));
+  let ups = [];
+  try {
+    ups = await api.appUpdatesChoose();
+  } catch (e) {
+    list.replaceChildren(el('p', { className: 'lead', textContent: `Updates could not be checked: ${e.message || e}` }));
+  }
+  chk.disabled = false;
+  chk.textContent = 'Check again';
+  if (!ups.length) {
+    if (!list.querySelector('.lead')) list.replaceChildren(el('p', { className: 'lead good-text', textContent: 'All your apps are up to date.' }));
+    return;
+  }
+  const rows = ups.map((u) => ({ u, box: el('input', { type: 'checkbox', checked: !u.explicit }) }));
+  const count = el('span', { className: 'dim' });
+  const go = el('button', { className: 'run' });
+  const paint = () => {
+    const n = rows.filter((r) => r.box.checked).length;
+    go.textContent = n ? `Update ${n} selected` : 'Update selected';
+    go.disabled = !n;
+    count.textContent = `${ups.length} update${ups.length === 1 ? '' : 's'} available`;
+  };
+  const selAll = el('button', { className: 'ghost', textContent: 'Select all' });
+  const selNone = el('button', { className: 'ghost', textContent: 'Select none' });
+  selAll.onclick = () => (rows.forEach((r) => (r.box.checked = true)), paint());
+  selNone.onclick = () => (rows.forEach((r) => (r.box.checked = false)), paint());
+  const t = el('table', { className: 'pick-table' });
+  t.append(el('tr', {}, el('th', {}), el('th', { textContent: 'App' }), el('th', { textContent: 'Installed' }), el('th', { textContent: 'New version' })));
+  for (const r of rows) {
+    r.box.onchange = paint;
+    const label = el('label', { className: 'pick-name' }, el('strong', { textContent: r.u.name }), el('small', { className: 'dim', textContent: r.u.explicit ? `${r.u.id}. Only updates when chosen on its own.` : r.u.id }));
+    const tr = el('tr', {}, el('td', { className: 'act' }, r.box), el('td', {}, label), el('td', { textContent: r.u.current || 'unknown' }), el('td', {}, el('span', { className: 'ver-new', textContent: r.u.available })));
+    tr.onclick = (e) => {
+      if (e.target !== r.box) {
+        r.box.checked = !r.box.checked;
+        paint();
+      }
+    };
+    t.append(tr);
+  }
+  go.onclick = () => {
+    const ids = rows.filter((r) => r.box.checked).map((r) => r.u.id);
+    if (ids.length) run(async () => showResults(await api.appUpdatesSelected(ids)));
+  };
+  paint();
+  list.replaceChildren(el('div', { className: 'toolbar' }, count, selAll, selNone), t, el('div', { className: 'toolbar' }, go));
+}
+
 async function renderUpdates(view) {
   view.append(el('h1', { textContent: 'Updates' }), el('p', { className: 'lead', textContent: 'Check for and install updates for the system and your apps. Check shows what is available without changing anything.' }));
   const selfBox = el('div', { className: 'card up' });
@@ -2445,6 +2523,17 @@ async function renderUpdates(view) {
       b.onclick = () => api.openWindowsUpdate();
       bar.append(b);
       box.append(bar);
+      view.append(box);
+      continue;
+    }
+    if (c.choose) {
+      const chk = el('button', { className: 'run', textContent: 'Check for app updates' });
+      const all = el('button', { className: 'ghost run', textContent: 'Update everything' });
+      all.onclick = () => run(async () => showResults(await api.runUpdate(c.id, 'install')));
+      const list = el('div', { className: 'pick-list' });
+      chk.onclick = () => paintAppUpdates(chk, list);
+      bar.append(chk, all);
+      box.append(bar, list);
       view.append(box);
       continue;
     }

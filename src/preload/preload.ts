@@ -168,6 +168,8 @@ contextBridge.exposeInMainWorld('mendkit', {
   updateCategories: () => ipcRenderer.invoke('update-categories'),
   runUpdate: (id: string, action: string) => ipcRenderer.invoke('run-update', id, action),
   openWindowsUpdate: () => ipcRenderer.invoke('open-windows-update'),
+  appUpdatesChoose: () => ipcRenderer.invoke('app-updates-choose'),
+  appUpdatesSelected: (ids: string[]) => ipcRenderer.invoke('app-updates-selected', ids),
   relaunchElevated: () => ipcRenderer.invoke('relaunch-elevated'),
   tweaks: () => ipcRenderer.invoke('tweaks'),
   tweaksApply: (desired: Record<string, boolean>) => ipcRenderer.invoke('tweaks-apply', desired),

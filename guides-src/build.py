@@ -16,6 +16,8 @@ out = basics.GUIDES + mendkit.GUIDES + using(windows) + using(mac) + using(linux
 out += [g for g in windows.GUIDES if g['group'] == 'Windows']
 out += [g for g in mac.GUIDES if g['group'] == 'Mac'] + [g for g in linux.GUIDES if g['group'] == 'Linux']
 out += sorted(tools1.GUIDES + tools2.GUIDES + tools3.GUIDES, key=lambda g: g['title'].lower())
+import details, details_tools1, details_tools2, details_tools3, details_guides  # noqa: E402,F401
+details.apply(out)
 ids = [g['id'] for g in out]
 assert len(ids) == len(set(ids)), 'duplicate guide ids'
 assert not [t for t in TOOLS if t not in ids], 'a tool has no guide'

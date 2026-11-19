@@ -248,10 +248,17 @@ G('mk-tweaks',GR,'Tweaks: changing settings safely','Turning settings on and off
  systems=ALL, time='5 minutes', level='Easy', screen='tweaks', related=['mk-undo','mk-setup']),
 
 G('mk-updates',GR,'Updates, drivers and monthly maintenance','Checking for and installing system and app updates, maker driver tools, scheduled maintenance and updating MendKit itself.',[
- sec('Check and install updates',[
-  S('Click Updates, then Check.', see='A list of what is available for the system and apps. Nothing changes yet.'),
-  S('Click Install updates.', tip='On Windows, system and driver updates go through Windows Update, which MendKit opens for you. Apps update through winget. On a Mac: Apple updates and Homebrew. On Linux: the package manager and Flatpak.'),
-  S('Restart if asked, then Check again until nothing is left.')],'steps'),
+ sec('Choose which apps to update',[
+  S('Click Updates in the menu on the left. In the App updates box, click Check for app updates.', see='"Looking for updates" for up to a minute, then a table: each app with a tick box, its installed version and the new version in green. Nothing has changed yet.', ex=['☑ Mozilla Firefox   Mozilla.Firefox   131.0    132.0.1', '☑ Notepad++   Notepad++.Notepad++   8.6.9    8.7', '☐ Discord   Discord.Discord   1.0.9   1.0.9170   (only updates when chosen on its own)']),
+  S('Untick any app you do not want updated now. Click a row anywhere to tick or untick it, or use Select all and Select none.', tip='Leave an app on its current version when the person relies on it working exactly as it does, for example accounting software in the middle of tax season, or a program their work makes them keep on a set version.'),
+  S('Click Update N selected (N is how many are ticked).', see='The bottom panel updates each app in turn and the results list each one: updated, or the reason it could not be. One failure does not stop the others.', tip='Close the apps first. An app that is open, such as a browser, often cannot be updated until it is closed.'),
+  S('Click Check for app updates again to confirm the list is empty, or shows only the apps you left.', see='"All your apps are up to date." when nothing is left.'),
+  S('To update every app without choosing, click Update everything instead.')],'steps'),
+ sec('System updates',[
+  S('Windows: click Open Windows Update and click Check for updates there.', tip='Windows and driver updates come from Windows Update. Restart when it says "Restart required".'),
+  S('Mac: in the macOS updates box, click Check, then Install updates.', see='Apple\'s own updates, such as "macOS Sequoia 15.1.1". A restart is usually needed.'),
+  S('Linux: in System updates, click Check, then Install updates.', tip='Linux system updates install together: installing only some packages can leave the system broken, so there is no list to choose from.'),
+  S('Restart if asked, then check again until nothing is left.')],'steps'),
  sec('Drivers and firmware',[
   'On Windows, the maker\'s own update tool (Dell, Lenovo, Intel) is offered when it fits this computer. See its guide.',
   'Open optional driver updates goes to the Windows Update page listing maker drivers.',

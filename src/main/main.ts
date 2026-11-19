@@ -7,6 +7,7 @@ import { currentPlatform, loadCatalog, onPath } from '../engine/catalog';
 import { directToolDirs, Engine, installedListCommands, installedTools, toolCheckCommand } from '../engine/runner';
 import { EngineEvent, Level, RunSummary, StepResult, ToolDef } from '../engine/types';
 import { publisherDownload, publisherInstall } from '../engine/publisher';
+import { AppUpdate, parseWingetUpgrade, parseBrewOutdated, appUpdateCommands } from '../engine/appupdates';
 import { AppList, bookmarksToHtml, installPlan, loadApps, normalizeAppList, registerMozillaProfiles } from '../engine/apps';
 import { detectApps } from './apps';
 import { advise } from '../engine/advisor';
@@ -803,16 +804,16 @@ function registerIpc(): void {
 
   // ----- Updates: OS, apps and drivers in one place -----
   // Each category maps to existing catalog commands; categories whose commands are missing are dropped.
-  type UpCat = { id: string; name: string; description: string; refresh?: string; check?: string; install?: string; installLabel?: string; openWindowsUpdate?: boolean };
+  type UpCat = { id: string; name: string; description: string; refresh?: string; check?: string; install?: string; installLabel?: string; openWindowsUpdate?: boolean; choose?: boolean };
   const updateCategoriesAll: Record<string, UpCat[]> = {
     win32: [
       { id: 'windows', name: 'Windows and driver updates', description: 'Security fixes, feature updates and manufacturer drivers come through Windows Update.', openWindowsUpdate: true },
-      { id: 'apps', name: 'App updates', description: 'Updates installed programs through winget.', check: 'app-updates-list', install: 'app-updates-install' },
+      { id: 'apps', name: 'App updates', description: 'Check lists every program with an update. Tick the ones to update, or update them all.', check: 'app-updates-list', install: 'app-updates-install', choose: true },
       { id: 'driver-backup', name: 'Back up installed drivers', description: 'Copies every third-party driver to Public Documents before a reinstall or a risky driver update.', install: 'driver-backup', installLabel: 'Back up drivers' },
     ],
     darwin: [
       { id: 'macos', name: 'macOS updates', description: 'System and security updates from Apple.', check: 'os-updates-list', install: 'os-updates-install' },
-      { id: 'apps', name: 'App updates (Homebrew)', description: 'Updates apps installed with Homebrew.', refresh: 'brew-update', check: 'brew-outdated', install: 'brew-upgrade' },
+      { id: 'apps', name: 'App updates (Homebrew)', description: 'Check lists every Homebrew app with an update. Tick the ones to update, or update them all.', refresh: 'brew-update', check: 'brew-outdated', install: 'brew-upgrade', choose: true },
     ],
     linux: [
       { id: 'system', name: 'System updates', description: 'Updates every package on the system.', refresh: 'apt-update', check: 'apt-updates-list', install: 'apt-upgrade' },
@@ -831,8 +832,26 @@ function registerIpc(): void {
   const updateCommandIds = new Set(updateCategories.flatMap((c) => [c.refresh, c.check, c.install].filter((x): x is string => !!x && catalog.commands.has(x))));
 
   ipcMain.handle('update-categories', () =>
-    updateCategories.map((c) => ({ id: c.id, name: c.name, description: c.description, hasCheck: !!c.check, hasInstall: !!c.install, installLabel: c.installLabel ?? 'Install updates', openWindowsUpdate: !!c.openWindowsUpdate })),
+    updateCategories.map((c) => ({ id: c.id, name: c.name, description: c.description, hasCheck: !!c.check, hasInstall: !!c.install, installLabel: c.installLabel ?? 'Install updates', openWindowsUpdate: !!c.openWindowsUpdate, choose: !!c.choose })),
   );
+  // App updates to choose from: the list is kept here, so only apps it named can be installed.
+  let appUpdateList: AppUpdate[] = [];
+  const capture = (exec: string, args: string[]) =>
+    new Promise<string>((resolve) => execFile(exec, args, { windowsHide: true, timeout: 600000, maxBuffer: 16 * 1024 * 1024, encoding: 'utf8' }, (_e, out) => resolve(String(out ?? ''))));
+  ipcMain.handle('app-updates-choose', async () => {
+    if (process.platform === 'win32') appUpdateList = parseWingetUpgrade(await capture('winget.exe', ['upgrade', '--accept-source-agreements', '--disable-interactivity']));
+    else if (process.platform === 'darwin') {
+      await capture('brew', ['update']);
+      appUpdateList = parseBrewOutdated(await capture('brew', ['outdated', '--json=v2']));
+    } else appUpdateList = [];
+    return appUpdateList;
+  });
+  ipcMain.handle('app-updates-selected', (_e, ids: string[]) => {
+    const want = new Set(Array.isArray(ids) ? ids.map(String) : []);
+    const chosen = appUpdateList.filter((u) => want.has(u.id));
+    if (!chosen.length) throw new Error('Choose at least one app to update');
+    return engine.runSteps('app-updates-selected', `Update ${chosen.length} app${chosen.length === 1 ? '' : 's'}`, 'command', appUpdateCommands(catalog.platform, chosen), { elevated: isElevated() });
+  });
   ipcMain.handle('run-update', (_e, catId: string, action: string) => {
     const cat = updateCategories.find((c) => c.id === String(catId));
     if (!cat) throw new Error('Unknown update category');

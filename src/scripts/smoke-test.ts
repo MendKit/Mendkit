@@ -890,6 +890,32 @@ async function main(): Promise<void> {
     if (got !== 'hwi64_858.exe') throw new Error(`publisher probe found ${got}`);
     console.log('publisher probe: finds the newer installer after the one winget lists OK');
   }
+  {
+    const { parseWingetUpgrade, parseBrewOutdated, appUpdateCommands } = require('../engine/appupdates');
+    const out = [
+      '   - \r   \\ \rName                         Id                          Version      Available    Source',
+      '------------------------------------------------------------------------------------------------',
+      'Mozilla Firefox (x64 en-US)  Mozilla.Firefox             131.0        132.0.1      winget',
+      'Notepad++ (64-bit x64)       Notepad++.Notepad++         8.6.9        8.7          winget',
+      'A very long program name that pushes everything along Vendor.LongApp 1.0 2.0 winget',
+      '3 upgrades available.',
+      '',
+      'The following packages have an upgrade available, but require explicit targeting for upgrade:',
+      'Name        Id                 Version  Available Source',
+      '--------------------------------------------------------',
+      'Discord     Discord.Discord    1.0.9    1.0.9170  winget',
+    ].join('\r\n');
+    const u = parseWingetUpgrade(out);
+    const ids = u.map((x: { id: string }) => x.id).join(',');
+    if (ids !== 'Mozilla.Firefox,Notepad++.Notepad++,Vendor.LongApp,Discord.Discord') throw new Error(`winget list read as ${ids}`);
+    if (u[0].current !== '131.0' || u[0].available !== '132.0.1' || !u[3].explicit || u[0].explicit) throw new Error(`winget versions read wrongly: ${JSON.stringify(u)}`);
+    const b = parseBrewOutdated('{"formulae":[{"name":"wget","installed_versions":["1.24"],"current_version":"1.25"}],"casks":[{"name":"firefox","installed_versions":"131","current_version":"132"}]}');
+    if (b.map((x: { id: string }) => x.id).join(',') !== 'cask:firefox,formula:wget') throw new Error('brew list read wrongly');
+    const cmds = appUpdateCommands('darwin', b);
+    if (cmds[0].args.join(' ') !== 'upgrade --cask firefox' || appUpdateCommands('win32', u)[0].args[2] !== 'Mozilla.Firefox') throw new Error('app update commands built wrongly');
+    if (appUpdateCommands('win32', [{ id: 'x & calc', name: 'x', current: '', available: '' }]).length) throw new Error('unsafe app id accepted');
+    console.log('app updates: lists from winget and Homebrew read, chosen apps update one at a time OK');
+  }
   console.log(`Smoke test passed. Log: ${summary.logFile}`);
 }
 
