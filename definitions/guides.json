@@ -511,6 +511,18 @@
     "kind": "steps"
    },
    {
+    "heading": "Finding anything",
+    "steps": [
+     {
+      "t": "Type a word or a problem into the Search everything box at the top left, such as printer, pop-ups, slow, wifi or deleted photos. Ctrl+K (Cmd+K on a Mac) jumps to it.",
+      "see": "Results grouped as Fix a problem, Repair tools, How-to guides, Single repair steps, Settings you can undo, Free tools and Screens, best match first. Click Start or Open beside one.",
+      "tip": "Everyday words work: \"pop-ups\" also finds adware, browser and scam tools, and \"printer won't print\" finds the printer fixes. Results that need Technician mode switch it on for you."
+     },
+     "Press Escape or clear the box to go back."
+    ],
+    "kind": "steps"
+   },
+   {
     "heading": "First start",
     "steps": [
      {

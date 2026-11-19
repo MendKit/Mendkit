@@ -184,3 +184,4 @@ table.trend td { vertical-align: middle; }
 .form .field textarea, .form .field input { width: 100%; box-sizing: border-box; }
 .form .check, .form .result-foot { grid-column: 1 / -1; }
 textarea.text { resize: vertical; }
+#globalSearch { margin: 4px 0 12px; width: 100%; box-sizing: border-box; }

@@ -26,6 +26,7 @@ const SCREENS = [
   { id: 'checkin', name: 'Check-in', simple: false },
   { id: 'reports', name: 'Reports', simple: true },
   { id: 'permissions', name: 'Permissions', simple: true },
+  { id: 'search', name: 'Search', simple: true, hidden: true },
 ];
 
 const state = { mode: 'simple', screen: 'dashboard', info: null, catalog: null, running: false, toolStatus: null, symptoms: [], guide: null };
@@ -64,6 +65,7 @@ function show(id) {
     view.append(el('h1', { textContent: cur.name }), el('div', { className: 'placeholder', textContent: cur.soon }));
   } else if (cur.id === 'dashboard') renderDashboard(view);
   else if (cur.id === 'repair') renderRepair(view);
+  else if (cur.id === 'search') renderSearch(view);
   else if (cur.id === 'updates') renderUpdates(view);
   else if (cur.id === 'guides') renderGuides(view);
   else if (cur.id === 'isos') renderIsos(view);
@@ -150,6 +152,127 @@ function renderHealthHistory(slot, h) {
   }
   if (h.trends.length) details.open = true;
   slot.append(details);
+}
+
+// ---------- Search everything ----------
+
+/** Switches to Technician mode when a result needs a technician screen. */
+async function ensureTechnician() {
+  if (state.mode === 'technician') return;
+  state.mode = (await api.setMode('technician')).mode;
+}
+/** Opens a screen and types the words into its own search box, so its list is filtered to them. */
+async function showFiltered(id, words) {
+  await ensureTechnician();
+  show(id);
+  setTimeout(() => {
+    const box = $('#view').querySelector('input.search');
+    if (box) {
+      box.value = words;
+      box.dispatchEvent(new Event('input'));
+    }
+  }, 300);
+}
+
+let searchIndex = null;
+/** Everything that can be found, built once per mode change: fixes, steps, tools, guides, settings, screens. */
+async function buildSearchIndex() {
+  const items = [];
+  const add = (kind, title, text, open, extra = {}) => items.push({ kind, title, text, open, ...extra });
+  for (const s of state.symptoms) add('Fix a problem', s.label, s.description, () => showPreview(s.recipe, s.label), { weight: 6 });
+  const viaSymptom = new Set(state.symptoms.map((s) => s.recipe));
+  for (const r of state.catalog.recipes) if (!viaSymptom.has(r.id)) add('Fix a problem', r.name, r.description, () => showPreview(r.id), { weight: 4 });
+  const tools = [...ALL_TOOLS, ...(state.info.platform === 'win32' ? WIN_TOOLS : state.info.platform === 'darwin' ? MAC_TOOLS : LINUX_TOOLS)];
+  for (const [name, desc, fn] of tools) add('Repair tools', name, desc, () => fn(), { weight: 5 });
+  add('Repair tools', 'Remote access audit', 'Scans for remote-control programs that phone and pop-up scammers ask people to install, and removes the ones you choose.', () => showRemoteAudit(), { weight: 5, keywords: 'scam scammer teamviewer anydesk' });
+  add('Repair tools', 'Is this computer worth fixing?', 'Keep, upgrade or replace verdict from the memory, drive, age, battery and Windows 11 readiness.', () => run(async () => showResults(await api.advisor())), { weight: 3, keywords: 'replace upgrade old' });
+  for (const c of state.catalog.commands) add('Single repair steps', c.name, c.description, () => showFiltered('repair', c.name), { weight: 1 });
+  for (const sc of SCREENS) if (!sc.hidden && sc.id !== 'search') add('Screens', sc.name, '', () => (sc.simple ? show(sc.id) : ensureTechnician().then(() => show(sc.id))), { weight: 2 });
+  for (const t of state.catalog.tools ?? []) add('Free tools to install', t.name, `${t.job ?? ''}. ${t.description ?? ''}`, () => showFiltered('tools', t.name));
+  try {
+    const guides = await api.guides();
+    const mine = { win32: /Windows/, darwin: /mac/i, linux: /Linux|Ubuntu|Fedora|Mint/ }[state.info.platform];
+    for (const g of guides) {
+      if (mine && g.systems && !mine.test(g.systems)) continue;
+      const body = (g.sections ?? []).map((sec) => `${sec.heading ?? ''} ${(sec.steps ?? []).map((x) => (typeof x === 'string' ? x : `${x.t ?? ''} ${x.tip ?? ''} ${x.see ?? ''}`)).join(' ')}`).join(' ');
+      add('How-to guides', g.title, g.summary ?? '', () => {
+        state.guide = g.id;
+        show('guides');
+      }, { keywords: body });
+    }
+  } catch {
+    /* guides not available */
+  }
+  try {
+    const tw = await api.tweaks();
+    for (const t of tw.tweaks ?? tw ?? []) add('Settings you can undo', t.name ?? t.title, t.description ?? '', () => showFiltered('tweaks', t.name ?? t.title));
+  } catch {
+    /* no tweaks */
+  }
+  searchIndex = items.map((i) => MendKitSearch.prepare(i));
+  return searchIndex;
+}
+
+const SEARCH_ORDER = ['Fix a problem', 'Repair tools', 'How-to guides', 'Single repair steps', 'Settings you can undo', 'Free tools to install', 'Screens'];
+async function renderSearch(view) {
+  const q = state.searchQuery || '';
+  view.append(el('h1', { textContent: q ? `Results for "${q}"` : 'Search' }));
+  if (!q.trim()) return view.append(el('p', { className: 'lead', textContent: 'Type a word or a problem in the box at the top left, such as printer, pop-ups, slow, wifi or deleted photos.' }));
+  const index = searchIndex ?? (await buildSearchIndex());
+  if (state.screen !== 'search') return;
+  const found = MendKitSearch.search(index, q);
+  if (!found.length) return view.append(el('p', { className: 'lead', textContent: 'Nothing matches. Try another word for the problem, such as "internet" for wifi, or browse the Repair screen.' }));
+  view.append(el('p', { className: 'lead', textContent: `${found.length} result${found.length === 1 ? '' : 's'}. The best match for the problem is usually in "Fix a problem" or "Repair tools".` }));
+  for (const kind of SEARCH_ORDER) {
+    const group = found.filter((f) => f.kind === kind);
+    if (!group.length) continue;
+    view.append(el('h2', { textContent: `${kind} (${group.length})` }));
+    const t = el('table');
+    const rowFor = (f) => {
+      const b = el('button', { className: 'ghost', textContent: kind === 'Fix a problem' ? 'Start' : 'Open' });
+      b.onclick = () => f.open();
+      const desc = f.text ? (f.text.length > 220 ? `${f.text.slice(0, 217)}...` : f.text) : '';
+      return el('tr', {}, el('td', {}, el('strong', { textContent: f.title }), desc ? el('br') : '', desc ? el('small', { textContent: desc }) : ''), el('td', { className: 'act' }, b));
+    };
+    const first = group.slice(0, 6);
+    first.forEach((f) => t.append(rowFor(f)));
+    view.append(t);
+    if (group.length > first.length) {
+      const more = el('button', { className: 'ghost', textContent: `Show all ${group.length}` });
+      more.onclick = () => {
+        group.slice(6).forEach((f) => t.append(rowFor(f)));
+        more.remove();
+      };
+      view.append(el('div', { className: 'toolbar' }, more));
+    }
+  }
+}
+
+{
+  const box = $('#globalSearch');
+  let timer = null;
+  box.oninput = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      state.searchQuery = box.value;
+      if (box.value.trim()) show('search');
+      else if (state.screen === 'search') show('dashboard');
+    }, 180);
+  };
+  box.onkeydown = (e) => {
+    if (e.key === 'Escape') {
+      box.value = '';
+      box.oninput();
+      box.blur();
+    }
+  };
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      box.focus();
+      box.select();
+    }
+  });
 }
 
 function renderDashboard(view) {
@@ -341,12 +464,7 @@ function renderRepair(view) {
   if (state.info.platform === 'darwin') {
     view.append(el('h2', { textContent: 'Mac tools' }));
     const mt = el('table');
-    for (const [name, desc, fn] of [
-      ['Startup items', 'See every program set to start with the Mac or run in the background, who made it, and remove the ones you do not want.', showMacStartup],
-      ['Free up space', 'Measure caches, old device backups, update files, the Trash and large files, then choose what to delete.', showMacSpace],
-      ['Fix an app that will not open', 'For apps macOS says are "damaged" or "can\'t be opened": clears the download block, and can re-sign the app for this Mac.', showMacAppFix],
-      ['Check another drive', 'Check or repair an external drive or USB stick plugged into this Mac.', showMacDrive],
-    ]) {
+    for (const [name, desc, fn] of MAC_TOOLS) {
       const b = el('button', { className: 'ghost', textContent: 'Open' });
       b.onclick = () => fn();
       mt.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, b)));
@@ -367,12 +485,7 @@ function renderRepair(view) {
   if (state.info.platform === 'linux') {
     view.append(el('h2', { textContent: 'Linux tools' }));
     const lt = el('table');
-    for (const [name, desc, fn] of [
-      ['Startup items', 'Programs and services that start with the computer or when you sign in. Turn off the ones you do not need, and back on again later.', showLinuxStartup],
-      ['Free up space', 'Measure caches, downloaded update files, old logs, old kernels and Snap versions, the Trash and large files, then choose what to delete.', showLinuxSpace],
-      ['Repair a system that will not start', 'From a Linux live USB: check the file system and rebuild the startup menu (GRUB) and startup files of the installed system.', showLinuxBoot],
-      ['Upgrade to the next version', 'Checks the computer is ready, then upgrades Ubuntu, Linux Mint or Fedora to the next release.', showLinuxUpgrade],
-    ]) {
+    for (const [name, desc, fn] of LINUX_TOOLS) {
       const b = el('button', { className: 'ghost', textContent: 'Open' });
       b.onclick = () => fn();
       lt.append(el('tr', {}, el('td', {}, el('strong', { textContent: name }), el('br'), el('small', { textContent: desc })), el('td', { className: 'act' }, b)));
@@ -992,6 +1105,21 @@ async function renderPermissions(view) {
 }
 
 // ---------- Windows tools ----------
+
+/** Mac and Linux tools: [name, description, open function]. */
+const MAC_TOOLS = [
+  ['Startup items', 'See every program set to start with the Mac or run in the background, who made it, and remove the ones you do not want.', showMacStartup],
+  ['Free up space', 'Measure caches, old device backups, update files, the Trash and large files, then choose what to delete.', showMacSpace],
+  ['Fix an app that will not open', 'For apps macOS says are "damaged" or "can\'t be opened": clears the download block, and can re-sign the app for this Mac.', showMacAppFix],
+  ['Check another drive', 'Check or repair an external drive or USB stick plugged into this Mac.', showMacDrive],
+];
+
+const LINUX_TOOLS = [
+  ['Startup items', 'Programs and services that start with the computer or when you sign in. Turn off the ones you do not need, and back on again later.', showLinuxStartup],
+  ['Free up space', 'Measure caches, downloaded update files, old logs, old kernels and Snap versions, the Trash and large files, then choose what to delete.', showLinuxSpace],
+  ['Repair a system that will not start', 'From a Linux live USB: check the file system and rebuild the startup menu (GRUB) and startup files of the installed system.', showLinuxBoot],
+  ['Upgrade to the next version', 'Checks the computer is ready, then upgrades Ubuntu, Linux Mint or Fedora to the next release.', showLinuxUpgrade],
+];
 
 /** Tools on every system: [name, description, open function]. */
 const ALL_TOOLS = [

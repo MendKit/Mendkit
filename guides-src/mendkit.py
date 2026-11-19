@@ -8,6 +8,9 @@ G('mendkit',GR,'Getting started with MendKit','Your first run: what to do before
   S('Save any open work and close other programs, so their files are not locked while MendKit works.'),
   S('If Windows says it is waiting to restart for an update, restart first. Repairs can stall while an update is half installed.'),
   S('Back up anything that cannot be lost.', tip='See "Back up before you fix anything". MendKit saves a restore point before repairs, but that does not protect documents and photos.')],'steps'),
+ sec('Finding anything',[
+  S('Type a word or a problem into the Search everything box at the top left, such as printer, pop-ups, slow, wifi or deleted photos. Ctrl+K (Cmd+K on a Mac) jumps to it.',see='Results grouped as Fix a problem, Repair tools, How-to guides, Single repair steps, Settings you can undo, Free tools and Screens, best match first. Click Start or Open beside one.',tip='Everyday words work: "pop-ups" also finds adware, browser and scam tools, and "printer won\'t print" finds the printer fixes. Results that need Technician mode switch it on for you.'),
+  S('Press Escape or clear the box to go back.')],'steps'),
  sec('First start',[
   S('Open MendKit from the Start menu (Windows), Applications (Mac) or the applications menu (Linux).', see='The first time, a Welcome screen lists the permissions MendKit needs. See "Permissions setup".'),
   S('Allow what is listed, then click Start using MendKit (or Skip for now).', see='The Dashboard: the computer\'s name, system, processor, memory, free space and drive health.'),

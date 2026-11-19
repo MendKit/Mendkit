@@ -863,6 +863,25 @@ async function main(): Promise<void> {
     console.log(`speed score: ${a} before, ${b} after OK`);
   }
 
+  {
+    // Search everything: everyday words find the fixes for that problem.
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const S = require(path.join(__dirname, '..', '..', 'renderer', 'search.js'));
+    const defs = path.join(__dirname, '..', '..', 'definitions');
+    const read = (f: string) => JSON.parse(fs.readFileSync(path.join(defs, f), 'utf8'));
+    const items: any[] = [];
+    for (const x of [].concat(read('symptoms.json').symptoms ?? read('symptoms.json'))) items.push({ kind: 'fix', title: (x as any).label, text: (x as any).description, weight: 6 });
+    for (const f of ['commands.win32.json', 'commands.darwin.json', 'commands.linux.json']) for (const c of [].concat(read(f).commands ?? read(f))) items.push({ kind: 'step', title: (c as any).name, text: (c as any).description, weight: 1 });
+    items.push({ kind: 'tool', title: 'Browser cleanup', text: 'Pop-ups, a changed home page or search engine, or toolbars nobody installed', weight: 5 });
+    const P = items.map(S.prepare);
+    const top = (q: string) => S.search(P, q)[0]?.title;
+    const all = (q: string) => S.search(P, q).map((x: any) => x.title);
+    assert(/Printer/.test(top('printer')) && /Printer/.test(top("printer won't print")) && all('printing').some((t: string) => /print queue/i.test(t)), `printer search wrong: ${all('printer').slice(0, 5)}`);
+    assert(/Pop-ups/.test(top('pop-ups')) && /Pop-ups/.test(top('popups')) && all('pop ups').includes('Browser cleanup') && all('adware').includes('Browser cleanup'), `pop-up search wrong: ${all('pop-ups').slice(0, 5)}`);
+    assert(/Wi-Fi/.test(top('wifi')) && /sound/i.test(top('no sound')) && /slow/i.test(top('my computer is slow')) && S.search(P, 'zzzz').length === 0, 'everyday searches wrong');
+    console.log('search: printer, pop-ups, wifi, sound and slow find their fixes OK');
+  }
+
   console.log(`Smoke test passed. Log: ${summary.logFile}`);
 }
 
