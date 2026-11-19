@@ -364,6 +364,44 @@ export class Engine extends EventEmitter {
 
 const NONINTERACTIVE = ['env', 'DEBIAN_FRONTEND=noninteractive'];
 
+/** Where a tool installed from its publisher's zip lives: for all users when elevated, else for this user. */
+export function directToolDirs(env: Record<string, string | undefined>): string[] {
+  return [path.join(env.ProgramFiles ?? 'C:\\Program Files', 'Sysinternals'), path.join(env.LOCALAPPDATA ?? '', 'Programs', 'Sysinternals')];
+}
+
+/**
+ * PowerShell lines that install a tool from its publisher's zip when winget failed: download, check the exe
+ * is signed by Microsoft, unpack, and add a Start menu shortcut. Sets $code to 0 on success.
+ */
+function directInstallScript(tool: ToolDef): string[] {
+  const z = tool.windowsZip!;
+  const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
+  return [
+    'if ($code -ne 0) {',
+    `  "MK_DIRECT: winget could not install it; downloading it from the publisher instead (${z.url})..."`,
+    '  try {',
+    "    $admin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole('Administrators')",
+    "    $dir = if ($admin) { Join-Path $env:ProgramFiles 'Sysinternals' } else { Join-Path $env:LOCALAPPDATA 'Programs\\Sysinternals' }",
+    "    $tmp = Join-Path $env:TEMP ('mendkit-' + [guid]::NewGuid())",
+    '    New-Item -ItemType Directory -Force -Path $tmp, $dir | Out-Null',
+    "    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
+    `    Invoke-WebRequest -UseBasicParsing -Uri ${q(z.url)} -OutFile (Join-Path $tmp 'tool.zip')`,
+    "    Expand-Archive -Path (Join-Path $tmp 'tool.zip') -DestinationPath (Join-Path $tmp 'x') -Force",
+    `    $exe = Join-Path $tmp ('x\\' + ${q(z.exe)})`,
+    '    $sig = Get-AuthenticodeSignature -LiteralPath $exe',
+    "    if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch 'O=Microsoft Corporation') { throw \"the download is not signed by Microsoft ($($sig.Status))\" }",
+    "    Copy-Item -Path (Join-Path $tmp 'x\\*') -Destination $dir -Recurse -Force",
+    "    $menu = if ($admin) { [Environment]::GetFolderPath('CommonPrograms') } else { [Environment]::GetFolderPath('Programs') }",
+    '    $lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path $menu ' + q(`${tool.name}.lnk`) + '))',
+    `    $lnk.TargetPath = Join-Path $dir ${q(z.exe)}; $lnk.Save()`,
+    '    Remove-Item -Recurse -Force $tmp',
+    `    "MK_DIRECT_OK: installed in $dir, signed by Microsoft, with a Start menu shortcut."`,
+    '    $code = 0',
+    '  } catch { "MK_DIRECT_FAILED: $($_.Exception.Message)" }',
+    '}',
+  ];
+}
+
 /** Builds the package-manager command for a tool. The package name comes only from the catalog file. */
 export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager: PackageManager | null = 'winget'): CommandDef {
   const pkg = manager ? tool.packages[manager] : undefined;
@@ -401,6 +439,7 @@ export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager
       '  $out = & winget.exe @a 2>&1 | Out-String; $code = $LASTEXITCODE; $out',
       "  if ($code -ne 0 -and $out -match '404|Not found|0x80190194') { 'MK_GONE' }",
       '}',
+      ...(tool.windowsZip ? directInstallScript(tool) : []),
       'exit $code',
     ].join('\n');
     exec = 'powershell.exe';
@@ -422,6 +461,7 @@ export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager
       notes: install
         ? [
             { pattern: 'already installed|is already the newest|No newer package versions', level: 'good', message: `${tool.name} is already installed.` },
+            { pattern: 'MK_DIRECT_OK', level: 'good', message: `${tool.name} was installed from the publisher's own download (winget's copy was out of date). It is in the Start menu.` },
             { pattern: 'MK_GONE', level: 'problem', message: `The publisher has removed the download that winget's catalog lists for ${tool.name}, and the catalog has not caught up yet. Try again in a day or two, or download it from the publisher's website.` },
           ]
         : [],

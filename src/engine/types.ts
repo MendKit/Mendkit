@@ -57,6 +57,11 @@ export interface ToolDef {
   homeUseOnly?: boolean;
   /** Package name per package manager. A brew name starting with "cask:" is a cask. */
   packages: Partial<Record<PackageManager, string>>;
+  /**
+   * Windows: the publisher's own zip, used when winget cannot install the tool (Sysinternals replaces its
+   * downloads in place, so winget's recorded checksum goes stale). The exe must be signed by the publisher.
+   */
+  windowsZip?: { url: string; exe: string };
 }
 
 export type PackageManager = 'winget' | 'brew' | 'apt' | 'dnf' | 'pacman' | 'zypper' | 'flatpak';

@@ -165,6 +165,10 @@
     "license": "free",
     "packages": {
       "winget": "Microsoft.Sysinternals.Autoruns"
+    },
+    "windowsZip": {
+      "url": "https://download.sysinternals.com/files/Autoruns.zip",
+      "exe": "Autoruns64.exe"
     }
   },
   {
@@ -175,6 +179,10 @@
     "license": "free",
     "packages": {
       "winget": "Microsoft.Sysinternals.ProcessExplorer"
+    },
+    "windowsZip": {
+      "url": "https://download.sysinternals.com/files/ProcessExplorer.zip",
+      "exe": "procexp64.exe"
     }
   },
   {
@@ -427,6 +435,10 @@
     "license": "free",
     "packages": {
       "winget": "Microsoft.Sysinternals.TCPView"
+    },
+    "windowsZip": {
+      "url": "https://download.sysinternals.com/files/TCPView.zip",
+      "exe": "tcpview64.exe"
     }
   },
   {
@@ -437,6 +449,10 @@
     "license": "free",
     "packages": {
       "winget": "Microsoft.Sysinternals.ProcessMonitor"
+    },
+    "windowsZip": {
+      "url": "https://download.sysinternals.com/files/ProcessMonitor.zip",
+      "exe": "Procmon64.exe"
     }
   },
   {

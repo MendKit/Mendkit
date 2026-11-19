@@ -4,7 +4,7 @@ import { ChildProcess, execFile, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { currentPlatform, loadCatalog, onPath } from '../engine/catalog';
-import { Engine, installedListCommands, installedTools, toolCheckCommand } from '../engine/runner';
+import { directToolDirs, Engine, installedListCommands, installedTools, toolCheckCommand } from '../engine/runner';
 import { EngineEvent, Level, RunSummary, StepResult } from '../engine/types';
 import { AppList, bookmarksToHtml, installPlan, loadApps, normalizeAppList, registerMozillaProfiles } from '../engine/apps';
 import { detectApps } from './apps';
@@ -159,6 +159,11 @@ function registerIpc(): void {
     tools: catalog.tools.map(({ id, name, job, description, license, homeUseOnly }) => ({ id, name, job, description, license, homeUseOnly: !!homeUseOnly })),
   }));
   ipcMain.handle('tools-status', async (): Promise<string[]> => {
+    // Tools installed from the publisher's zip (when winget could not) are found by their program file.
+    const direct = catalog.tools.filter((t) => t.windowsZip && directToolDirs(process.env).some((d) => fs.existsSync(path.join(d, t.windowsZip!.exe)))).map((t) => t.id);
+    return [...new Set([...(await toolsStatus()), ...direct])];
+  });
+  const toolsStatus = async (): Promise<string[]> => {
     const installed: string[] = [];
     if (!catalog.manager) return installed;
     const manager = catalog.manager;
@@ -194,7 +199,7 @@ function registerIpc(): void {
     };
     await Promise.all([worker(), worker(), worker(), worker()]);
     return installed;
-  });
+  };
   ipcMain.handle('tools-install-many', (_e, ids: string[]) => {
     if (settings.mode !== 'technician') throw new Error('Installing tools needs Technician mode');
     const list = [...new Set((Array.isArray(ids) ? ids : []).map(String))];
