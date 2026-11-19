@@ -6,12 +6,16 @@ $shell = New-Object -ComObject Shell.Application
 $media = '\.(jpe?g|heic|heif|png|gif|webp|dng|mov|mp4|m4v|3gp|avi|mkv|webm)$'
 
 function Get-PhotoFolders($device) {
-  # Storage, then DCIM (and Pictures and Movies on Android).
+  # Android: storage, then DCIM, Pictures and Movies. iPhone: Windows shows the camera folders
+  # (100APPLE, 202411__ and so on) straight under Internal Storage, with no DCIM folder.
   $found = @()
   foreach ($store in $device.GetFolder.Items()) {
     if (-not $store.IsFolder) { continue }
-    foreach ($f in $store.GetFolder.Items()) {
-      if ($f.IsFolder -and $f.Name -match '^(DCIM|Pictures|Movies)$') { $found += [pscustomobject]@{ store = $store.Name; folder = $f } }
+    $inside = @($store.GetFolder.Items())
+    $named = @($inside | Where-Object { $_.IsFolder -and $_.Name -match '^(DCIM|Pictures|Movies)$' })
+    if ($named) { foreach ($f in $named) { $found += [pscustomobject]@{ store = $store.Name; folder = $f; label = "$($store.Name)\$($f.Name)" } } }
+    elseif (@($inside | Where-Object { $_.IsFolder -and $_.Name -match '^(\d{3}[A-Z_]{5}|\d{6}_\w?)$' }).Count) {
+      $found += [pscustomobject]@{ store = $store.Name; folder = $store; label = $store.Name }
     }
   }
   return $found
@@ -27,9 +31,13 @@ $devices = @($shell.NameSpace(17).Items() | Where-Object { -not $_.IsFileSystem 
 if ($List) {
   $out = foreach ($d in $devices) {
     $folders = Get-PhotoFolders $d
-    if (-not $folders) { [pscustomobject]@{ name = $d.Name; folders = @(); count = 0; bytes = 0; locked = $true }; continue }
-    $items = @(foreach ($f in $folders) { Get-MediaItems $f.folder "$($f.store)\$($f.folder.Name)" })
-    [pscustomobject]@{ name = $d.Name; folders = @($folders | ForEach-Object { "$($_.store)\$($_.folder.Name)" }); count = $items.Count; bytes = [int64]($items | Measure-Object -Property size -Sum).Sum; locked = $false }
+    if (-not $folders) {
+      # An untrusted or locked phone shows no storage, or empty storage. Storage with files but no camera folders just has no photos.
+      $open = @(foreach ($st in $d.GetFolder.Items()) { if ($st.IsFolder -and @($st.GetFolder.Items()).Count) { $st } }).Count -gt 0
+      [pscustomobject]@{ name = $d.Name; folders = @(); count = 0; bytes = 0; locked = -not $open }; continue
+    }
+    $items = @(foreach ($f in $folders) { Get-MediaItems $f.folder $f.label })
+    [pscustomobject]@{ name = $d.Name; folders = @($folders | ForEach-Object { $_.label }); count = $items.Count; bytes = [int64]($items | Measure-Object -Property size -Sum).Sum; locked = $false }
   }
   ConvertTo-Json -InputObject @($out) -Depth 4 -Compress
   exit 0
