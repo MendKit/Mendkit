@@ -381,38 +381,6 @@ export function directToolDirs(env: Record<string, string | undefined>): string[
   return [path.join(env.ProgramFiles ?? 'C:\\Program Files', 'Sysinternals'), path.join(env.LOCALAPPDATA ?? '', 'Programs', 'Sysinternals')];
 }
 
-/** PowerShell lines that install the newest installer linked from the publisher's download page. */
-function pageInstallScript(tool: ToolDef): string[] {
-  const d = tool.windowsDownload!;
-  const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
-  const sources = d.sources.map((x) => `@{ page = ${q(x.page)}; base = ${q(x.base)}; suffix = ${q(x.suffix ?? '')} }`).join(', ');
-  return [
-    'if ($code -ne 0) {',
-    `  "MK_DIRECT: getting the newest installer from the publisher instead..."`,
-    "  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12",
-    `  foreach ($src in @(${sources})) {`,
-    '    try {',
-    '      $html = (Invoke-WebRequest -UseBasicParsing -Uri $src.page).Content',
-    `      $names = [regex]::Matches($html, ${q(d.link)}) | ForEach-Object { $_.Value } | Sort-Object { [int](($_ -replace '\\D', '')) } -Descending -Unique`,
-    "      if (-not $names) { throw \"no installer link on $($src.page)\" }",
-    '      $url = $src.base + @($names)[0] + $src.suffix',
-    "      $file = Join-Path $env:TEMP ('mendkit-' + [guid]::NewGuid() + '.exe')",
-    '      "Downloading $url"',
-    '      Invoke-WebRequest -UseBasicParsing -Uri $url -OutFile $file',
-    '      $sig = Get-AuthenticodeSignature -LiteralPath $file',
-    `      if ($sig.Status -ne 'Valid' -or $sig.SignerCertificate.Subject -notmatch ${q(d.signer)}) { Remove-Item $file -Force; throw "the download is not signed by the publisher ($($sig.Status) $($sig.SignerCertificate.Subject))" }`,
-    `      $p = Start-Process -FilePath $file -ArgumentList ${q(d.args)} -Wait -PassThru`,
-    '      Remove-Item $file -Force -ErrorAction SilentlyContinue',
-    "      if ($p.ExitCode -ne 0) { throw \"the installer stopped with code $($p.ExitCode)\" }",
-    "      'MK_DIRECT_OK: installed from the publisher, signature checked.'",
-    '      $code = 0',
-    '      break',
-    '    } catch { "MK_DIRECT_FAILED: $($_.Exception.Message)" }',
-    '  }',
-    '}',
-  ];
-}
-
 /**
  * PowerShell lines that install a tool from its publisher's zip when winget failed: download, check the exe
  * is signed by Microsoft, unpack, and add a Start menu shortcut. Sets $code to 0 on success.
@@ -484,7 +452,6 @@ export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager
       "  if ($code -ne 0 -and $out -match '404|Not found|0x80190194') { 'MK_GONE' }",
       '}',
       ...(tool.windowsZip ? directInstallScript(tool) : []),
-      ...(tool.windowsDownload ? pageInstallScript(tool) : []),
       'exit $code',
     ].join('\n');
     exec = 'powershell.exe';

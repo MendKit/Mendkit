@@ -122,6 +122,7 @@ export function offlineSupport(e: Pick<CacheEntry, 'installerType' | 'silent'>):
   if (LINUX_TYPES.includes(t)) return 'install';
   if (t in DEFAULT_SILENT || t === 'msix' || t === 'appx') return 'install';
   if (t === 'exe') return e.silent ? 'install' : 'unsupported';
+  if (t === 'folder') return 'install';
   if (t === 'portable' || t === 'zip') return 'portable';
   return 'unsupported';
 }
@@ -141,6 +142,18 @@ export function offlineInstallCommand(tool: ToolDef, entry: CacheEntry, dir: str
   } else if (t === 'msix' || t === 'appx') {
     exec = 'powershell.exe';
     args = ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', `Add-AppxPackage -Path '${file.replace(/'/g, "''")}'`];
+  } else if (t === 'folder') {
+    // A tool that is a folder of programs (Sysinternals): copied into Program Files with a Start menu shortcut.
+    const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
+    exec = 'powershell.exe';
+    args = ['-NoProfile', '-NonInteractive', '-Command', [
+      "$dest = Join-Path $env:ProgramFiles 'Sysinternals'",
+      'New-Item -ItemType Directory -Force -Path $dest | Out-Null',
+      `Get-ChildItem -LiteralPath ${q(dir)} -File | Where-Object { $_.Name -ne 'mendkit-cache.json' } | Copy-Item -Destination $dest -Force`,
+      `$lnk = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('CommonPrograms')) ${q(`${tool.name}.lnk`)}))`,
+      `$lnk.TargetPath = Join-Path $dest ${q(entry.file)}; $lnk.Save()`,
+      `if (-not (Test-Path (Join-Path $dest ${q(entry.file)}))) { exit 1 }`,
+    ].join('; ')];
   } else if (offlineSupport(entry) === 'install') {
     exec = file;
     args = [...silent, ...custom];

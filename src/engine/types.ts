@@ -61,13 +61,13 @@ export interface ToolDef {
    * Windows: the publisher's own zip, used when winget cannot install the tool (Sysinternals replaces its
    * downloads in place, so winget's recorded checksum goes stale). The exe must be signed by the publisher.
    */
-  windowsZip?: { url: string; exe: string };
+  windowsZip?: { url: string; exe: string; signer?: string };
   /**
    * Windows: the publisher's download page, used when winget's catalog points at a removed file. The newest
    * installer linked there (link is a pattern for its file name) is downloaded, its signature checked against
    * signer, and run with the silent-install args.
    */
-  windowsDownload?: { sources: { page: string; base: string; suffix?: string }[]; link: string; signer: string; args: string };
+  windowsDownload?: { sources: { page: string; base: string; suffix?: string }[]; link: string; signer: string; args: string; type?: string };
 }
 
 export type PackageManager = 'winget' | 'brew' | 'apt' | 'dnf' | 'pacman' | 'zypper' | 'flatpak';

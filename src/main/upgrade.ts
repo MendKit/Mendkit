@@ -1,6 +1,7 @@
 import { app, ipcMain, net, shell } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { scriptsDir } from './paths';
 import { execFile } from 'child_process';
 import { ActionStep, childEnv, Engine } from '../engine/runner';
 import { CommandDef } from '../engine/types';
@@ -24,7 +25,7 @@ const runPs = (file: string): Promise<string> =>
 
 export function registerUpgrade(ctx: { engine: Engine }): void {
   const { engine } = ctx;
-  const scripts = path.join(app.getAppPath(), 'definitions', 'scripts');
+  const scripts = scriptsDir();
   const winOnly = () => {
     if (process.platform !== 'win32') throw new Error('The Windows 11 upgrade assistant runs on the Windows computer.');
   };

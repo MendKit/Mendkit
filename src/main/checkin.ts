@@ -4,6 +4,7 @@ import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { scriptsDir } from './paths';
 import { compareSpeed, SpeedMeasure, speedScore } from '../engine/speed';
 
 /**
@@ -30,7 +31,7 @@ const run = (file: string, args: string[]): Promise<string> => new Promise((reso
 
 async function startupCount(): Promise<number | null> {
   if (process.platform === 'win32') {
-    const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(app.getAppPath(), 'definitions', 'scripts', 'windows-startup.ps1')]);
+    const out = await run('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', path.join(scriptsDir(), 'windows-startup.ps1')]);
     try {
       const j = JSON.parse(out.trim() || '[]');
       return (Array.isArray(j) ? j : [j]).filter((x: any) => x && x.enabled !== false).length;

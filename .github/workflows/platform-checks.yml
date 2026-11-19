@@ -29,6 +29,19 @@ jobs:
             "MENDKIT_PHOTOREC_DIR=$((Get-ChildItem C:\td -Directory | Select-Object -First 1).FullName)" >> $env:GITHUB_ENV
           }
       - run: node dist/scripts/recover-check.js
+      - name: The installed app can run its PowerShell scripts (they must sit outside the app archive)
+        shell: pwsh
+        run: |
+          npx electron-builder --win dir --publish never
+          $s = Get-ChildItem release -Recurse -Filter windows-startup.ps1 | Where-Object { $_.FullName -match 'app\.asar\.unpacked' } | Select-Object -First 1
+          if (-not $s) { throw 'definitions/scripts is not unpacked from app.asar' }
+          foreach ($f in Get-ChildItem $s.DirectoryName -Filter *.ps1) {
+            $out = powershell.exe -NoProfile -ExecutionPolicy Bypass -File $f.FullName -List 2>&1 | Out-String
+            if ($f.Name -in 'windows-startup.ps1','windows-space.ps1','windows-volumes.ps1','windows-upgrade.ps1','windows-recover-places.ps1','windows-phone.ps1') {
+              try { $null = $out.Trim() | ConvertFrom-Json } catch { throw "$($f.Name) from the installed app gave no JSON: $out" }
+            }
+            "$($f.Name): ok"
+          }
   mac:
     runs-on: macos-latest
     steps:

@@ -14,6 +14,8 @@ import { CommandDef } from '../engine/types';
 import { winSpaceCategories } from '../engine/wintools';
 import { forcesFromRegistry, policyConcerns, regRemoveArgs } from '../engine/browsers';
 import { upgradePlan } from '../engine/upgrade';
+import { publisherDownload, newestLink } from '../engine/publisher';
+import { offlineInstallCommand } from '../engine/offline';
 import { grantAccessCommand, lockedFolders } from '../engine/olddrive';
 
 const root = path.join(__dirname, '..', '..');
@@ -186,6 +188,26 @@ async function main() {
   // Tool installs from an elevated MendKit, the way a technician runs it. Process Explorer only installs per
   // user, which winget refuses from an administrator context unless asked for all users; HWiNFO's catalog
   // entry often points at a download the publisher has replaced.
+  // Offline installers from the publisher: Process Explorer's zip is saved, checked, and installed from the cache.
+  {
+    const tool = cat.tools.find((t) => t.id === 'procexp')!;
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'mk-pub-'));
+    const f = await publisherDownload(tool, dir, (u) => fetch(u) as any, (x) => process.stdout.write(`    ${x}`));
+    const cmd = offlineInstallCommand(tool, { tool: tool.id, wingetId: '', version: f.version, file: f.file, size: 0, sha256: '', installerType: f.installerType, downloaded: '' }, dir);
+    const r = spawnSync(cmd.exec, cmd.args, { encoding: 'utf8' });
+    const target = path.join(process.env.ProgramFiles ?? 'C:\\Program Files', 'Sysinternals', f.file);
+    if (r.status !== 0 || !fs.existsSync(target)) fail(`offline install of Process Explorer failed: ${r.stdout} ${r.stderr}`);
+    console.log(`  offline: Process Explorer saved from Microsoft as ${f.file} and installed from the cache to ${target}`);
+    if (newestLink('<a href="/files/hwi64_812.exe">x</a> <a href="/files/hwi64_856.exe">y</a> hwi64_99.exe', 'hwi64_\\d+\\.exe') !== 'hwi64_856.exe') fail('newest link on a download page picked wrongly');
+    try {
+      const h = await publisherDownload(cat.tools.find((t) => t.id === 'hwinfo')!, fs.mkdtempSync(path.join(os.tmpdir(), 'mk-hw-')), (u) => fetch(u) as any, () => undefined);
+      console.log(`  offline: HWiNFO ${h.version} saved from the publisher (${h.file})`);
+    } catch (e) {
+      // HWiNFO's site turns away cloud servers like this one; on a normal connection it answers.
+      console.log(`  offline: HWiNFO from the publisher here: ${(e as Error).message.slice(0, 200)}`);
+    }
+  }
+
   for (const id of ['procexp', 'hwinfo']) {
     const r = await eng.runTool(id, 'install', { elevated: true });
     const st = r.steps[0];

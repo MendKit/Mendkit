@@ -138,7 +138,10 @@
         "at-spi2-core",
         "libuuid"
       ]
-    }
+    },
+    "asarUnpack": [
+      "definitions/scripts/**"
+    ]
   },
   "dependencies": {
     "electron-updater": "^6.8.11"

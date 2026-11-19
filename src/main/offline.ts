@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { cacheable, CacheEntry, linuxDownloadCommand, LINUX_TYPES, offlineInstallCommand, offlineSupport, parseWingetManifest } from '../engine/offline';
 import { ActionStep, Engine } from '../engine/runner';
+import { hasPublisherSource, publisherDownload } from '../engine/publisher';
 import { Catalog, CommandDef, RunSummary } from '../engine/types';
 import { isElevated } from './system';
 
@@ -278,6 +279,28 @@ export function registerOffline(ctx: { engine: Engine; catalog: Catalog; getWin:
           const files = fs.readdirSync(partial).filter((n) => fs.statSync(path.join(partial, n)).isFile());
           const yaml = files.find((n) => /\.ya?ml$/i.test(n));
           const installer = files.filter((n) => !/\.ya?ml$/i.test(n)).sort((a, b) => fs.statSync(path.join(partial, b)).size - fs.statSync(path.join(partial, a)).size)[0];
+          if ((code !== 0 || !installer || !yaml) && hasPublisherSource(t)) {
+            // winget's copy is out of date or gone (Sysinternals, HWiNFO): save the publisher's own download.
+            write('winget could not save it; downloading it from the publisher instead.\n');
+            fs.rmSync(partial, { recursive: true, force: true });
+            const f = await publisherDownload(t, partial, (u) => net.fetch(u), write);
+            const entry: CacheEntry = {
+              tool: t.id,
+              wingetId: t.packages.winget!,
+              version: f.version,
+              file: f.file,
+              size: fs.statSync(path.join(partial, f.file)).size,
+              sha256: await sha256(path.join(partial, f.file)),
+              installerType: f.installerType,
+              silent: f.silent,
+              downloaded: new Date().toISOString(),
+            };
+            fs.writeFileSync(path.join(partial, META), JSON.stringify(entry, null, 2));
+            const final = path.join(dir, t.id);
+            fs.rmSync(final, { recursive: true, force: true });
+            fs.renameSync(partial, final);
+            return { ok: true, note: `${t.name} saved from the publisher's own download (${gbmb(entry.size)}), signature checked.` };
+          }
           if (code !== 0 || !installer || !yaml) throw new Error(code === null ? 'winget could not be started. Install "App Installer" from the Microsoft Store.' : 'winget did not save an installer. The log has its message. Older winget versions do not have the download command: update "App Installer".');
           const man = parseWingetManifest(fs.readFileSync(path.join(partial, yaml), 'utf8'));
           const hash = await sha256(path.join(partial, installer));

@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { scriptsDir } from './paths';
 import { execFile, spawn } from 'child_process';
 import { ActionStep, Engine } from '../engine/runner';
 import { CommandDef } from '../engine/types';
@@ -17,7 +18,7 @@ export function registerPhone(ctx: { engine: Engine; getWin: () => BrowserWindow
   const { engine } = ctx;
   const plat = process.platform;
   const home = os.homedir();
-  const script = path.join(app.getAppPath(), 'definitions', 'scripts', 'windows-phone.ps1');
+  const script = path.join(scriptsDir(), 'windows-phone.ps1');
   const gvfs = process.env.MENDKIT_TEST_GVFS ?? `/run/user/${os.userInfo().uid}/gvfs`;
   let linuxPhones: PhoneSource[] = [];
   let lastFolder = '';

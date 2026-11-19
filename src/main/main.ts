@@ -1,11 +1,12 @@
-import { app, BrowserWindow, session, dialog, ipcMain, shell } from 'electron';
+import { app, BrowserWindow, net, session, dialog, ipcMain, shell } from 'electron';
 import * as os from 'os';
 import { ChildProcess, execFile, spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { currentPlatform, loadCatalog, onPath } from '../engine/catalog';
 import { directToolDirs, Engine, installedListCommands, installedTools, toolCheckCommand } from '../engine/runner';
-import { EngineEvent, Level, RunSummary, StepResult } from '../engine/types';
+import { EngineEvent, Level, RunSummary, StepResult, ToolDef } from '../engine/types';
+import { publisherDownload, publisherInstall } from '../engine/publisher';
 import { AppList, bookmarksToHtml, installPlan, loadApps, normalizeAppList, registerMozillaProfiles } from '../engine/apps';
 import { detectApps } from './apps';
 import { advise } from '../engine/advisor';
@@ -211,7 +212,34 @@ function registerIpc(): void {
     if ((process.platform === 'win32' || process.platform === 'linux') && readCache().size && !(await quickOnline())) {
       return engine.runSteps('install-tools', `Install ${ids.length} tool${ids.length === 1 ? '' : 's'} from the offline cache`, 'tool', await offlineInstallSteps(catalog, ids), { elevated: isElevated() });
     }
-    return ids.length === 1 ? engine.runTool(ids[0], 'install', { elevated: isElevated() }) : engine.runToolInstalls(ids, { elevated: isElevated() });
+    const summary = ids.length === 1 ? await engine.runTool(ids[0], 'install', { elevated: isElevated() }) : await engine.runToolInstalls(ids, { elevated: isElevated() });
+    // winget's catalog can list a download the publisher has removed (HWiNFO): get the newest one from the
+    // publisher instead, through Chromium's own network stack, and put that result in place of the failure.
+    if (process.platform !== 'win32') return summary;
+    const retry = summary.steps.filter((st) => st.status === 'failed').map((st) => catalog.tools.find((t) => `install-${t.id}` === st.command)).filter((t): t is ToolDef => !!t && !!t.windowsDownload);
+    if (!retry.length) return summary;
+    const again = await engine.runSteps('install-publisher', 'Install from the publisher', 'tool', retry.map((t) => ({
+      id: `install-${t.id}`,
+      name: `Install ${t.name} from the publisher`,
+      admin: false,
+      ok: `${t.name} was installed from the publisher's own download (winget's link was out of date), signature checked.`,
+      problem: `${t.name} could not be installed.`,
+      action: async (write) => {
+        const dir = fs.mkdtempSync(path.join(app.getPath('temp'), 'mendkit-pub-'));
+        try {
+          const f = await publisherDownload(t, dir, (u) => net.fetch(u), write);
+          const out = await publisherInstall(t, dir, f, isElevated());
+          write(`${out}\n`);
+          return /MK_DIRECT_OK/.test(out) ? { ok: true } : { ok: false, note: out.replace(/^MK_DIRECT_FAILED\s*/, 'It did not install: ') };
+        } catch (e) {
+          return { ok: false, note: (e as Error).message };
+        } finally {
+          fs.rmSync(dir, { recursive: true, force: true });
+        }
+      },
+    })), { elevated: isElevated() });
+    for (const st of again.steps) summary.steps = summary.steps.map((x) => (x.command === st.command ? st : x));
+    return summary;
   };
   ipcMain.handle('app-version', () => app.getVersion());
   ipcMain.handle('guides', () => JSON.parse(fs.readFileSync(path.join(app.getAppPath(), 'definitions', 'guides.json'), 'utf8')));

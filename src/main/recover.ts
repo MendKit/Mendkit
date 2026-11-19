@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
+import { scriptsDir } from './paths';
 import { execFile, spawn } from 'child_process';
 import { ActionStep, Engine } from '../engine/runner';
 import { countRecovered, findPhotorec, linuxVolumes, macVolumes, photorecScan, RecoverVolume, sameVolume, sortRecovered, windowsVolumes } from '../engine/recover';
@@ -29,7 +30,7 @@ export function registerRecover(ctx: { engine: Engine; getWin: () => BrowserWind
   const { engine } = ctx;
   const plat = process.platform;
   const home = os.homedir();
-  const scripts = path.join(app.getAppPath(), 'definitions', 'scripts');
+  const scripts = scriptsDir();
   let volumes: RecoverVolume[] = [];
   let lastFolder = '';
 

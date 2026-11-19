@@ -3,6 +3,7 @@ import * as os from 'os';
 import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { scriptsDir } from './paths';
 import { Engine } from '../engine/runner';
 import { RunSummary } from '../engine/types';
 import { ESSENTIAL, HARDWARE, human, SpaceCategory, startupToggle, winSpaceCategories, WinStartupItem } from '../engine/wintools';
@@ -25,7 +26,7 @@ const run = (file: string, timeout = 120000): Promise<string> =>
 export function registerWinTools(ctx: { engine: Engine }): void {
   const { engine } = ctx;
   const win = process.platform === 'win32';
-  const scripts = path.join(app.getAppPath(), 'definitions', 'scripts');
+  const scripts = scriptsDir();
   const journal = path.join(app.getPath('userData'), 'win-startup-off.json');
   type Off = { key: string; name: string; service: string; delayed: boolean; when: string };
   const readJournal = (): Off[] => {

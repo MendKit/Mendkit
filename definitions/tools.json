@@ -226,7 +226,8 @@
       ],
       "link": "hwi64_\\d+\\.exe",
       "signer": "REALiX|Martin Malik",
-      "args": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
+      "args": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-",
+      "type": "inno"
     }
   },
   {
