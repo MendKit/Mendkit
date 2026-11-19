@@ -382,7 +382,30 @@ export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager
     zypper: ['zypper', '--non-interactive', install ? 'install' : 'remove', name],
     flatpak: install ? ['flatpak', 'install', '-y', '--noninteractive', 'flathub', name] : ['flatpak', 'uninstall', '-y', '--noninteractive', name],
   };
-  const [exec, ...args] = lines[manager];
+  let [exec, ...args] = lines[manager];
+  if (manager === 'winget' && install) {
+    // winget fails in two common ways that a retry fixes: a package that only installs per user refuses an
+    // elevated MendKit (install it for all users instead), and a stale catalog points at a download the
+    // publisher has replaced (refresh the catalog, then try again).
+    const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
+    const script = [
+      `$a = @(${args.map(q).join(', ')})`,
+      '$out = & winget.exe @a 2>&1 | Out-String; $code = $LASTEXITCODE; $out',
+      "if ($code -ne 0 -and $out -match 'administrator context|user scope|0x8A15007D|0x8A150056') {",
+      "  'MK_RETRY_MACHINE: installing it for all users instead...'",
+      "  $out = & winget.exe @a --scope machine 2>&1 | Out-String; $code = $LASTEXITCODE; $out",
+      '}',
+      "if ($code -ne 0 -and $out -match '404|Not found|0x80190194|hash does not match|0x8A150011') {",
+      "  'MK_RETRY_SOURCE: refreshing the winget catalog and trying again...'",
+      '  winget.exe source update --disable-interactivity 2>&1 | Out-String',
+      '  $out = & winget.exe @a 2>&1 | Out-String; $code = $LASTEXITCODE; $out',
+      "  if ($code -ne 0 -and $out -match '404|Not found|0x80190194') { 'MK_GONE' }",
+      '}',
+      'exit $code',
+    ].join('\n');
+    exec = 'powershell.exe';
+    args = ['-NoProfile', '-NonInteractive', '-Command', script];
+  }
   return {
     id: `${action}-${tool.id}`,
     name: `${install ? 'Install' : 'Remove'} ${tool.name}`,
@@ -396,7 +419,12 @@ export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager
       title: tool.name,
       ok: install ? `${tool.name} was installed.` : `${tool.name} was removed.`,
       problem: install ? `${tool.name} could not be installed.` : `${tool.name} could not be removed.`,
-      notes: install ? [{ pattern: 'already installed|is already the newest', level: 'good', message: `${tool.name} is already installed.` }] : [],
+      notes: install
+        ? [
+            { pattern: 'already installed|is already the newest|No newer package versions', level: 'good', message: `${tool.name} is already installed.` },
+            { pattern: 'MK_GONE', level: 'problem', message: `The publisher has removed the download that winget's catalog lists for ${tool.name}, and the catalog has not caught up yet. Try again in a day or two, or download it from the publisher's website.` },
+          ]
+        : [],
     },
   };
 }

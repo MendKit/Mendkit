@@ -182,5 +182,15 @@ async function main() {
     console.log(`  ${st.status.padEnd(8)} ${st.name}: ${st.friendly?.message ?? ''}`);
     if (!st.friendly?.message) fail(`${st.command} gave no plain-language result`);
   }
+
+  // Tool installs from an elevated MendKit, the way a technician runs it. Process Explorer only installs per
+  // user, which winget refuses from an administrator context unless asked for all users; HWiNFO's catalog
+  // entry often points at a download the publisher has replaced.
+  for (const id of ['procexp', 'hwinfo']) {
+    const r = await eng.runTool(id, 'install', { elevated: true });
+    const st = r.steps[0];
+    console.log(`  install ${id}: ${st.status}: ${st.friendly?.message ?? ''}`);
+    if (st.status !== 'ok' && !(id === 'hwinfo' && /publisher has removed/.test(st.friendly?.message ?? ''))) fail(`installing ${id} failed: ${st.friendly?.message}`);
+  }
 }
 main().catch((e) => fail(String(e?.stack ?? e)));
