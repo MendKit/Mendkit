@@ -476,7 +476,7 @@
     "license": "open-source",
     "packages": {
       "winget": "WiresharkFoundation.Wireshark",
-      "brew": "cask:wireshark",
+      "brew": "cask:wireshark-app",
       "apt": "wireshark",
       "dnf": "wireshark",
       "pacman": "wireshark",

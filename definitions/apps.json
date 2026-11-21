@@ -147,7 +147,7 @@
     "id": "handbrake",
     "name": "HandBrake",
     "winget": "HandBrake.HandBrake",
-    "brew": "cask:handbrake",
+    "brew": "cask:handbrake-app",
     "macApp": "HandBrake.app",
     "apt": "handbrake",
     "pacman": "handbrake",

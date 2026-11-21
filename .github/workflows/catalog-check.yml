@@ -1,0 +1,41 @@
+name: Install sources still work
+# Downloads every program MendKit can install, from the same catalog MendKit uses, and checks the
+# file matches the catalog's checksum. Catches publishers that move or replace a download (a 404 or a
+# hash mismatch on a customer's computer) before a customer does. Runs weekly and when the lists change.
+on:
+  schedule:
+    - cron: '17 9 * * 1'
+  push:
+    paths: ['definitions/tools.json', 'definitions/apps.json', '.github/workflows/catalog-check.yml', '.github/scripts/catalog-ids.js']
+  workflow_dispatch:
+
+jobs:
+  winget:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download every winget package
+        shell: pwsh
+        run: |
+          $bad = @()
+          foreach ($id in (node .github/scripts/catalog-ids.js winget)) {
+            $dir = Join-Path $env:RUNNER_TEMP ($id -replace '[^\w.]', '_')
+            $out = winget download --id $id --exact --source winget --accept-source-agreements --accept-package-agreements --disable-interactivity --download-directory $dir 2>&1 | Out-String
+            $code = '0x{0:X8}' -f $LASTEXITCODE
+            if ($LASTEXITCODE -eq 0) { "OK    $id" } else { "FAIL  $id  $code"; $out.Split("`n") | Select-Object -Last 4; $bad += "$id ($code)" }
+            Remove-Item $dir -Recurse -Force -ErrorAction SilentlyContinue
+          }
+          if ($bad) { "::error::These winget packages could not be downloaded: $($bad -join ', ')"; exit 1 }
+
+  brew:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Download every Homebrew package
+        run: |
+          bad=""
+          for id in $(node .github/scripts/catalog-ids.js brew); do
+            case "$id" in cask:*) args="--cask ${id#cask:}";; *) args="--formula $id";; esac
+            if brew fetch --retry $args >/tmp/out 2>&1; then echo "OK    $id"; else echo "FAIL  $id"; tail -4 /tmp/out; bad="$bad $id"; fi
+          done
+          if [ -n "$bad" ]; then echo "::error::These Homebrew packages could not be downloaded:$bad"; exit 1; fi

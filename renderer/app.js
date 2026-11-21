@@ -2481,8 +2481,14 @@ async function paintAppUpdates(chk, list) {
   };
   const selAll = el('button', { className: 'ghost', textContent: 'Select all' });
   const selNone = el('button', { className: 'ghost', textContent: 'Select none' });
-  selAll.onclick = () => (rows.forEach((r) => (r.box.checked = true)), paint());
-  selNone.onclick = () => (rows.forEach((r) => (r.box.checked = false)), paint());
+  selAll.onclick = () => {
+    rows.forEach((r) => (r.box.checked = true));
+    paint();
+  };
+  selNone.onclick = () => {
+    rows.forEach((r) => (r.box.checked = false));
+    paint();
+  };
   const t = el('table', { className: 'pick-table' });
   t.append(el('tr', {}, el('th', {}), el('th', { textContent: 'App' }), el('th', { textContent: 'Installed' }), el('th', { textContent: 'New version' })));
   for (const r of rows) {
@@ -2529,7 +2535,13 @@ async function renderUpdates(view) {
     if (c.choose) {
       const chk = el('button', { className: 'run', textContent: 'Check for app updates' });
       const all = el('button', { className: 'ghost run', textContent: 'Update everything' });
-      all.onclick = () => run(async () => showResults(await api.runUpdate(c.id, 'install')));
+      // Everything goes through the same one-app-at-a-time updates, so one failure does not stop the rest and each gets its own fix.
+      all.onclick = () =>
+        run(async () => {
+          const ups = await api.appUpdatesChoose();
+          if (!ups.length) return list.replaceChildren(el('p', { className: 'lead good-text', textContent: 'All your apps are up to date.' }));
+          showResults(await api.appUpdatesSelected(ups.map((u) => u.id)));
+        });
       const list = el('div', { className: 'pick-list' });
       chk.onclick = () => paintAppUpdates(chk, list);
       bar.append(chk, all);

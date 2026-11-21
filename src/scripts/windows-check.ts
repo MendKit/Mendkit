@@ -216,5 +216,29 @@ async function main() {
     // HWiNFO's site refuses downloads from cloud servers like this one; there the plain message is enough.
     if (st.status !== 'ok' && !(id === 'hwinfo' && /publisher's website \(https:\/\/www\.hwinfo\.com/.test(st.friendly?.message ?? ''))) fail(`installing ${id} failed: ${st.friendly?.message}`);
   }
+
+  // App updates the way a technician picks them: an old 7-Zip is listed by Check for app updates,
+  // and updating just that one through MendKit brings it up to date.
+  {
+    const { parseWingetUpgrade, appUpdateCommands } = require('../engine/appupdates');
+    const w = (a: string[]) => spawnSync('winget.exe', a, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
+    w(['install', '--id', '7zip.7zip', '--exact', '--version', '23.01', '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity', '--force']);
+    const list = parseWingetUpgrade(w(['upgrade', '--accept-source-agreements', '--disable-interactivity']).stdout);
+    console.log(`  app updates listed: ${list.map((u: { id: string; source?: string }) => `${u.id} (${u.source})`).join(', ')}`);
+    const seven = list.find((u: { id: string }) => u.id === '7zip.7zip');
+    if (!seven || seven.current !== '23.01' || seven.source !== 'winget') fail(`old 7-Zip was not listed properly: ${JSON.stringify(seven)}`);
+    const r = await eng.runSteps('app-updates-selected', 'Update 1 app', 'command', appUpdateCommands('win32', [seven]), { elevated: true });
+    console.log(`  update 7-Zip: ${r.steps[0].status}: ${r.steps[0].friendly?.message}`);
+    const after = parseWingetUpgrade(w(['upgrade', '--accept-source-agreements', '--disable-interactivity']).stdout);
+    if (r.steps[0].status !== 'ok' || after.some((u: { id: string }) => u.id === '7zip.7zip')) fail(`updating the chosen app did not work: ${fs.readFileSync(r.logFile, 'utf8').slice(-2000)}`);
+    // Every update script must at least be valid PowerShell, Store apps included.
+    for (const c of appUpdateCommands('win32', [...list, { id: '9NZKPSTSNW4P', name: "Xbox Game Bar's test", current: '1', available: '2', source: 'msstore' }])) {
+      const file = path.join(os.tmpdir(), 'mk-update-check.ps1');
+      fs.writeFileSync(file, '\ufeff' + c.args[3]);
+      const parse = spawnSync('powershell.exe', ['-NoProfile', '-Command', `$e=$null; [void][System.Management.Automation.Language.Parser]::ParseFile('${file}', [ref]$null, [ref]$e); $e.Count`], { encoding: 'utf8' });
+      if (parse.stdout.trim() !== '0') fail(`update script for ${c.name} is not valid PowerShell: ${parse.stdout}`);
+    }
+    console.log('  app update scripts parse as PowerShell OK');
+  }
 }
 main().catch((e) => fail(String(e?.stack ?? e)));
