@@ -83,7 +83,7 @@ export function wingetUpdateScript(u: AppUpdate): string {
     `$id = ${q(u.id)}; $src = ${q(src)}; $name = ${q(u.name)}`,
     "$common = @('--id', $id, '--exact', '--source', $src, '--accept-source-agreements', '--disable-interactivity')",
     // uninstall does not take --accept-package-agreements.
-    "function Run($verb, $more) { $agree = if ($verb -eq 'uninstall') { @() } else { @('--accept-package-agreements') }; $o = & winget.exe $verb @common @agree @more 2>&1 | Out-String; $script:code = $LASTEXITCODE; $script:hex = '0x{0:X8}' -f $script:code; $o }",
+    "function Run($verb, $more) { $agree = @(if ($verb -ne 'uninstall') { '--accept-package-agreements' }); $o = & winget.exe $verb @common @agree @more 2>&1 | Out-String; $script:code = $LASTEXITCODE; $script:hex = '0x{0:X8}' -f $script:code; $o }",
     "$out = Run 'upgrade' @()",
     "if ($code -ne 0 -and ($out -match 'administrator context|user scope' -or $hex -match '8A15007D|8A150056')) { 'MK_RETRY_MACHINE'; $out = Run 'upgrade' @('--scope', 'machine') }",
     "if ($code -ne 0 -and ($hex -eq '0x8A150011' -or $out -match '404|0x80190194|hash does not match')) { 'MK_RETRY_SOURCE'; winget.exe source update --disable-interactivity 2>&1 | Out-String; $out = Run 'upgrade' @() }",
