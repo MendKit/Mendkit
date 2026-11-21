@@ -82,24 +82,29 @@ function createWindow(): void {
  * How admin steps get root on macOS and Linux: one shell per run, started through the system's own
  * password prompt (polkit on Linux, a macOS dialog through sudo's askpass hook). Windows uses UAC instead.
  */
+/** The Mac password dialog sudo shows through its askpass hook. Homebrew uses it too, so app updates
+ * that install a .pkg (Zoom, Teams and others) can ask for the password instead of failing without a terminal. */
+function macAskpass(): string {
+  const askpass = path.join(app.getPath('userData'), 'askpass.sh');
+  fs.writeFileSync(
+    askpass,
+    '#!/bin/sh\n/usr/bin/osascript -e \'display dialog "MendKit needs your Mac password to finish this step." default answer "" with hidden answer with title "MendKit" with icon caution\' -e \'text returned of result\'\n',
+    { mode: 0o700 },
+  );
+  return askpass;
+}
+
 function privilegedSpawner(): (() => ChildProcess) | undefined {
   if (process.platform === 'linux' && onPath('pkexec')) return () => spawn('pkexec', ['/bin/sh', '-s'], { stdio: 'pipe' });
   if (process.platform === 'darwin') {
-    return () => {
-      const askpass = path.join(app.getPath('userData'), 'askpass.sh');
-      fs.writeFileSync(
-        askpass,
-        '#!/bin/sh\n/usr/bin/osascript -e \'display dialog "MendKit needs your password to run repair steps." default answer "" with hidden answer with title "MendKit" with icon caution\' -e \'text returned of result\'\n',
-        { mode: 0o700 },
-      );
-      return spawn('/usr/bin/sudo', ['-A', '--', '/bin/sh', '-s'], { stdio: 'pipe', env: { ...process.env, SUDO_ASKPASS: askpass } });
-    };
+    return () => spawn('/usr/bin/sudo', ['-A', '--', '/bin/sh', '-s'], { stdio: 'pipe', env: { ...process.env, SUDO_ASKPASS: macAskpass() } });
   }
   return undefined;
 }
 
 function registerIpc(): void {
   const catalog = loadCatalog(path.join(app.getAppPath(), 'definitions'), currentPlatform());
+  if (process.platform === 'darwin') process.env.SUDO_ASKPASS = macAskpass();
   engine = new Engine(catalog, logDir, privilegedSpawner());
   engine.on('event', (e: EngineEvent) => win?.webContents.send('mendkit:event', e));
 
