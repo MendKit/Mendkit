@@ -71,7 +71,14 @@ const q = (v: string) => `'${v.replace(/'/g, "''")}'`;
  * Microsoft Store. Each outcome prints a marker that the notes below turn into plain words.
  */
 export function wingetUpdateScript(u: AppUpdate): string {
-  const src = u.source && /^[\w-]+$/.test(u.source) ? u.source : 'winget';
+  // winget cannot replace itself while it runs: App Installer updates through the Microsoft Store.
+  const src = u.id === 'Microsoft.AppInstaller' ? 'msstore' : u.source && /^[\w-]+$/.test(u.source) ? u.source : 'winget';
+  if (u.id === 'Microsoft.AppInstaller')
+    return [
+      "try { Get-CimInstance -Namespace 'Root\\cimv2\\mdm\\dmmap' -ClassName 'MDM_EnterpriseModernAppManagement_AppManagement01' -ErrorAction Stop | Invoke-CimMethod -MethodName UpdateScanMethod -ErrorAction Stop | Out-Null; 'MK_STORE_SCAN' } catch { 'MK_STORE' }",
+      "Start-Process 'ms-windows-store://downloadsandupdates'",
+      'exit 0',
+    ].join('\n');
   return [
     `$id = ${q(u.id)}; $src = ${q(src)}; $name = ${q(u.name)}`,
     "$common = @('--id', $id, '--exact', '--source', $src, '--accept-source-agreements', '--accept-package-agreements', '--disable-interactivity')",
@@ -80,7 +87,13 @@ export function wingetUpdateScript(u: AppUpdate): string {
     "if ($code -ne 0 -and ($out -match 'administrator context|user scope' -or $hex -match '8A15007D|8A150056')) { 'MK_RETRY_MACHINE'; $out = Run 'upgrade' @('--scope', 'machine') }",
     "if ($code -ne 0 -and ($hex -eq '0x8A150011' -or $out -match '404|0x80190194|hash does not match')) { 'MK_RETRY_SOURCE'; winget.exe source update --disable-interactivity 2>&1 | Out-String; $out = Run 'upgrade' @() }",
     // The new version uses a different installer type (common with iCUE and other vendor installers): winget says to uninstall and install.
-    "if ($hex -eq '0x8A15008E' -or $out -match 'install technology is different') { 'MK_REINSTALL'; $u = Run 'uninstall' @(); $out = Run 'install' @(); if ($code -eq 0) { 'MK_REINSTALLED' } }",
+    // or the installer refuses because another version is installed (MSI 1638): winget's advice is to uninstall and install.
+    "if ($hex -eq '0x8A15008E' -or $hex -eq '0x8A15010D' -or $out -match 'install technology is different') {",
+    "  'MK_REINSTALL'; $out",
+    "  $u = Run 'uninstall' @(); $u",
+    "  if ($code -ne 0) { 'MK_UNINSTALL_FAILED'; exit $code }",
+    "  $out = Run 'install' @(); if ($code -eq 0) { 'MK_REINSTALLED' } else { 'MK_INSTALL_AFTER_REMOVE_FAILED' }",
+    '}',
     "if ($code -ne 0 -and $src -eq 'msstore') {",
     "  'MK_STORE'",
     // Ask the Store to look for updates for every Store app (works when MendKit runs as administrator), then open its downloads page.
@@ -106,6 +119,9 @@ export function wingetUpdateScript(u: AppUpdate): string {
 function wingetNotes(n: string) {
   return [
     { pattern: 'MK_REINSTALLED', level: 'good' as const, message: `${n}'s new version uses a different kind of installer, so it was removed and the new version installed, as winget advises. Settings are normally kept, but check ${n} opens and is set up as before.` },
+    { pattern: 'MK_UNINSTALL_FAILED', level: 'problem' as const, message: `${n}'s new version cannot update over the old one, and the old one could not be removed automatically. Uninstall ${n} in Settings, Apps, Installed apps, then install it again from the Tools screen or the maker's website.` },
+    { pattern: 'MK_INSTALL_AFTER_REMOVE_FAILED', level: 'problem' as const, message: `${n} had to be removed to install its new version, and the new version did not install. Install ${n} again from the maker's website.` },
+    { pattern: 'Stopped: no result after', level: 'attention' as const, message: `${n}'s installer stopped responding (it may be waiting on a window that cannot be shown) and was stopped. Update it from inside ${n}, usually under Help or Settings, Check for updates.` },
     { pattern: 'MK_IN_USE', level: 'attention' as const, message: `${n} is open, so it cannot be updated. Close it, including its icon by the clock (right-click, Exit or Quit), then update it again.` },
     { pattern: 'MK_RESTART', level: 'attention' as const, message: `${n} was updated, but Windows needs a restart to finish.` },
     { pattern: 'MK_PINNED', level: 'attention' as const, message: `${n} is pinned to its current version in winget, so it is skipped. To allow updates: winget pin remove --id <id>.` },
@@ -125,7 +141,7 @@ export function appUpdateCommands(platform: string, chosen: AppUpdate[]): Comman
   return chosen
     .filter((u) => SAFE.test(u.id.replace(/^(cask|formula):/, '')))
     .map((u) => {
-      const base = { id: `app-update-${u.id}`, name: `Update ${u.name}`, description: `${u.current} to ${u.available}`, typicalMinutes: 3, timeoutMinutes: 30 };
+      const base = { id: `app-update-${u.id}`, name: `Update ${u.name}`, description: `${u.current} to ${u.available}`, typicalMinutes: 3, timeoutMinutes: 20 };
       if (platform === 'win32')
         return { ...base, exec: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', wingetUpdateScript(u)], admin: false, friendly: { title: `Update ${u.name}`, ok: `${u.name} was updated to ${u.available}.`, problem: `${u.name} could not be updated.`, notes: wingetNotes(u.name) } };
       const [kind, name] = u.id.split(':');
