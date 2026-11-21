@@ -18,7 +18,12 @@ async function main() {
   // Visual Studio takes an hour; everything else is updated.
   const list: AppUpdate[] = parseWingetUpgrade(out).filter((u) => !/VisualStudio\.(Enterprise|Professional|Community|BuildTools)/.test(u.id));
   console.log(`${list.length} updates listed`);
-  const r = await eng.runSteps('app-updates-selected', 'Update all', 'command', appUpdateCommands('win32', list), { elevated: process.argv.includes('--elevated') });
+  // Live progress, so a hung installer shows up in the log.
+  eng.on('event', (e: { type: string; name?: string; text?: string }) => {
+    if (e.type === 'step-start') console.log(`\n=== ${new Date().toISOString().slice(11, 19)} ${e.name}`);
+    if (e.type === 'output' && e.text) process.stdout.write(e.text.replace(/[\r\u2588\u2592]+/g, ' ').replace(/ {3,}/g, ' '));
+  });
+  const r = await eng.runSteps('app-updates-selected', 'Update all', 'command', appUpdateCommands('win32', list).map((c) => ({ ...c, timeoutMinutes: 15 })), { elevated: process.argv.includes('--elevated') });
   const log = fs.readFileSync(r.logFile, 'utf8');
   let failed = 0;
   for (const s of r.steps) {

@@ -125,7 +125,7 @@ export function appUpdateCommands(platform: string, chosen: AppUpdate[]): Comman
   return chosen
     .filter((u) => SAFE.test(u.id.replace(/^(cask|formula):/, '')))
     .map((u) => {
-      const base = { id: `app-update-${u.id}`, name: `Update ${u.name}`, description: `${u.current} to ${u.available}`, typicalMinutes: 3 };
+      const base = { id: `app-update-${u.id}`, name: `Update ${u.name}`, description: `${u.current} to ${u.available}`, typicalMinutes: 3, timeoutMinutes: 30 };
       if (platform === 'win32')
         return { ...base, exec: 'powershell.exe', args: ['-NoProfile', '-NonInteractive', '-Command', wingetUpdateScript(u)], admin: false, friendly: { title: `Update ${u.name}`, ok: `${u.name} was updated to ${u.available}.`, problem: `${u.name} could not be updated.`, notes: wingetNotes(u.name) } };
       const [kind, name] = u.id.split(':');
