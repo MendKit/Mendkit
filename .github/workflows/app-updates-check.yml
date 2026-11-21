@@ -1,0 +1,21 @@
+name: App updates on a real Windows machine
+# Updates every out-of-date program on GitHub's Windows machine through MendKit and reports failures.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '41 10 * * 3'
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+      - run: npm ci --ignore-scripts
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npx tsc -p tsconfig.json
+      - run: node dist/scripts/app-updates-check.js --elevated
