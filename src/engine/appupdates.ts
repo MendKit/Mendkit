@@ -86,6 +86,7 @@ export function wingetUpdateScript(u: AppUpdate): string {
     "function Run($verb, $more) { $agree = @(if ($verb -ne 'uninstall') { '--accept-package-agreements' }); $o = & winget.exe $verb @common @agree @more 2>&1 | Out-String; $script:code = $LASTEXITCODE; $script:hex = '0x{0:X8}' -f $script:code; $o }",
     "$out = Run 'upgrade' @()",
     "if ($code -ne 0 -and ($out -match 'administrator context|user scope' -or $hex -match '8A15007D|8A150056')) { 'MK_RETRY_MACHINE'; $out = Run 'upgrade' @('--scope', 'machine') }",
+    "if ($code -ne 0 -and $hex -match '80004004|80072EFE|80072EE2|8A150008') { 'MK_RETRY_DOWNLOAD'; Start-Sleep 10; $out = Run 'upgrade' @() }",
     "if ($code -ne 0 -and ($hex -eq '0x8A150011' -or $out -match '404|0x80190194|hash does not match')) { 'MK_RETRY_SOURCE'; winget.exe source update --disable-interactivity 2>&1 | Out-String; $out = Run 'upgrade' @() }",
     // The new version uses a different installer type (common with iCUE and other vendor installers): winget says to uninstall and install.
     // or the installer refuses because another version is installed (MSI 1638): winget's advice is to uninstall and install.

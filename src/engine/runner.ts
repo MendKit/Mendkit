@@ -445,6 +445,8 @@ export function toolCommand(tool: ToolDef, action: 'install' | 'remove', manager
       "  'MK_RETRY_MACHINE: installing it for all users instead...'",
       "  $out = & winget.exe @a --scope machine 2>&1 | Out-String; $code = $LASTEXITCODE; $out",
       '}',
+      // A dropped download (the publisher's server cut the connection) is tried once more.
+      "if ($code -ne 0 -and ('0x{0:X8}' -f $code) -match '80004004|80072EFE|80072EE2|8A150008') { 'MK_RETRY_DOWNLOAD'; Start-Sleep 10; $out = & winget.exe @a 2>&1 | Out-String; $code = $LASTEXITCODE; $out }",
       "if ($code -ne 0 -and $out -match '404|Not found|0x80190194|hash does not match|0x8A150011') {",
       "  'MK_RETRY_SOURCE: refreshing the winget catalog and trying again...'",
       '  winget.exe source update --disable-interactivity 2>&1 | Out-String',
