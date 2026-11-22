@@ -913,6 +913,8 @@ async function main(): Promise<void> {
     if (b.map((x: { id: string }) => x.id).join(',') !== 'cask:firefox,formula:wget') throw new Error('brew list read wrongly');
     const cmds = appUpdateCommands('darwin', b);
     if (cmds[0].args.join(' ') !== 'upgrade --cask firefox' || !appUpdateCommands('win32', u)[0].args[3].includes("$id = 'Mozilla.Firefox'") || !appUpdateCommands('win32', u)[0].args[3].includes("$src = 'winget'")) throw new Error('app update commands built wrongly');
+    // Updating must never remove an app: a failed reinstall leaves the customer without it.
+    for (const c of appUpdateCommands('win32', u)) if (/Run 'uninstall'|winget(\.exe)? uninstall/.test(c.args[3])) throw new Error(`${c.name} update can uninstall`);
     if (appUpdateCommands('win32', [{ id: 'x & calc', name: 'x', current: '', available: '' }]).length) throw new Error('unsafe app id accepted');
     console.log('app updates: lists from winget and Homebrew read, chosen apps update one at a time OK');
   }

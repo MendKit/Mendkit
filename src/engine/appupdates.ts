@@ -82,19 +82,27 @@ export function wingetUpdateScript(u: AppUpdate): string {
   return [
     `$id = ${q(u.id)}; $src = ${q(src)}; $name = ${q(u.name)}`,
     "$common = @('--id', $id, '--exact', '--source', $src, '--accept-source-agreements', '--disable-interactivity')",
-    // uninstall does not take --accept-package-agreements.
-    "function Run($verb, $more) { $agree = @(if ($verb -ne 'uninstall') { '--accept-package-agreements' }); $o = & winget.exe $verb @common @agree @more 2>&1 | Out-String; $script:code = $LASTEXITCODE; $script:hex = '0x{0:X8}' -f $script:code; $o }",
+    "function Run($verb, $more) { $agree = @('--accept-package-agreements'); $o = & winget.exe $verb @common @agree @more 2>&1 | Out-String; $script:code = $LASTEXITCODE; $script:hex = '0x{0:X8}' -f $script:code; $o }",
     "$out = Run 'upgrade' @()",
     "if ($code -ne 0 -and ($out -match 'administrator context|user scope' -or $hex -match '8A15007D|8A150056')) { 'MK_RETRY_MACHINE'; $out = Run 'upgrade' @('--scope', 'machine') }",
     "if ($code -ne 0 -and $hex -match '80004004|80072EFE|80072EE2|8A150008') { 'MK_RETRY_DOWNLOAD'; Start-Sleep 10; $out = Run 'upgrade' @() }",
     "if ($code -ne 0 -and ($hex -eq '0x8A150011' -or $out -match '404|0x80190194|hash does not match')) { 'MK_RETRY_SOURCE'; winget.exe source update --disable-interactivity 2>&1 | Out-String; $out = Run 'upgrade' @() }",
-    // The new version uses a different installer type (common with iCUE and other vendor installers): winget says to uninstall and install.
-    // or the installer refuses because another version is installed (MSI 1638): winget's advice is to uninstall and install.
-    "if ($hex -eq '0x8A15008E' -or $hex -eq '0x8A15010D' -or $out -match 'install technology is different') {",
-    "  'MK_REINSTALL'; $out",
-    "  $u = Run 'uninstall' @(); $u",
-    "  if ($code -ne 0) { 'MK_UNINSTALL_FAILED'; exit $code }",
-    "  $out = Run 'install' @(); if ($code -eq 0) { 'MK_REINSTALLED' } else { 'MK_INSTALL_AFTER_REMOVE_FAILED' }",
+    // winget cannot update this one in place: the new version uses a different installer type, the installer
+    // refuses over the old version, removing the old version first failed, or the installer itself failed.
+    // Nothing is ever uninstalled: the new installer is downloaded and opened so its own steps can run.
+    "if ($code -ne 0 -and $src -ne 'msstore' -and ($hex -match '8A15008E|8A15010D|8A150030|8A150006|8A15002B' -or $out -match 'install technology is different')) {",
+    "  $out",
+    "  $dl = try { (New-Object -ComObject Shell.Application).NameSpace('shell:Downloads').Self.Path } catch { $null }",
+    "  if (-not $dl) { $dl = Join-Path ([Environment]::GetFolderPath('UserProfile')) 'Downloads' }",
+    "  $dir = Join-Path $dl ('MendKit installers\\' + ($id -replace '[^\\w.-]', '_'))",
+    "  New-Item -ItemType Directory -Force -Path $dir | Out-Null; Get-ChildItem -LiteralPath $dir | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue",
+    "  $d = Run 'download' @('--download-directory', $dir); $d",
+    "  if ($code -ne 0) { winget.exe source update --disable-interactivity 2>&1 | Out-String; $d = Run 'download' @('--download-directory', $dir); $d }",
+    "  $f = Get-ChildItem -LiteralPath $dir -File -ErrorAction SilentlyContinue | Where-Object { $_.Extension -notmatch '^\\.ya?ml$' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1",
+    "  if ($code -ne 0 -or -not $f) { 'MK_NO_INSTALLER'; exit 1 }",
+    "  \"Saved the new installer to $($f.FullName)\"",
+    "  if ($f.Extension -match '^\\.(zip|7z)$') { Start-Process explorer.exe -ArgumentList \"\"\"$dir\"\"\"; 'MK_OPENED_FOLDER' } else { Start-Process -FilePath $f.FullName; 'MK_OPENED_INSTALLER' }",
+    '  exit 1',
     '}',
     "if ($code -ne 0 -and $src -eq 'msstore') {",
     "  'MK_STORE'",
@@ -120,9 +128,9 @@ export function wingetUpdateScript(u: AppUpdate): string {
 
 function wingetNotes(n: string) {
   return [
-    { pattern: 'MK_REINSTALLED', level: 'good' as const, message: `${n}'s new version uses a different kind of installer, so it was removed and the new version installed, as winget advises. Settings are normally kept, but check ${n} opens and is set up as before.` },
-    { pattern: 'MK_UNINSTALL_FAILED', level: 'problem' as const, message: `${n}'s new version cannot update over the old one, and the old one could not be removed automatically. Uninstall ${n} in Settings, Apps, Installed apps, then install it again from the Tools screen or the maker's website.` },
-    { pattern: 'MK_INSTALL_AFTER_REMOVE_FAILED', level: 'problem' as const, message: `${n} had to be removed to install its new version, and the new version did not install. Install ${n} again from the maker's website.` },
+    { pattern: 'MK_OPENED_INSTALLER', level: 'attention' as const, message: `winget could not update ${n} by itself, so MendKit downloaded the new installer and opened it. Follow its steps to finish (close ${n} first). Nothing was removed. The installer is kept in Downloads, MendKit installers.` },
+    { pattern: 'MK_OPENED_FOLDER', level: 'attention' as const, message: `winget could not update ${n} by itself. MendKit downloaded the new version and opened its folder in Downloads, MendKit installers. Nothing was removed.` },
+    { pattern: 'MK_NO_INSTALLER', level: 'problem' as const, message: `winget could not update ${n}, and its new installer could not be downloaded (the maker has probably moved it). ${n} was left as it is. Update it from inside ${n} or from the maker's website.` },
     { pattern: 'Stopped: no result after', level: 'attention' as const, message: `${n}'s installer stopped responding (it may be waiting on a window that cannot be shown) and was stopped. Update it from inside ${n}, usually under Help or Settings, Check for updates.` },
     { pattern: 'MK_IN_USE', level: 'attention' as const, message: `${n} is open, so it cannot be updated. Close it, including its icon by the clock (right-click, Exit or Quit), then update it again.` },
     { pattern: 'MK_RESTART', level: 'attention' as const, message: `${n} was updated, but Windows needs a restart to finish.` },
